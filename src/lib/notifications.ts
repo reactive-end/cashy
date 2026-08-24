@@ -57,6 +57,20 @@ export function notificationsAvailable(): boolean {
   return !enExpoGo()
 }
 
+/**
+ * Consulta en silencio si el permiso de notificaciones esta concedido.
+ * No muestra dialogos; para solicitarlo existe requestNotificationPermission.
+ * @returns true solo con permiso concedido fuera de Expo Go
+ */
+async function permisoActual(): Promise<boolean> {
+  const Notifications = obtenerModulo()
+  if (!Notifications) return false
+
+  const actuales = await Notifications.getPermissionsAsync()
+
+  return actuales.granted
+}
+
 /** Prefijo de los identificadores de notificacion agendadas */
 const REMINDER_PREFIX = 'reminder-'
 
@@ -78,7 +92,9 @@ function reminderId(expenseId: string): string {
 /**
  * Configura el manejador global de presentacion, el canal de Android
  * y los recordatorios diarios de tasa BCV (9 a.m. y 1 p.m.).
- * Debe ejecutarse una sola vez al iniciar la aplicacion.
+ * Solicita el permiso de notificaciones en el primer arranque
+ * (dialogo del sistema en Android 13+) y solo agenda si queda
+ * concedido. Debe ejecutarse una sola vez al iniciar la aplicacion.
  * No-op silencioso dentro de Expo Go.
  */
 export async function setupNotifications(): Promise<void> {
@@ -103,7 +119,9 @@ export async function setupNotifications(): Promise<void> {
     })
   }
 
-  await programarRecordatoriosBcv()
+  const concedido = await requestNotificationPermission()
+
+  if (concedido) await programarRecordatoriosBcv()
 }
 
 /**
@@ -242,6 +260,8 @@ export async function syncReminders(reminderHour: number): Promise<void> {
       updateExpense(id, { nextDueDate: vencimiento })
     )
   )
+
+  if (!(await permisoActual())) return
 
   const pendientes: Promise<void>[] = []
 

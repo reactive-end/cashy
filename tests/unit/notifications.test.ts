@@ -15,7 +15,7 @@ import {
   syncReminders
 } from '@src/lib/notifications'
 
-import { AHORA, buildFixedExpense, buildUniqueExpense } from '../helpers/factories'
+import { AHORA, buildFixedExpense, buildUniqueExpense, isoEnDias } from '../helpers/factories'
 
 /** Simula ejecucion en Android para cubrir el canal de notificaciones */
 function simularAndroid(): void {
@@ -178,6 +178,53 @@ describe('syncReminders', () => {
       const cancelacionesBcv = cancelMock.mock.calls.filter(([id]) => String(id).startsWith('bcv-'))
 
       expect(cancelacionesBcv).toHaveLength(2)
+    })
+  })
+
+  describe('permiso de notificaciones', () => {
+    const getPermissionsMock = Notifications.getPermissionsAsync as jest.Mock
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      jest.useFakeTimers({ now: AHORA })
+      simularAndroid()
+    })
+
+    afterEach(() => {
+      jest.useRealTimers()
+      restaurarPlataforma()
+    })
+
+    it('solicita el permiso en el arranque y agenda BCV al concederlo', async () => {
+      getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: true })
+      ;(Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValueOnce({
+        granted: true
+      })
+
+      await setupNotifications()
+
+      expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1)
+      expect(scheduleMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('no agenda BCV si el permiso fue denegado permanentemente', async () => {
+      getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
+
+      await setupNotifications()
+
+      expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled()
+      expect(scheduleMock).not.toHaveBeenCalled()
+    })
+
+    it('syncReminders omite el agendado sin permiso pero actualiza vencimientos', async () => {
+      const gasto = buildFixedExpense({ id: 'fijo-vencido', nextDueDate: isoEnDias(-10) })
+      getExpensesMock.mockResolvedValue([gasto])
+      getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
+
+      await syncReminders(9)
+
+      expect(updateExpenseMock).toHaveBeenCalled()
+      expect(scheduleMock).not.toHaveBeenCalled()
     })
   })
 })
