@@ -1,0 +1,28 @@
+# Flujo: editar un gasto existente y eliminarlo con confirmacion propia.
+appId: dev.cashy.app
+name: 03 - Editar y eliminar con confirmacion
+---
+- launchApp
+
+- tapOn: 'Gastos'
+
+- assertVisible: 'Fijos'
+
+- tapOn:
+    id: 'expense-row-0'
+
+- assertVisible: 'Editar gasto'
+
+- tapOn: 'Eliminar gasto'
+
+- assertVisible: 'Esta accion no se puede deshacer.'
+
+- tapOn: 'Cancelar'
+
+- assertVisible: 'Editar gasto'
+
+- tapOn: 'Eliminar gasto'
+
+- tapOn: 'Eliminar'
+
+- assertVisible: 'Gastos'

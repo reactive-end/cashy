@@ -1,0 +1,53 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`instantaneas de atomos Badge produce una pastilla por tono 1`] = `
+[
+  "{"type":"View","props":{"className":"rounded-full border px-2.5 py-1 bg-paper border-line text-muted"},"children":[{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint font-sans-semibold"},"children":["neutro"]}]}",
+  "{"type":"View","props":{"className":"rounded-full border px-2.5 py-1 bg-accent-soft border-accent-soft text-accent"},"children":[{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint font-sans-semibold"},"children":["ok"]}]}",
+  "{"type":"View","props":{"className":"rounded-full border px-2.5 py-1 bg-warn-soft border-warn-soft text-warn"},"children":[{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint font-sans-semibold"},"children":["aviso"]}]}",
+  "{"type":"View","props":{"className":"rounded-full border px-2.5 py-1 bg-danger-soft border-danger-soft text-danger"},"children":[{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint font-sans-semibold"},"children":["urgente"]}]}",
+]
+`;
+
+exports[`instantaneas de atomos Button refleja variantes y estados 1`] = `
+[
+  "{"type":"View","props":{"className":"flex-row items-center justify-center rounded-xl border active:opacity-80 bg-accent border-accent px-4 py-2.5 gap-1.5 text-paper self-start","accessibilityRole":"button","accessibilityLabel":"Primario","accessible":true,"accessibilityState":{"disabled":false},"focusable":true,"accessibilityValue":{},"collapsable":false},"children":[{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink font-sans-semibold text-[15px] text-paper"},"children":["Primario"]}]}",
+  "{"type":"View","props":{"className":"flex-row items-center justify-center rounded-xl border active:opacity-80 bg-card border-line px-5 py-3.5 gap-2 text-ink self-start","accessibilityRole":"button","accessibilityLabel":"Secundario","accessible":true,"accessibilityState":{"disabled":false},"focusable":true,"accessibilityValue":{},"collapsable":false},"children":[{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink font-sans-semibold text-[15px] text-ink"},"children":["Secundario"]}]}",
+  "{"type":"View","props":{"className":"flex-row items-center justify-center rounded-xl border active:opacity-80 bg-transparent border-transparent px-4 py-2.5 gap-1.5 text-muted self-start","accessibilityRole":"button","accessibilityLabel":"Fantasma","accessible":true,"accessibilityState":{"disabled":false},"focusable":true,"accessibilityValue":{},"collapsable":false},"children":[{"type":"View","props":{"testID":"lucide-plus"},"children":[]},{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink font-sans-semibold text-[15px] text-muted"},"children":["Fantasma"]}]}",
+  "{"type":"View","props":{"className":"flex-row items-center justify-center rounded-xl border active:opacity-80 bg-danger-soft border-danger-soft px-4 py-2.5 gap-1.5 text-danger self-start opacity-50","accessibilityRole":"button","accessibilityLabel":"Peligroso","accessible":true,"accessibilityState":{"disabled":true},"focusable":true,"accessibilityValue":{},"collapsable":false},"children":[{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink font-sans-semibold text-[15px] text-danger"},"children":["Peligroso"]}]}",
+  "{"type":"View","props":{"className":"flex-row items-center justify-center rounded-xl border active:opacity-80 bg-accent border-accent px-4 py-2.5 gap-1.5 text-paper w-full opacity-50","accessibilityRole":"button","accessibilityLabel":"Cargando","accessible":true,"accessibilityState":{"disabled":true},"focusable":true,"accessibilityValue":{},"collapsable":false},"children":[{"type":"ActivityIndicator","props":{"size":"small","color":"#FAFAF7"},"children":[]}]}",
+]
+`;
+
+exports[`instantaneas de atomos Card combina padding y resaltado 1`] = `
+[
+  "{"type":"View","props":{"className":"rounded-2xl bg-card border border-line p-4"},"children":[]}",
+  "{"type":"View","props":{"className":"rounded-2xl bg-card border border-line"},"children":[]}",
+  "{"type":"View","props":{"className":"rounded-2xl bg-card border border-accent p-4"},"children":[]}",
+]
+`;
+
+exports[`instantaneas de atomos Icon mantiene su estructura basica 1`] = `
+[
+  "{"type":"View","props":{"testID":"lucide-circle-dollar"},"children":[]}",
+  "{"type":"View","props":{"testID":"lucide-coins"},"children":[]}",
+]
+`;
+
+exports[`instantaneas de atomos Input muestra etiqueta, prefijo y error 1`] = `
+[
+  "{"type":"View","props":{"className":"gap-1.5"},"children":[{"type":"Text","props":{"className":"font-sans-semibold text-[12px] leading-[16px] uppercase tracking-widest text-muted "},"children":["Nombre"]},{"type":"View","props":{"className":"flex-row items-center gap-2 rounded-xl border bg-card px-3.5 border-line "},"children":[{"type":"TextInput","props":{"className":"flex-1 py-2.5 font-sans text-[15px] text-ink","value":"","placeholderTextColor":"#70706A","editable":true,"multiline":false,"keyboardType":"default","accessibilityLabel":"Nombre"},"children":[]}]}]}",
+  "{"type":"View","props":{"className":"gap-1.5"},"children":[{"type":"Text","props":{"className":"font-sans-semibold text-[12px] leading-[16px] uppercase tracking-widest text-muted "},"children":["Monto"]},{"type":"View","props":{"className":"flex-row items-center gap-2 rounded-xl border bg-card px-3.5 border-danger "},"children":[{"type":"Text","props":{"className":"font-sans-semibold text-[16px] leading-[22px] text-ink text-faint"},"children":["$"]},{"type":"TextInput","props":{"className":"flex-1 py-2.5 font-sans text-[15px] text-ink","value":"9,99","placeholderTextColor":"#70706A","editable":true,"multiline":false,"keyboardType":"decimal-pad","accessibilityLabel":"Monto"},"children":[]}]},{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint text-danger"},"children":["Monto invalido"]}]}",
+]
+`;
+
+exports[`instantaneas de atomos Typography cubre las seis variantes 1`] = `
+[
+  "{"type":"Text","props":{"className":"font-display text-[30px] leading-[36px] text-ink ","accessibilityRole":"header"},"children":["T"]}",
+  "{"type":"Text","props":{"className":"font-title text-[20px] leading-[26px] text-ink ","accessibilityRole":"header"},"children":["T"]}",
+  "{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink "},"children":["T"]}",
+  "{"type":"Text","props":{"className":"font-sans-semibold text-[16px] leading-[22px] text-ink "},"children":["T"]}",
+  "{"type":"Text","props":{"className":"font-sans-semibold text-[12px] leading-[16px] uppercase tracking-widest text-muted "},"children":["T"]}",
+  "{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint "},"children":["T"]}",
+]
+`;

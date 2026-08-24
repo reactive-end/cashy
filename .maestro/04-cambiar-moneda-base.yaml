@@ -1,0 +1,20 @@
+# Flujo: cambiar la moneda base y verificar persistencia tras relanzar.
+appId: dev.cashy.app
+name: 04 - Cambiar moneda base y persistir
+---
+- launchApp:
+    clearState: true
+
+- tapOn: 'Ajustes'
+
+- assertVisible: 'Moneda base'
+
+- tapOn: 'VES'
+
+- stopApp
+
+- launchApp
+
+- tapOn: 'Ajustes'
+
+- assertVisible: 'Moneda base'

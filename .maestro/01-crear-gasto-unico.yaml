@@ -1,0 +1,29 @@
+# Flujo: crear un gasto unico desde el boton flotante.
+appId: dev.cashy.app
+name: 01 - Crear gasto unico
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: 'Tu panorama de hoy'
+
+- tapOn:
+    id: 'fab-add-expense'
+
+- assertVisible: 'Nuevo gasto'
+
+- tapOn: 'Unico'
+
+- tapOn:
+    id: 'input-nombre'
+- inputText: 'Licuadora nueva'
+
+- tapOn:
+    id: 'input-monto'
+- inputText: '250000'
+
+- tapOn: 'Bs.'
+
+- tapOn: 'Registrar gasto'
+
+- assertVisible: 'Tu panorama de hoy'

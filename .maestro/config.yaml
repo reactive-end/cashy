@@ -1,0 +1,6 @@
+appId: dev.cashy.app
+name: Cashy - suite E2E
+---
+# Los flujos asumen un development build (npx expo run:android).
+# Para probar via Expo Go usar appId: host.exp.Exponent y abrir
+# la URL exp://<maquina>:8081 manualmente antes del flujo.

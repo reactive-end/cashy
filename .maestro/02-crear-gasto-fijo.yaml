@@ -1,0 +1,41 @@
+# Flujo: crear un gasto fijo mensual con fecha propia del calendario.
+# La primera vez el sistema pedira permiso de notificaciones; los
+# pasos de permiso son opcionales para no romper corridas previas.
+appId: dev.cashy.app
+name: 02 - Crear gasto fijo con recordatorio
+---
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: 'fab-add-expense'
+
+- tapOn: 'Fijo'
+
+- assertVisible: 'Repeticion'
+- assertVisible: 'Proximo vencimiento'
+
+- tapOn:
+    id: 'due-date-trigger'
+
+- assertVisible: 'Elegir fecha'
+
+- tapOn: '20'
+
+# El modal se cierra solo al elegir dia.
+
+- tapOn: 'Registrar gasto'
+
+- runFlow:
+    when:
+      visible: 'Allow'
+    commands:
+      - tapOn: 'Allow'
+
+- runFlow:
+    when:
+      visible: 'Permitir'
+    commands:
+      - tapOn: 'Permitir'
+
+- assertVisible: 'Tu panorama de hoy'
