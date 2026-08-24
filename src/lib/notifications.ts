@@ -243,12 +243,15 @@ export async function syncReminders(reminderHour: number): Promise<void> {
     )
   )
 
-  await Promise.all(
-    expenses
-      .filter((expense) => expense.type === 'fixed' && expense.active && expense.nextDueDate)
-      .map((expense) => {
-        const vencimiento = vencimientosNuevos.get(expense.id) ?? expense.nextDueDate ?? ''
-        return scheduleReminder({ ...expense, nextDueDate: vencimiento }, reminderHour)
-      })
-  )
+  const pendientes: Promise<void>[] = []
+
+  for (const expense of expenses) {
+    if (!(expense.type === 'fixed' && expense.active && expense.nextDueDate)) continue
+
+    const vencimiento = vencimientosNuevos.get(expense.id) ?? expense.nextDueDate ?? ''
+
+    pendientes.push(scheduleReminder({ ...expense, nextDueDate: vencimiento }, reminderHour))
+  }
+
+  await Promise.all(pendientes)
 }

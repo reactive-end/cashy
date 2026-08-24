@@ -47,10 +47,15 @@ export default function Calculator() {
 
     if (!tasas) return []
 
-    return CURRENCIES.filter((moneda) => moneda !== origen).map((destino) => ({
-      destino,
-      montoConvertido: convert(monto, origen, destino, tasas)
-    }))
+    const calculados: { destino: Currency; montoConvertido: number }[] = []
+
+    for (const destino of CURRENCIES) {
+      if (destino === origen) continue
+
+      calculados.push({ destino, montoConvertido: convert(monto, origen, destino, tasas) })
+    }
+
+    return calculados
   }, [monto, origen, ratesState.rates])
 
   const refrescarTasas = async () => {

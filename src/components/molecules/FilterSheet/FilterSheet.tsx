@@ -100,6 +100,10 @@ function FilterSheetContenido({
     onClose()
   }
 
+  // Sets de busqueda: evitan .includes dentro del render de cada chip.
+  const categoriasSeleccionadas = new Set(pendienteCategorias)
+  const monedasSeleccionadas = new Set(pendienteMonedas)
+
   return (
     <>
       <Typography variant="title">Filtros</Typography>
@@ -118,7 +122,7 @@ function FilterSheetContenido({
                   <Chip
                     key={categoria}
                     etiqueta={categoria}
-                    seleccionado={pendienteCategorias.includes(categoria)}
+                    seleccionado={categoriasSeleccionadas.has(categoria)}
                     onPress={() => alternarCategoria(categoria)}
                   />
                 ))
@@ -135,7 +139,7 @@ function FilterSheetContenido({
                 <Chip
                   key={moneda}
                   etiqueta={moneda}
-                  seleccionado={pendienteMonedas.includes(moneda)}
+                  seleccionado={monedasSeleccionadas.has(moneda)}
                   onPress={() => alternarMoneda(moneda)}
                 />
               ))}

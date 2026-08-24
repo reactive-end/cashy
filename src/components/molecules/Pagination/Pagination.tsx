@@ -13,6 +13,17 @@ import { COLORS } from '@src/constants/theme'
 import type { PaginationProps } from './Pagination.d'
 
 /**
+ * Clases del boton pastilla segun su estado.
+ * @param deshabilitado true cuando el boton no es pulsable
+ * @returns Clases tailwind del boton
+ */
+function clasesBoton(deshabilitado: boolean): string {
+  return `h-10 flex-row items-center gap-1 rounded-full border px-4 active:opacity-60 ${
+    deshabilitado ? 'border-line opacity-40' : 'border-line bg-card'
+  }`
+}
+
+/**
  * Renderiza la barra de paginacion: botones pastilla deshabilitables
  * en los extremos, pildora central "Pagina X de Y" en tono acento y
  * una barra de progreso proporcional cuando hay mas de una pagina.
@@ -24,11 +35,6 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
   const enPrimera = page <= 1
   const enUltima = page >= totalSeguro
   const progreso = Math.round((page / totalSeguro) * 100)
-
-  const clasesBoton = (deshabilitado: boolean) =>
-    `h-10 flex-row items-center gap-1 rounded-full border px-4 active:opacity-60 ${
-      deshabilitado ? 'border-line opacity-40' : 'border-line bg-card'
-    }`
 
   return (
     <View className="gap-2 pt-2">

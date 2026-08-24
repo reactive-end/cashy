@@ -41,6 +41,19 @@ import {
 /** Filas mostradas por pagina en la lista segmentada */
 const ITEMS_PER_PAGE = 8
 
+/** Fila derivada de un gasto para el listado */
+interface FilaGasto {
+  id: string
+  name: string
+  montoConvertido: number
+  createdAt: string
+  icon: 'tag' | 'repeat'
+  detail: string | undefined
+  formattedAmount: string
+  formattedOriginalAmount?: string
+  badge?: { text: string; tone: BadgeTone }
+}
+
 export default function Expenses() {
   const router = useRouter()
   const [segment, setSegment] = useState<ExpenseType>('fixed')
@@ -85,73 +98,75 @@ export default function Expenses() {
     const termino = consulta.trim().toLowerCase()
     const filtroCategorias = filtros.categorias
     const filtroMonedas = filtros.monedas
+    const setCategorias = new Set(filtroCategorias)
+    const setMonedas = new Set(filtroMonedas)
+    const filasMapeadas: FilaGasto[] = []
 
-    const filasMapeadas = lista
-      .filter((expense) => {
-        if (filtroCategorias.length > 0) {
-          const clave = (expense.category ?? '').trim()
+    for (const expense of lista) {
+      if (setCategorias.size > 0 && !setCategorias.has((expense.category ?? '').trim())) {
+        continue
+      }
 
-          if (!filtroCategorias.includes(clave)) return false
-        }
+      if (setMonedas.size > 0 && !setMonedas.has(expense.currency)) {
+        continue
+      }
 
-        if (filtroMonedas.length > 0 && !filtroMonedas.includes(expense.currency)) {
-          return false
-        }
+      const coincideBusqueda =
+        !termino ||
+        expense.name.toLowerCase().includes(termino) ||
+        (expense.category ?? '').toLowerCase().includes(termino)
 
-        if (!termino) return true
+      if (!coincideBusqueda) {
+        continue
+      }
 
-        return (
-          expense.name.toLowerCase().includes(termino) ||
-          (expense.category ?? '').toLowerCase().includes(termino)
-        )
-      })
-      .map((expense) => {
-        const convertido = ratesState.rates
-          ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-          : null
+      const convertido = ratesState.rates
+        ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+        : null
 
-        const formattedAmount = convertido
-          ? formatAmount(convertido, baseCurrency)
-          : formatAmount(expense.amount, expense.currency)
+      const formattedAmount = convertido
+        ? formatAmount(convertido, baseCurrency)
+        : formatAmount(expense.amount, expense.currency)
 
-        if (expense.type === 'unique') {
-          return {
-            id: expense.id,
-            name: expense.name,
-            montoConvertido: convertido ?? expense.amount,
-            createdAt: expense.createdAt,
-            icon: 'tag' as const,
-            detail: expense.category,
-            formattedAmount,
-            formattedOriginalAmount:
-              convertido && expense.currency !== baseCurrency
-                ? formatAmount(expense.amount, expense.currency)
-                : undefined,
-            badge: undefined
-          }
-        }
-
-        const dias = expense.nextDueDate ? daysUntil(fromISODate(expense.nextDueDate)) : 0
-
-        const tone: BadgeTone = dias <= 1 ? 'danger' : dias <= 3 ? 'warning' : 'neutral'
-
-        return {
+      if (expense.type === 'unique') {
+        filasMapeadas.push({
           id: expense.id,
           name: expense.name,
           montoConvertido: convertido ?? expense.amount,
           createdAt: expense.createdAt,
-          icon: 'repeat' as const,
-          detail: expense.recurrence
-            ? `${RECURRENCE_LABELS[expense.recurrence]} · ${formatAmount(
-                expense.amount,
-                expense.currency
-              )}`
-            : formatAmount(expense.amount, expense.currency),
+          icon: 'tag',
+          detail: expense.category,
           formattedAmount,
-          formattedOriginalAmount: undefined,
-          badge: { text: `vence en ${dias} dia${dias === 1 ? '' : 's'}`, tone }
-        }
+          formattedOriginalAmount:
+            convertido && expense.currency !== baseCurrency
+              ? formatAmount(expense.amount, expense.currency)
+              : undefined,
+          badge: undefined
+        })
+        continue
+      }
+
+      const dias = expense.nextDueDate ? daysUntil(fromISODate(expense.nextDueDate)) : 0
+
+      const tone: BadgeTone = dias <= 1 ? 'danger' : dias <= 3 ? 'warning' : 'neutral'
+
+      filasMapeadas.push({
+        id: expense.id,
+        name: expense.name,
+        montoConvertido: convertido ?? expense.amount,
+        createdAt: expense.createdAt,
+        icon: 'repeat',
+        detail: expense.recurrence
+          ? `${RECURRENCE_LABELS[expense.recurrence]} · ${formatAmount(
+              expense.amount,
+              expense.currency
+            )}`
+          : formatAmount(expense.amount, expense.currency),
+        formattedAmount,
+        formattedOriginalAmount: undefined,
+        badge: { text: `vence en ${dias} dia${dias === 1 ? '' : 's'}`, tone }
       })
+    }
 
     if (orden === 'montoDesc') {
       return [...filasMapeadas].sort((a, b) => b.montoConvertido - a.montoConvertido)

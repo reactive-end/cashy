@@ -177,14 +177,19 @@ export function useExpenses(
   }, [fixedExpenses, uniqueExpenses, rates, baseCurrency])
 
   const upcomingPayments = useMemo<UpcomingPayment[]>(() => {
-    return fixedExpenses
-      .filter((expense) => Boolean(expense.nextDueDate))
-      .map((expense) => ({
-        expense,
-        daysRemaining: daysUntil(fromISODate(expense.nextDueDate as string))
-      }))
-      .filter((pago) => pago.daysRemaining >= 0 && pago.daysRemaining <= UPCOMING_HORIZON_DAYS)
-      .sort((a, b) => a.daysRemaining - b.daysRemaining)
+    const proximos: UpcomingPayment[] = []
+
+    for (const expense of fixedExpenses) {
+      if (!expense.nextDueDate) continue
+
+      const daysRemaining = daysUntil(fromISODate(expense.nextDueDate))
+
+      if (daysRemaining < 0 || daysRemaining > UPCOMING_HORIZON_DAYS) continue
+
+      proximos.push({ expense, daysRemaining })
+    }
+
+    return proximos.sort((a, b) => a.daysRemaining - b.daysRemaining)
   }, [fixedExpenses])
 
   const createExpense = useCallback(

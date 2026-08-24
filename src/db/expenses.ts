@@ -118,8 +118,7 @@ export async function insertExpense(input: ExpenseInput, id: string): Promise<Ex
  * @throws Error si el identificador no existe
  */
 export async function updateExpense(id: string, changes: Partial<ExpenseInput>): Promise<Expense> {
-  const db = await openDatabase()
-  const actual = await getExpense(id)
+  const [db, actual] = await Promise.all([openDatabase(), getExpense(id)])
   if (!actual) throw new Error('El gasto no existe')
 
   const combinado: Expense = {
