@@ -69,11 +69,11 @@ describe('ageLabel', () => {
   })
 
   it.each([
-    ['2026-08-23T09:59:30', 'hace 0 min'],
-    ['2026-08-23T09:30:00', 'hace 30 min'],
-    ['2026-08-23T07:00:00', 'hace 3 h'],
-    ['2026-08-22T10:00:00', 'hace 1 dia'],
-    ['2026-08-20T10:00:00', 'hace 3 dias']
+    ['2026-08-23T09:59:30Z', 'hace 0 min'],
+    ['2026-08-23T09:30:00Z', 'hace 30 min'],
+    ['2026-08-23T07:00:00Z', 'hace 3 h'],
+    ['2026-08-22T10:00:00Z', 'hace 1 dia'],
+    ['2026-08-20T10:00:00Z', 'hace 3 dias']
   ])('describe la antiguedad de %s como "%s"', (fetchedAt, esperado) => {
     expect(ageLabel(fetchedAt)).toBe(esperado)
   })

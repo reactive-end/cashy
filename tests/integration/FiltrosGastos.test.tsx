@@ -11,7 +11,7 @@ import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
 import Expenses from '../../app/(tabs)/expenses'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
   buildRates,
@@ -53,20 +53,20 @@ describe('panel de filtros en Gastos', () => {
 
   it('abre el panel desde el boton junto al titulo y filtra por categoria', async () => {
     const pantalla = await render(<Expenses />)
-    await espera(250)
+    await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
-    await espera(120)
+    await wait(120)
 
     fireEvent.press(pantalla.getByLabelText('Filtrar gastos'))
-    await espera(60)
+    await wait(60)
 
     expect(await pantalla.findByText('Filtros')).toBeTruthy()
 
     fireEvent.press(pantalla.getByLabelText('Hogar'))
-    await espera(30)
+    await wait(30)
     fireEvent.press(pantalla.getByText('Aplicar'))
-    await espera(150)
+    await wait(150)
 
     expect(await pantalla.findByText('Licuadora')).toBeTruthy()
     expect(pantalla.queryByText('Taxi')).toBeNull()
@@ -74,18 +74,18 @@ describe('panel de filtros en Gastos', () => {
 
   it('ordena por nombre al elegir el criterio Nombre A-Z', async () => {
     const pantalla = await render(<Expenses />)
-    await espera(250)
+    await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
-    await espera(120)
+    await wait(120)
 
     fireEvent.press(pantalla.getByLabelText('Filtrar gastos'))
-    await espera(60)
+    await wait(60)
 
     fireEvent.press(pantalla.getByLabelText('Nombre A-Z'))
-    await espera(30)
+    await wait(30)
     fireEvent.press(pantalla.getByText('Aplicar'))
-    await espera(150)
+    await wait(150)
 
     const filas = await pantalla.findAllByText(/^(Licuadora|Taxi)$/)
 
@@ -96,28 +96,28 @@ describe('panel de filtros en Gastos', () => {
 
   it('limpia los filtros con el boton Limpiar', async () => {
     const pantalla = await render(<Expenses />)
-    await espera(250)
+    await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
-    await espera(120)
+    await wait(120)
 
     fireEvent.press(pantalla.getByLabelText('Filtrar gastos'))
-    await espera(60)
+    await wait(60)
 
     fireEvent.press(pantalla.getByLabelText('Transporte'))
-    await espera(30)
+    await wait(30)
     fireEvent.press(pantalla.getByText('Aplicar'))
-    await espera(150)
+    await wait(150)
 
     expect(await pantalla.findByText('Taxi')).toBeTruthy()
     expect(pantalla.queryByText('Licuadora')).toBeNull()
 
     fireEvent.press(pantalla.getByLabelText('Filtrar gastos'))
-    await espera(60)
+    await wait(60)
     fireEvent.press(pantalla.getByText('Limpiar'))
-    await espera(30)
+    await wait(30)
     fireEvent.press(pantalla.getByText('Aplicar'))
-    await espera(150)
+    await wait(150)
 
     expect(await pantalla.findByText('Licuadora')).toBeTruthy()
     expect(pantalla.getByText('Taxi')).toBeTruthy()

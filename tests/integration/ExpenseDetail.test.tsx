@@ -12,7 +12,7 @@ import { getExchangeRates } from '@src/services/rates'
 import type { Expense } from '@src/types/domain'
 
 import ExpenseDetail from '../../app/expense/[id]'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import { buildFixedExpense, buildRates, buildSettings } from '../helpers/factories'
 
 const mockBack = jest.fn()
@@ -66,7 +66,7 @@ describe('pantalla de detalle del gasto', () => {
 
   it('muestra los datos del gasto en modo solo lectura', async () => {
     const pantalla = await render(<ExpenseDetail />)
-    await espera(200)
+    await wait(200)
 
     expect(await pantalla.findByText('Alquiler')).toBeTruthy()
     expect(pantalla.getByText('Detalle del gasto')).toBeTruthy()
@@ -78,7 +78,7 @@ describe('pantalla de detalle del gasto', () => {
 
   it('navega a la pantalla de edicion con el boton Editar', async () => {
     const pantalla = await render(<ExpenseDetail />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Editar')
     fireEvent.press(pantalla.getByText('Editar'))
@@ -91,15 +91,15 @@ describe('pantalla de detalle del gasto', () => {
 
   it('elimina el gasto tras confirmar en el dialogo', async () => {
     const pantalla = await render(<ExpenseDetail />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Eliminar')
     fireEvent.press(pantalla.getByText('Eliminar'))
-    await espera(60)
+    await wait(60)
 
     const botonesEliminar = pantalla.getAllByText('Eliminar')
     fireEvent.press(botonesEliminar[botonesEliminar.length - 1])
-    await espera(150)
+    await wait(150)
 
     expect(deleteExpenseMock).toHaveBeenCalledWith('fijo-1')
     expect(mockBack).toHaveBeenCalled()

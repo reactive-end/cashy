@@ -5,8 +5,8 @@
 
 import type { AppSettings, Expense, ExpenseInput, ExchangeRates } from '@src/types/domain'
 
-/** Instante congelado de referencia para todas las pruebas */
-export const AHORA = new Date('2026-08-23T10:00:00')
+/** Instante congelado de referencia para todas las pruebas (UTC absoluto) */
+export const AHORA = new Date('2026-08-23T10:00:00.000Z')
 
 /** ISO del instante congelado */
 export const AHORA_ISO = AHORA.toISOString()

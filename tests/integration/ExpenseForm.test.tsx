@@ -7,7 +7,7 @@ import { fireEvent, render } from '@testing-library/react-native'
 
 import { ExpenseForm } from '@src/components/organisms/ExpenseForm'
 
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 
 describe('ExpenseForm en modo creacion', () => {
   it('oculta recurrencia y fecha para gastos unicos', async () => {
@@ -21,17 +21,17 @@ describe('ExpenseForm en modo creacion', () => {
     const { getByText, getByLabelText } = await render(<ExpenseForm onSave={onSave} />)
 
     fireEvent.press(getByText('Registrar gasto'))
-    await espera()
+    await wait()
 
     expect(getByText('Ponle un nombre al gasto')).toBeTruthy()
     expect(getByText('Ingresa un monto mayor que cero')).toBeTruthy()
 
     fireEvent.changeText(getByLabelText('Nombre'), 'Cafe')
-    await espera()
+    await wait()
     fireEvent.changeText(getByLabelText('Monto'), '350')
-    await espera()
+    await wait()
     fireEvent.press(getByText('Registrar gasto'))
-    await espera(120)
+    await wait(120)
 
     expect(onSave).toHaveBeenCalledTimes(1)
   })
@@ -41,13 +41,13 @@ describe('ExpenseForm en modo creacion', () => {
     const { getByText, getByLabelText } = await render(<ExpenseForm onSave={onSave} />)
 
     fireEvent.changeText(getByLabelText('Nombre'), 'Reloj')
-    await espera()
+    await wait()
     fireEvent.changeText(getByLabelText('Monto'), '1250')
-    await espera()
+    await wait()
     fireEvent.press(getByText('USDT'))
-    await espera()
+    await wait()
     fireEvent.press(getByText('Registrar gasto'))
-    await espera(120)
+    await wait(120)
 
     expect(onSave).toHaveBeenCalledWith({
       name: 'Reloj',
@@ -63,17 +63,17 @@ describe('ExpenseForm en modo creacion', () => {
     const { getByText, getByTestId, queryByText } = await render(<ExpenseForm onSave={jest.fn()} />)
 
     fireEvent.press(getByText('Fijo'))
-    await espera()
+    await wait()
 
     expect(getByText('Repeticion')).toBeTruthy()
 
     fireEvent.press(getByTestId('due-date-trigger'))
-    await espera()
+    await wait()
 
     expect(getByText('Elegir fecha')).toBeTruthy()
 
     fireEvent.press(getByText('15'))
-    await espera()
+    await wait()
 
     expect(queryByText('Elegir fecha')).toBeNull()
   })

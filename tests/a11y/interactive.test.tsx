@@ -16,7 +16,7 @@ import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
 import Home from '../../app/(tabs)/index'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
   buildRates,
@@ -77,7 +77,7 @@ describe('accesibilidad de interactivos', () => {
     const { getByLabelText } = await render(
       <CalendarPicker value="2026-08-10" onChange={jest.fn()} />
     )
-    await espera()
+    await wait()
 
     expect(getByLabelText('Mes anterior')).toBeTruthy()
     expect(getByLabelText('Mes siguiente')).toBeTruthy()
@@ -88,7 +88,7 @@ describe('accesibilidad de interactivos', () => {
     const { getByTestId } = await render(
       <ExpenseForm initialExpense={buildFixedExpense()} onSave={jest.fn()} />
     )
-    await espera()
+    await wait()
 
     const disparador = getByTestId('due-date-trigger')
     expect(disparador.props.accessibilityLabel).toContain('01/09/2026')

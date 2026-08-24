@@ -14,7 +14,7 @@ import { getExchangeRates } from '@src/services/rates'
 import Expenses from '../../app/(tabs)/expenses'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
   buildRates,
@@ -101,12 +101,12 @@ describe('pantalla Gastos', () => {
 
   it('alterna entre fijos y unicos segun el segmento', async () => {
     const pantalla = await render(<Expenses />)
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('Alquiler')).toBeTruthy()
 
     fireEvent.press(pantalla.getByText('Unicos'))
-    await espera(150)
+    await wait(150)
 
     expect(await pantalla.findByText('Licuadora')).toBeTruthy()
     expect(pantalla.queryByText('Alquiler')).toBeNull()
@@ -170,7 +170,7 @@ describe('pantalla Gastos con paginacion', () => {
     getExpensesMock.mockResolvedValue([...fijos, ...muchos])
 
     const pantalla = await render(<Expenses />)
-    await espera(250)
+    await wait(250)
 
     // Segmento Fijos: solo 2 filas, paginador visible con botones deshabilitados.
     expect(await pantalla.findByText(/Página 1 de 1/)).toBeTruthy()
@@ -178,7 +178,7 @@ describe('pantalla Gastos con paginacion', () => {
     expect(pantalla.getByText('Siguiente')).toBeDisabled()
 
     fireEvent.press(pantalla.getByText('Unicos'))
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('Gasto 0')).toBeTruthy()
     expect(await pantalla.findByText(/Página 1 de 2/)).toBeTruthy()
@@ -189,7 +189,7 @@ describe('pantalla Gastos con paginacion', () => {
     expect(await pantalla.findByText('Gasto 11')).toBeTruthy()
 
     fireEvent.press(pantalla.getByText('Fijos'))
-    await espera(150)
+    await wait(150)
 
     expect(pantalla.getByText('Alquiler')).toBeTruthy()
   })

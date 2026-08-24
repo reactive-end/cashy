@@ -4,6 +4,6 @@
  * previniendo solapamientos de act entre pruebas.
  * @param ms Milisegundos a esperar; por defecto 50
  */
-export function espera(ms = 50): Promise<void> {
+export function wait(ms = 50): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

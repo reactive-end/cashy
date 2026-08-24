@@ -13,7 +13,7 @@ import { getExchangeRates } from '@src/services/rates'
 import Expenses from '../../app/(tabs)/expenses'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
   buildRates,
@@ -52,7 +52,7 @@ describe('accesibilidad de pantallas', () => {
 
   it('Inicio expone un unico encabezado jerarquico principal', async () => {
     const { getAllByRole } = await render(<Home />)
-    await espera(250)
+    await wait(250)
 
     const encabezados = getAllByRole('header')
     expect(encabezados.length).toBeGreaterThanOrEqual(1)
@@ -68,7 +68,7 @@ describe('accesibilidad de pantallas', () => {
 
   it('Ajustes rotula los controles de preferencias', async () => {
     const { getByRole, getByText } = await render(<Settings />)
-    await espera()
+    await wait()
 
     expect(getByRole('header')).toBeTruthy()
     expect(getByText('Moneda base')).toBeTruthy()

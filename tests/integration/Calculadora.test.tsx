@@ -10,7 +10,7 @@ import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
 import Calculator from '../../app/(tabs)/calculator'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import { buildRates, buildSettings } from '../helpers/factories'
 
 jest.mock('expo-router', () => ({
@@ -32,7 +32,7 @@ describe('pantalla Calculadora', () => {
 
   it('muestra la equivalencia de 50 dolares en las otras tres divisas', async () => {
     const pantalla = await render(<Calculator />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Monto a convertir')
 
@@ -41,7 +41,7 @@ describe('pantalla Calculadora', () => {
 
     // 5000 digitados empujan desde los decimales hasta 50.00
     fireEvent.changeText(pantalla.getByTestId('input-monto'), '5000')
-    await espera(60)
+    await wait(60)
 
     expect(await pantalla.findByText('$ 50,00')).toBeTruthy()
     expect(pantalla.getByText('Bs. 38.997,50')).toBeTruthy()
@@ -51,15 +51,15 @@ describe('pantalla Calculadora', () => {
 
   it('convierte desde bolivares al cambiar la moneda de origen', async () => {
     const pantalla = await render(<Calculator />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Monto a convertir')
 
     fireEvent.press(pantalla.getByLabelText('Bs.'))
-    await espera(60)
+    await wait(60)
     // Captura cents-first: 779950 digitados = 7.799,50
     fireEvent.changeText(pantalla.getByTestId('input-monto'), '779950')
-    await espera(60)
+    await wait(60)
 
     expect(await pantalla.findByText('Bs. 7.799,50')).toBeTruthy()
     expect(pantalla.getByText('$ 10,00')).toBeTruthy()
@@ -69,7 +69,7 @@ describe('pantalla Calculadora', () => {
 
   it('permite corregir solo los decimales con el separador', async () => {
     const pantalla = await render(<Calculator />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Monto a convertir')
     const campo = pantalla.getByTestId('input-monto')
@@ -80,7 +80,7 @@ describe('pantalla Calculadora', () => {
         const actual = campo.props.value as string
 
         fireEvent.changeText(campo, actual + tecla)
-        await espera(15)
+        await wait(15)
       }
     }
 
@@ -106,17 +106,17 @@ describe('pantalla Calculadora', () => {
 
   it('limpia el campo con el boton X y reinicia las conversiones', async () => {
     const pantalla = await render(<Calculator />)
-    await espera(200)
+    await wait(200)
 
     await pantalla.findByText('Monto a convertir')
 
     fireEvent.changeText(pantalla.getByTestId('input-monto'), '5000')
-    await espera(60)
+    await wait(60)
 
     expect(await pantalla.findByText('$ 50,00')).toBeTruthy()
 
     fireEvent.press(pantalla.getByLabelText('Limpiar monto'))
-    await espera(60)
+    await wait(60)
 
     expect(await pantalla.findByText('$ 0,00')).toBeTruthy()
     expect(pantalla.getByTestId('input-monto').props.value as string).toBe('0.00')
@@ -127,7 +127,7 @@ describe('pantalla Calculadora', () => {
     getExchangeRatesMock.mockReturnValue(new Promise(() => undefined))
 
     const pantalla = await render(<Calculator />)
-    await espera(120)
+    await wait(120)
 
     expect(await pantalla.findByText('Cargando tasas del dia...')).toBeTruthy()
     expect(pantalla.queryByText('Bolivares')).toBeNull()

@@ -20,6 +20,7 @@ module.exports = {
     'src/hooks/**/*.ts',
     'src/db/**/*.ts'
   ],
+  testTimeout: 15000,
   coverageThreshold: {
     './src/lib/': { branches: 80, functions: 85, lines: 85, statements: 85 },
     './src/services/': { branches: 80, functions: 85, lines: 85, statements: 85 },

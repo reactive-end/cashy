@@ -27,8 +27,8 @@ const FILA_FIJA = {
   recurrence: 'monthly',
   next_due_date: '2026-09-01',
   active: 1,
-  created_at: '2026-08-23T14:00:00.000Z',
-  updated_at: '2026-08-23T14:00:00.000Z'
+  created_at: '2026-08-23T10:00:00.000Z',
+  updated_at: '2026-08-23T10:00:00.000Z'
 }
 
 describe('repositorio de gastos', () => {
@@ -61,7 +61,7 @@ describe('repositorio de gastos', () => {
         recurrence: 'monthly',
         nextDueDate: '2026-09-01',
         active: true,
-        createdAt: '2026-08-23T14:00:00.000Z'
+        createdAt: '2026-08-23T10:00:00.000Z'
       })
     })
 

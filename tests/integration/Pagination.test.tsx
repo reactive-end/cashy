@@ -6,7 +6,7 @@ import { fireEvent, render } from '@testing-library/react-native'
 
 import { Pagination } from '@src/components/molecules/Pagination'
 
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 
 describe('Pagination', () => {
   it('deshabilita Anterior en la primera pagina y Siguiente en la ultima', async () => {
@@ -26,12 +26,12 @@ describe('Pagination', () => {
     const { queryByTestId, rerender } = await render(
       <Pagination page={1} totalPages={3} onPageChange={jest.fn()} />
     )
-    await espera(30)
+    await wait(30)
 
     expect(queryByTestId('pagination-progress')).toBeTruthy()
 
     rerender(<Pagination page={1} totalPages={1} onPageChange={jest.fn()} />)
-    await espera(30)
+    await wait(30)
 
     expect(queryByTestId('pagination-progress')).toBeNull()
   })

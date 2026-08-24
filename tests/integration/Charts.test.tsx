@@ -11,7 +11,7 @@ import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
 import Charts from '../../app/(tabs)/charts'
-import { espera } from '../helpers/espera'
+import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
   buildRates,
@@ -52,7 +52,7 @@ describe('pantalla de graficas', () => {
     sembrarConDatos()
 
     const pantalla = await render(<Charts />)
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('Desglose por categoria')).toBeTruthy()
     expect(pantalla.getByText('Hogar')).toBeTruthy()
@@ -70,7 +70,7 @@ describe('pantalla de graficas', () => {
     sembrarConDatos()
 
     const pantalla = await render(<Charts />)
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('Indicadores del mes')).toBeTruthy()
     expect(pantalla.getByText('Promedio diario (unicos)')).toBeTruthy()
@@ -81,7 +81,7 @@ describe('pantalla de graficas', () => {
     sembrarConDatos()
 
     const pantalla = await render(<Charts />)
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('$ 350,00')).toBeTruthy()
     expect(pantalla.queryByText('Sin datos para graficar')).toBeNull()
@@ -93,7 +93,7 @@ describe('pantalla de graficas', () => {
     getExpensesMock.mockResolvedValue([])
 
     const pantalla = await render(<Charts />)
-    await espera(250)
+    await wait(250)
 
     expect(await pantalla.findByText('Sin datos para resumir')).toBeTruthy()
     expect(pantalla.queryByText('Desglose por categoria')).toBeNull()
