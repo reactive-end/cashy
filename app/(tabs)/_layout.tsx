@@ -4,6 +4,7 @@
  */
 
 import { Tabs } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Icon } from '@src/components/atoms/Icon'
 import { COLORS } from '@src/constants/theme'
@@ -13,6 +14,8 @@ import { COLORS } from '@src/constants/theme'
  * @returns Estructura de tabs con estilos minimalistas del sistema
  */
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets()
+
   return (
     <Tabs
       screenOptions={{
@@ -22,7 +25,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: COLORS.card,
           borderTopColor: COLORS.line,
-          borderTopWidth: 1
+          borderTopWidth: 1,
+          paddingBottom: Math.max(insets.bottom, 8),
+          height: 56 + Math.max(insets.bottom, 8)
         },
         tabBarLabelStyle: {
           fontFamily: 'Manrope_600SemiBold',

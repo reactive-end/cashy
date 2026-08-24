@@ -27,7 +27,10 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets()
   const clasesContenido = `${noPadding ? '' : 'px-5'} ${className ?? ''}`
-  const estiloInferior = { paddingBottom: Math.max(insets.bottom, 16) }
+  const estiloInferior = {
+    paddingTop: insets.top,
+    paddingBottom: Math.max(insets.bottom, 16)
+  }
 
   const controlRefresco = onRefresh ? (
     <RefreshControl
