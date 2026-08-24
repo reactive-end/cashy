@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cashy",
-    "slug": "Cashy",
+    "slug": "cashy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -42,12 +42,12 @@
       ],
       "expo-asset"
     ],
+    "owner": "reactiveend",
     "extra": {
       "router": {},
       "eas": {
         "projectId": "e9811042-1f7b-491b-8f66-7c64c3f363b0"
       }
-    },
-    "owner": "reactiveend"
+    }
   }
 }
