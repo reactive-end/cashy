@@ -16,7 +16,13 @@ describe('repositorio de ajustes', () => {
   })
 
   it('expone los valores por defecto esperados', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ baseCurrency: 'USD', reminderHour: 9 })
+    expect(DEFAULT_SETTINGS).toEqual({
+      baseCurrency: 'USD',
+      reminderHour: 9,
+      bcvHour: 9,
+      remindersEnabled: true,
+      bcvEnabled: true
+    })
   })
 
   it('devuelve los valores por defecto cuando no hay fila guardada', async () => {
@@ -24,15 +30,32 @@ describe('repositorio de ajustes', () => {
   })
 
   it('hace ida y vuelta completa de guardar a leer', async () => {
-    await saveSettings({ baseCurrency: 'VES', reminderHour: 19 })
+    const guardados = {
+      baseCurrency: 'VES',
+      reminderHour: 19,
+      bcvHour: 8,
+      remindersEnabled: false,
+      bcvEnabled: false
+    } as const
+
+    await saveSettings(guardados)
 
     expect(base.buscar('INSERT INTO settings')[0].sql).toContain('ON CONFLICT(key)')
 
+    base.encolar([{ value: JSON.stringify(guardados) }])
+
+    await expect(loadSettings()).resolves.toEqual(guardados)
+  })
+
+  it('completa con defaults los campos ausentes de un JSON antiguo', async () => {
     base.encolar([{ value: JSON.stringify({ baseCurrency: 'VES', reminderHour: 19 }) }])
 
     await expect(loadSettings()).resolves.toEqual({
       baseCurrency: 'VES',
-      reminderHour: 19
+      reminderHour: 19,
+      bcvHour: 9,
+      remindersEnabled: true,
+      bcvEnabled: true
     })
   })
 

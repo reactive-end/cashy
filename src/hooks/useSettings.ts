@@ -8,6 +8,12 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { loadSettings, saveSettings } from '@src/db/settings'
+import {
+  cancelarTodosRecordatorios,
+  sincronizarAvisosBcv,
+  syncReminders
+} from '@src/lib/notifications'
+import { getExchangeRates } from '@src/services/rates'
 import type { AppSettings, BaseCurrency } from '@src/types/domain'
 
 /** Cache compartido: una sola fuente de verdad en toda la app */
@@ -68,8 +74,14 @@ export interface UseSettingsResult {
   settings: AppSettings | null
   /** Cambia la moneda base y persiste de inmediato */
   changeBaseCurrency: (currency: BaseCurrency) => Promise<void>
-  /** Cambia la hora de recordatorio (0-23) y persiste */
+  /** Cambia la hora de recordatorios (0-23), persiste y reagenda */
   changeReminderHour: (hour: number) => Promise<void>
+  /** Cambia la hora del aviso BCV (0-23), persiste y reagenda */
+  changeBcvHour: (hour: number) => Promise<void>
+  /** Activa o apaga los recordatorios y aplica el cambio al instante */
+  setRemindersEnabled: (enabled: boolean) => Promise<void>
+  /** Activa o apaga el aviso BCV y aplica el cambio al instante */
+  setBcvEnabled: (enabled: boolean) => Promise<void>
 }
 
 /**
@@ -100,10 +112,56 @@ export function useSettings(): UseSettingsResult {
 
   const changeReminderHour = useCallback(async (hora: number) => {
     const actuales = await asegurarCargados()
-    persistir({ ...actuales, reminderHour: Math.min(23, Math.max(0, hora)) })
+    const nuevos: AppSettings = { ...actuales, reminderHour: Math.min(23, Math.max(0, hora)) }
+    persistir(nuevos)
+
+    await syncReminders(nuevos)
   }, [])
 
-  return { settings, changeBaseCurrency, changeReminderHour }
+  const changeBcvHour = useCallback(async (hora: number) => {
+    const actuales = await asegurarCargados()
+    const nuevos: AppSettings = { ...actuales, bcvHour: Math.min(23, Math.max(0, hora)) }
+    persistir(nuevos)
+
+    const tasas = await getExchangeRates().catch(() => undefined)
+    await sincronizarAvisosBcv(nuevos, tasas)
+  }, [])
+
+  const setRemindersEnabled = useCallback(async (habilitado: boolean) => {
+    const actuales = await asegurarCargados()
+    const nuevos: AppSettings = { ...actuales, remindersEnabled: habilitado }
+    persistir(nuevos)
+
+    if (habilitado) {
+      await syncReminders(nuevos)
+      return
+    }
+
+    await cancelarTodosRecordatorios()
+  }, [])
+
+  const setBcvEnabled = useCallback(async (habilitado: boolean) => {
+    const actuales = await asegurarCargados()
+    const nuevos: AppSettings = { ...actuales, bcvEnabled: habilitado }
+    persistir(nuevos)
+
+    if (!habilitado) {
+      await sincronizarAvisosBcv(nuevos)
+      return
+    }
+
+    const tasas = await getExchangeRates().catch(() => undefined)
+    await sincronizarAvisosBcv(nuevos, tasas)
+  }, [])
+
+  return {
+    settings,
+    changeBaseCurrency,
+    changeReminderHour,
+    changeBcvHour,
+    setRemindersEnabled,
+    setBcvEnabled
+  }
 }
 
 /**

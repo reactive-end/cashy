@@ -25,6 +25,7 @@ Cashy te permite registrar y seguir tus gastos en **bolivares, dolares, euros y 
 - **Calculadora de divisas**: equivalencias instantaneas entre las cuatro monedas gestionadas.
 - **Busqueda y filtros**: encuentra gastos por nombre o categoria, filtra por categoria y moneda, y ordena por fecha, monto o nombre.
 - **Recordatorios BCV**: avisos diarios de la tasa a las 9 a.m. y 1 p.m. (configurables).
+- **Auto-actualizacion**: correcciones de JS via EAS Update (se aplican al reiniciar) y aviso de "Nueva version" al abrir cuando hay un release nuevo en GitHub con descarga e instalacion del APK.
 - **Privacidad**: todos los datos viven en tu telefono (SQLite local); sin cuentas ni servidores.
 
 ## Stack tecnico
@@ -55,6 +56,12 @@ Compilar un APK instalable con EAS:
 ```bash
 npx eas-cli build --platform android --profile preview
 ```
+
+## Publicar versiones
+
+1. Bump `version` en `app.json` (p. ej. `1.0.2`).
+2. **Solo cambios de JS**: `npx eas-cli update --branch github -m "mensaje"`. Los usuarios la reciben al reiniciar la app.
+3. **Cambios nativos** (permisos, plugins, dependencias nativas): compila con `eas build --profile preview`, crea un release en GitHub con tag `v1.0.2` y adjunta el APK. La app de los usuarios lo detectara al abrir y mostrara el dialogo "Nueva version" con los botones Actualizar y Cancelar.
 
 ## Licencia
 

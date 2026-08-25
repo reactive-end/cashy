@@ -10,6 +10,12 @@
     "experiments": {
       "typedRoutes": true
     },
+    "updates": {
+      "url": "https://u.expo.dev/e9811042-1f7b-491b-8f66-7c64c3f363b0"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "dev.cashy.app"
@@ -20,7 +26,8 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["SCHEDULE_EXACT_ALARM", "REQUEST_INSTALL_PACKAGES"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -40,7 +47,16 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-background-task",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2F6B4F",
+          "defaultChannel": "reminders"
+        }
+      ]
     ],
     "owner": "reactiveend",
     "extra": {

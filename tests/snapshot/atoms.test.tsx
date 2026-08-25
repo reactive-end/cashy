@@ -11,6 +11,7 @@ import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Input } from '@src/components/atoms/Input'
+import { Switch } from '@src/components/atoms/Switch'
 import { Typography } from '@src/components/atoms/Typography'
 
 import { AHORA } from '../helpers/factories'
@@ -119,6 +120,18 @@ describe('instantaneas de atomos', () => {
     const arboles = [
       <Icon key="1" name="dollar" />,
       <Icon key="2" name="usdt" size={28} color="#2F6B4F" strokeWidth={2} />
+    ]
+    const instantaneas: string[] = []
+    for (const arbol of arboles) {
+      instantaneas.push(await snapshotar(arbol))
+    }
+    expect(instantaneas).toMatchSnapshot()
+  })
+
+  it('Switch refleja ambos estados', async () => {
+    const arboles = [
+      <Switch key="1" value={true} onValueChange={jest.fn()} accessibilityLabel="Avisos" />,
+      <Switch key="2" value={false} onValueChange={jest.fn()} accessibilityLabel="Avisos" />
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {

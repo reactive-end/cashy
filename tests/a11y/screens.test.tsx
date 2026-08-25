@@ -67,11 +67,16 @@ describe('accesibilidad de pantallas', () => {
   })
 
   it('Ajustes rotula los controles de preferencias', async () => {
-    const { getByRole, getByText } = await render(<Settings />)
+    const { getByRole, getByText, getByLabelText } = await render(<Settings />)
     await wait()
 
     expect(getByRole('header')).toBeTruthy()
     expect(getByText('Moneda base')).toBeTruthy()
-    expect(getByText('Hora de recordatorios')).toBeTruthy()
+    expect(getByText('Recordatorios de pagos')).toBeTruthy()
+    expect(getByText('Tasa BCV diaria')).toBeTruthy()
+    expect(getByLabelText('Activar recordatorios de pagos')).toBeTruthy()
+    expect(getByLabelText('Activar la tasa BCV diaria')).toBeTruthy()
+    expect(getByLabelText('Hora de los recordatorios de pagos')).toBeTruthy()
+    expect(getByLabelText('Hora del aviso de tasa BCV')).toBeTruthy()
   })
 })

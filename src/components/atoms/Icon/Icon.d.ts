@@ -32,6 +32,7 @@ export type IconName =
   | 'chart'
   | 'filter'
   | 'calculator'
+  | 'clock'
 
 /** Propiedades del atomo Icon */
 export interface IconProps {

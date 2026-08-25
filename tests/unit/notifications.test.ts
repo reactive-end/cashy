@@ -8,14 +8,24 @@ import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 
 import * as dbExpenses from '@src/db/expenses'
+import * as dbSettings from '@src/db/settings'
 import {
   cancelReminder,
+  cancelarTodosRecordatorios,
   scheduleReminder,
   setupNotifications,
+  sincronizarAvisosBcv,
   syncReminders
 } from '@src/lib/notifications'
 
-import { AHORA, buildFixedExpense, buildUniqueExpense, isoEnDias } from '../helpers/factories'
+import {
+  AHORA,
+  buildFixedExpense,
+  buildRates,
+  buildSettings,
+  buildUniqueExpense,
+  isoEnDias
+} from '../helpers/factories'
 
 /** Simula ejecucion en Android para cubrir el canal de notificaciones */
 function simularAndroid(): void {
@@ -29,12 +39,18 @@ function restaurarPlataforma(): void {
 
 const scheduleMock = Notifications.scheduleNotificationAsync as jest.Mock
 const cancelMock = Notifications.cancelScheduledNotificationAsync as jest.Mock
+const getAllMock = Notifications.getAllScheduledNotificationsAsync as jest.Mock
 const getExpensesMock = dbExpenses.getExpenses as jest.Mock
 const updateExpenseMock = dbExpenses.updateExpense as jest.Mock
+const loadSettingsMock = dbSettings.loadSettings as jest.Mock
 
 jest.mock('@src/db/expenses', () => ({
   getExpenses: jest.fn(),
   updateExpense: jest.fn(async (id: string) => ({ id }))
+}))
+
+jest.mock('@src/db/settings', () => ({
+  loadSettings: jest.fn()
 }))
 
 describe('scheduleReminder', () => {
@@ -42,6 +58,7 @@ describe('scheduleReminder', () => {
     jest.clearAllMocks()
     jest.useFakeTimers({ now: AHORA })
     simularAndroid()
+    loadSettingsMock.mockResolvedValue(buildSettings())
   })
 
   afterEach(() => {
@@ -49,13 +66,14 @@ describe('scheduleReminder', () => {
     restaurarPlataforma()
   })
 
-  it('agenda con identificador determinista reminder-{id}', async () => {
+  it('agenda con identificador determinista reminder-{id} y deep link al gasto', async () => {
     await scheduleReminder(buildFixedExpense(), 9)
 
     expect(scheduleMock).toHaveBeenCalledTimes(1)
     const peticion = scheduleMock.mock.calls[0][0]
     expect(peticion.identifier).toBe('reminder-gasto-fijo-1')
     expect(peticion.content.title).toBe('Recordatorio: Netflix')
+    expect(peticion.content.data).toEqual({ expenseId: 'gasto-fijo-1' })
     expect(peticion.trigger.channelId).toBe('reminders')
   })
 
@@ -89,6 +107,14 @@ describe('scheduleReminder', () => {
     expect(scheduleMock).not.toHaveBeenCalled()
   })
 
+  it('no agenda con los recordatorios apagados en ajustes', async () => {
+    loadSettingsMock.mockResolvedValue(buildSettings({ remindersEnabled: false }))
+
+    await scheduleReminder(buildFixedExpense(), 9)
+
+    expect(scheduleMock).not.toHaveBeenCalled()
+  })
+
   it('cancela el recordatorio previo antes de reprogramar', async () => {
     await scheduleReminder(buildFixedExpense(), 12)
 
@@ -100,10 +126,35 @@ describe('scheduleReminder', () => {
 })
 
 describe('cancelReminder', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it('deriva el identificador del id del gasto', async () => {
     await cancelReminder('abc-123')
 
     expect(cancelMock).toHaveBeenCalledWith('reminder-abc-123')
+  })
+})
+
+describe('cancelarTodosRecordatorios', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('retira solo las notificaciones con prefijo reminder-', async () => {
+    getAllMock.mockResolvedValueOnce([
+      { identifier: 'reminder-gasto-fijo-1' },
+      { identifier: 'bcv-diario' },
+      { identifier: 'reminder-gasto-fijo-2' }
+    ])
+
+    await cancelarTodosRecordatorios()
+
+    expect(cancelMock).toHaveBeenCalledTimes(2)
+    expect(cancelMock).toHaveBeenCalledWith('reminder-gasto-fijo-1')
+    expect(cancelMock).toHaveBeenCalledWith('reminder-gasto-fijo-2')
+    expect(cancelMock).not.toHaveBeenCalledWith('bcv-diario')
   })
 })
 
@@ -112,6 +163,7 @@ describe('syncReminders', () => {
     jest.clearAllMocks()
     jest.useFakeTimers({ now: AHORA })
     simularAndroid()
+    loadSettingsMock.mockResolvedValue(buildSettings())
   })
 
   afterEach(() => {
@@ -127,7 +179,7 @@ describe('syncReminders', () => {
 
     getExpensesMock.mockResolvedValueOnce([vencido])
 
-    await syncReminders(9)
+    await syncReminders(buildSettings())
 
     expect(updateExpenseMock).toHaveBeenCalledWith('gasto-fijo-1', {
       nextDueDate: '2026-08-27'
@@ -141,44 +193,24 @@ describe('syncReminders', () => {
       buildFixedExpense({ active: false })
     ])
 
-    await syncReminders(9)
+    await syncReminders(buildSettings())
 
     expect(updateExpenseMock).not.toHaveBeenCalled()
     expect(scheduleMock).not.toHaveBeenCalled()
   })
 
-  describe('recordatorios BCV diarios', () => {
-    beforeEach(() => {
-      jest.clearAllMocks()
-      simularAndroid()
+  it('con los recordatorios apagados actualiza vencimientos pero no agenda', async () => {
+    const vencido = buildFixedExpense({
+      nextDueDate: '2026-08-20',
+      recurrence: 'weekly'
     })
 
-    afterEach(() => {
-      restaurarPlataforma()
-    })
+    getExpensesMock.mockResolvedValueOnce([vencido])
 
-    it('setupNotifications agenda avisos a las 9 a.m. y 1 p.m. con repeticion diaria', async () => {
-      await setupNotifications()
+    await syncReminders(buildSettings({ remindersEnabled: false }))
 
-      const llamadasBcv = scheduleMock.mock.calls.filter(([peticion]) =>
-        String(peticion.identifier).startsWith('bcv-')
-      )
-
-      expect(llamadasBcv).toHaveLength(2)
-      expect(llamadasBcv[0][0].identifier).toBe('bcv-9am')
-      expect(llamadasBcv[0][0].trigger.hour).toBe(9)
-      expect(llamadasBcv[1][0].identifier).toBe('bcv-1pm')
-      expect(llamadasBcv[1][0].trigger.hour).toBe(13)
-      expect(llamadasBcv[0][0].trigger.repeats).toBe(true)
-    })
-
-    it('cancela los recordatorios BCV previos antes de reagendar', async () => {
-      await setupNotifications()
-
-      const cancelacionesBcv = cancelMock.mock.calls.filter(([id]) => String(id).startsWith('bcv-'))
-
-      expect(cancelacionesBcv).toHaveLength(2)
-    })
+    expect(updateExpenseMock).toHaveBeenCalled()
+    expect(scheduleMock).not.toHaveBeenCalled()
   })
 
   describe('permiso de notificaciones', () => {
@@ -188,6 +220,7 @@ describe('syncReminders', () => {
       jest.clearAllMocks()
       jest.useFakeTimers({ now: AHORA })
       simularAndroid()
+      loadSettingsMock.mockResolvedValue(buildSettings())
     })
 
     afterEach(() => {
@@ -195,7 +228,7 @@ describe('syncReminders', () => {
       restaurarPlataforma()
     })
 
-    it('solicita el permiso en el arranque y agenda BCV al concederlo', async () => {
+    it('solicita el permiso en el arranque sin agendar avisos por su cuenta', async () => {
       getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: true })
       ;(Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValueOnce({
         granted: true
@@ -204,16 +237,16 @@ describe('syncReminders', () => {
       await setupNotifications()
 
       expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1)
-      expect(scheduleMock).toHaveBeenCalledTimes(2)
+      expect(scheduleMock).not.toHaveBeenCalled()
     })
 
-    it('no agenda BCV si el permiso fue denegado permanentemente', async () => {
-      getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
-
+    it('configura el canal de Android con importancia alta', async () => {
       await setupNotifications()
 
-      expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled()
-      expect(scheduleMock).not.toHaveBeenCalled()
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        'reminders',
+        expect.objectContaining({ importance: 4 })
+      )
     })
 
     it('syncReminders omite el agendado sin permiso pero actualiza vencimientos', async () => {
@@ -221,10 +254,69 @@ describe('syncReminders', () => {
       getExpensesMock.mockResolvedValue([gasto])
       getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
 
-      await syncReminders(9)
+      await syncReminders(buildSettings())
 
       expect(updateExpenseMock).toHaveBeenCalled()
       expect(scheduleMock).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('sincronizarAvisosBcv', () => {
+  const getPermissionsMock = Notifications.getPermissionsAsync as jest.Mock
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    simularAndroid()
+  })
+
+  afterEach(() => {
+    restaurarPlataforma()
+  })
+
+  it('agenda un unico aviso bcv-diario a la hora configurada con repeticion diaria', async () => {
+    await sincronizarAvisosBcv(buildSettings({ bcvHour: 7 }))
+
+    expect(scheduleMock).toHaveBeenCalledTimes(1)
+    const peticion = scheduleMock.mock.calls[0][0]
+    expect(peticion.identifier).toBe('bcv-diario')
+    expect(peticion.trigger.hour).toBe(7)
+    expect(peticion.trigger.minute).toBe(0)
+    expect(peticion.trigger.repeats).toBe(true)
+    expect(peticion.trigger.channelId).toBe('reminders')
+  })
+
+  it('incluye las tasas consultadas en el cuerpo del aviso', async () => {
+    await sincronizarAvisosBcv(buildSettings(), buildRates())
+
+    expect(scheduleMock.mock.calls[0][0].content.body).toBe('USD 779,95 · EUR 911,21')
+  })
+
+  it('usa un texto de respaldo cuando no hay tasas disponibles', async () => {
+    await sincronizarAvisosBcv(buildSettings())
+
+    expect(scheduleMock.mock.calls[0][0].content.body).toContain('Consulta el valor oficial')
+  })
+
+  it('cancela siempre los identificadores legados de 9 a.m. y 1 p.m.', async () => {
+    await sincronizarAvisosBcv(buildSettings())
+
+    expect(cancelMock).toHaveBeenCalledWith('bcv-9am')
+    expect(cancelMock).toHaveBeenCalledWith('bcv-1pm')
+  })
+
+  it('apagado retira la programacion vigente sin agendar de nuevo', async () => {
+    await sincronizarAvisosBcv(buildSettings({ bcvEnabled: false }))
+
+    expect(cancelMock).toHaveBeenCalledWith('bcv-diario')
+    expect(scheduleMock).not.toHaveBeenCalled()
+  })
+
+  it('no agenda sin permiso concedido', async () => {
+    getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
+
+    await sincronizarAvisosBcv(buildSettings())
+
+    expect(scheduleMock).not.toHaveBeenCalled()
   })
 })

@@ -41,6 +41,13 @@ exports[`instantaneas de atomos Input muestra etiqueta, prefijo y error 1`] = `
 ]
 `;
 
+exports[`instantaneas de atomos Switch refleja ambos estados 1`] = `
+[
+  "{"type":"RCTSwitch","props":{"accessibilityRole":"switch","accessibilityLabel":"Avisos","disabled":false,"onTintColor":"#2F6B4F","style":{"alignSelf":"flex-start"},"thumbTintColor":"#FFFFFF","tintColor":"#ECECE7","value":true},"children":[]}",
+  "{"type":"RCTSwitch","props":{"accessibilityRole":"switch","accessibilityLabel":"Avisos","disabled":false,"onTintColor":"#2F6B4F","style":{"alignSelf":"flex-start"},"thumbTintColor":"#FFFFFF","tintColor":"#ECECE7","value":false},"children":[]}",
+]
+`;
+
 exports[`instantaneas de atomos Typography cubre las seis variantes 1`] = `
 [
   "{"type":"Text","props":{"className":"font-display text-[30px] leading-[36px] text-ink ","accessibilityRole":"header"},"children":["T"]}",

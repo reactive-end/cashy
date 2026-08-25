@@ -96,8 +96,14 @@ export interface ExpenseInput {
 export interface AppSettings {
   /** Currency summaries are expressed in */
   baseCurrency: BaseCurrency
-  /** Hour of the day (0-23) when reminders arrive */
+  /** Hour of the day (0-23) when payment reminders arrive */
   reminderHour: number
+  /** Hour of the day (0-23) when the daily BCV rate notice arrives */
+  bcvHour: number
+  /** Master switch for fixed expense payment reminders */
+  remindersEnabled: boolean
+  /** Master switch for the daily BCV rate notification */
+  bcvEnabled: boolean
 }
 
 /** Aggregated summary of the current month, expressed in base currency */

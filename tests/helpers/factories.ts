@@ -94,6 +94,9 @@ export function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings
   return {
     baseCurrency: 'USD',
     reminderHour: 9,
+    bcvHour: 9,
+    remindersEnabled: true,
+    bcvEnabled: true,
     ...overrides
   }
 }

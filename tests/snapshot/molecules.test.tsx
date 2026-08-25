@@ -8,6 +8,7 @@ import type { ReactElement } from 'react'
 import { Button } from '@src/components/atoms/Button'
 import { EmptyState } from '@src/components/molecules/EmptyState'
 import { ExpenseItem } from '@src/components/molecules/ExpenseItem'
+import { HourPicker } from '@src/components/molecules/HourPicker'
 import { RateCard } from '@src/components/molecules/RateCard'
 import { SectionHeader } from '@src/components/molecules/SectionHeader'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
@@ -74,6 +75,13 @@ describe('instantaneas de moleculas', () => {
         value="unique"
         onChange={jest.fn()}
       />
+    )
+    expect(snapshot).toMatchSnapshot()
+  })
+
+  it('HourPicker muestra el campo con la hora en formato 12 horas', async () => {
+    const snapshot = await snapshotar(
+      <HourPicker value={13} onChange={jest.fn()} accessibilityLabel="Hora de prueba" />
     )
     expect(snapshot).toMatchSnapshot()
   })

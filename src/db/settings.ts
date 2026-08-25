@@ -13,7 +13,10 @@ const SETTINGS_KEY = 'settings'
 /** Ajustes por defecto para un usuario nuevo */
 export const DEFAULT_SETTINGS: AppSettings = {
   baseCurrency: 'USD',
-  reminderHour: 9
+  reminderHour: 9,
+  bcvHour: 9,
+  remindersEnabled: true,
+  bcvEnabled: true
 }
 
 /** Forma cruda de una fila de la tabla settings */
@@ -25,18 +28,36 @@ interface SettingsRow {
 const VALID_BASE_CURRENCIES: readonly BaseCurrency[] = ['VES', 'USD', 'USDT']
 
 /**
- * Comprueba que un objeto responde a la forma de los ajustes.
+ * Comprueba que un objeto responde a la forma base de los ajustes.
+ * Los campos incorporados en versiones recientes se completan con
+ * los valores por defecto para mantener compatibilidad con el JSON
+ * persistido por instalaciones anteriores.
  * @param value Objeto sin tipo leido desde la base
- * @returns true si el objeto es un AppSettings valido
+ * @returns AppSettings completo o null cuando la base es invalida
  */
-function isAppSettings(value: object): value is AppSettings {
-  return (
+function parseAppSettings(value: object): AppSettings | null {
+  const baseValida =
     'baseCurrency' in value &&
     typeof value.baseCurrency === 'string' &&
     VALID_BASE_CURRENCIES.includes(value.baseCurrency as BaseCurrency) &&
     'reminderHour' in value &&
     typeof value.reminderHour === 'number'
-  )
+
+  if (!baseValida) return null
+
+  const leidos = value as Partial<AppSettings>
+
+  return {
+    baseCurrency: leidos.baseCurrency as BaseCurrency,
+    reminderHour: leidos.reminderHour as number,
+    bcvHour: typeof leidos.bcvHour === 'number' ? leidos.bcvHour : DEFAULT_SETTINGS.bcvHour,
+    remindersEnabled:
+      typeof leidos.remindersEnabled === 'boolean'
+        ? leidos.remindersEnabled
+        : DEFAULT_SETTINGS.remindersEnabled,
+    bcvEnabled:
+      typeof leidos.bcvEnabled === 'boolean' ? leidos.bcvEnabled : DEFAULT_SETTINGS.bcvEnabled
+  }
 }
 
 /**
@@ -53,7 +74,7 @@ export async function loadSettings(): Promise<AppSettings> {
 
   try {
     const parsed: object = JSON.parse(row.value)
-    return isAppSettings(parsed) ? parsed : DEFAULT_SETTINGS
+    return parseAppSettings(parsed) ?? DEFAULT_SETTINGS
   } catch {
     return DEFAULT_SETTINGS
   }

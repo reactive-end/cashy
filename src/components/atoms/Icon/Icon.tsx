@@ -30,6 +30,7 @@ import {
   ChartColumn,
   SlidersHorizontal,
   Calculator,
+  Clock,
   type LucideIcon
 } from 'lucide-react-native'
 import { memo } from 'react'
@@ -62,7 +63,8 @@ const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = {
   search: Search,
   chart: ChartColumn,
   filter: SlidersHorizontal,
-  calculator: Calculator
+  calculator: Calculator,
+  clock: Clock
 }
 
 /**
@@ -79,4 +81,3 @@ function IconBase({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) {
  * Atomo Icon memorizado para evitar re-renderizados innecesarios en listas.
  */
 export const Icon = memo(IconBase)
-

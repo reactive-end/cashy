@@ -2,7 +2,9 @@
  * Local notification pure functions for Android.
  * Schedule, cancel and sync fixed expense reminders using
  * deterministic identifiers derived from the expense id.
- * Incluye recordatorios diarios de tasa BCV a las 9 a.m. y 1 p.m.
+ * Incluye un aviso diario de tasa BCV con hora configurable
+ * (identificador bcv-diario) cuyo cuerpo refleja la ultima
+ * consulta de tasas disponible.
  *
  * En Expo Go el modulo expo-notificaciones lanza al importarse
  * (SDK 53+ retiro las notificaciones del cliente de desarrollo),
@@ -11,13 +13,15 @@
  */
 
 import Constants, { ExecutionEnvironment } from 'expo-constants'
+import * as IntentLauncher from 'expo-intent-launcher'
 import { Platform } from 'react-native'
 
 import { REMINDERS_CHANNEL, COLORS } from '@src/constants/theme'
 import { getExpenses, updateExpense } from '@src/db/expenses'
-import { formatDate, formatAmount } from '@src/lib/format'
+import { loadSettings } from '@src/db/settings'
+import { formatAmount, formatDate, formatNumber } from '@src/lib/format'
 import { advanceDueDate, fromISODate, toISODate } from '@src/lib/recurrences'
-import type { Expense } from '@src/types/domain'
+import type { AppSettings, ExchangeRates, Expense } from '@src/types/domain'
 
 /** Forma del modulo expo-notifications usada por esta libreria */
 type ModuloNotifications = typeof import('expo-notifications')
@@ -62,6 +66,32 @@ export function notificationsAvailable(): boolean {
  * No muestra dialogos; para solicitarlo existe requestNotificationPermission.
  * @returns true solo con permiso concedido fuera de Expo Go
  */
+export async function permisoNotificacionesConcedido(): Promise<boolean> {
+  return permisoActual()
+}
+
+/**
+ * Abre la pantalla de sistema "Alarmas y recordatorios" donde el
+ * usuario concede el permiso de alarmas exactas, requerido desde
+ * Android 12 para que los avisos lleguen a la hora programada.
+ * No-op dentro de Expo Go.
+ */
+export async function abrirAjustesAlarmaExacta(): Promise<void> {
+  if (!notificationsAvailable()) return
+
+  const paquete = Constants.expoConfig?.android?.package
+
+  await IntentLauncher.startActivityAsync(
+    IntentLauncher.ActivityAction.REQUEST_SCHEDULE_EXACT_ALARM,
+    paquete ? { data: `package:${paquete}` } : undefined
+  )
+}
+
+/**
+ * Consulta en silencio si el permiso de notificaciones esta concedido.
+ * No muestra dialogos; para solicitarlo existe requestNotificationPermission.
+ * @returns true solo con permiso concedido fuera de Expo Go
+ */
 async function permisoActual(): Promise<boolean> {
   const Notifications = obtenerModulo()
   if (!Notifications) return false
@@ -74,11 +104,11 @@ async function permisoActual(): Promise<boolean> {
 /** Prefijo de los identificadores de notificacion agendadas */
 const REMINDER_PREFIX = 'reminder-'
 
-/** Recordatorios diarios de tasa BCV: hora y sufijo identificador */
-const RECORDATORIOS_BCV: readonly { hora: number; sufijo: string }[] = [
-  { hora: 9, sufijo: '9am' },
-  { hora: 13, sufijo: '1pm' }
-]
+/** Identificador estable del aviso diario de tasa BCV */
+const IDENTIFICADOR_BCV_DIARIO = 'bcv-diario'
+
+/** Identificadores legados de los avisos BCV fijos de 9 a.m. y 1 p.m. */
+const IDENTIFICADORES_BCV_LEGADO: readonly string[] = ['bcv-9am', 'bcv-1pm']
 
 /**
  * Construye el identificador estable de la notificacion de un gasto.
@@ -90,12 +120,12 @@ function reminderId(expenseId: string): string {
 }
 
 /**
- * Configura el manejador global de presentacion, el canal de Android
- * y los recordatorios diarios de tasa BCV (9 a.m. y 1 p.m.).
- * Solicita el permiso de notificaciones en el primer arranque
- * (dialogo del sistema en Android 13+) y solo agenda si queda
- * concedido. Debe ejecutarse una sola vez al iniciar la aplicacion.
- * No-op silencioso dentro de Expo Go.
+ * Configura el manejador global de presentacion y el canal de
+ * Android, y solicita el permiso de notificaciones en el primer
+ * arranque (dialogo del sistema en Android 13+). El agendado de
+ * avisos concretos lo resuelven syncReminders y sincronizarAvisosBcv
+ * con los ajustes vigentes. Debe ejecutarse una sola vez al iniciar
+ * la aplicacion. No-op silencioso dentro de Expo Go.
  */
 export async function setupNotifications(): Promise<void> {
   const Notifications = obtenerModulo()
@@ -119,44 +149,55 @@ export async function setupNotifications(): Promise<void> {
     })
   }
 
-  const concedido = await requestNotificationPermission()
-
-  if (concedido) await programarRecordatoriosBcv()
+  await requestNotificationPermission()
 }
 
 /**
- * Agenda los recordatorios diarios de tasa BCV con disparadores de
- * calendario repetitivos. Cancela en lote los avisos previos antes
- * de reagendar para evitar duplicados.
+ * Sincroniza el aviso diario de tasa BCV segun los ajustes vigentes.
+ * Cancela siempre los identificadores legados de los avisos fijos de
+ * 9 a.m. y 1 p.m. y cualquier programacion previa del aviso unico.
+ * Si el aviso esta activo y el permiso concedido, agenda el disparo
+ * de calendario repetitivo a la hora configurada; el cuerpo muestra
+ * los valores oficiales consultados o un texto de respaldo cuando no
+ * hay tasas disponibles.
+ * @param ajustes Preferencias del usuario con hora y estado del aviso
+ * @param tasas Snapshot de tasas para el cuerpo del aviso (opcional)
  */
-async function programarRecordatoriosBcv(): Promise<void> {
+export async function sincronizarAvisosBcv(
+  ajustes: AppSettings,
+  tasas?: ExchangeRates
+): Promise<void> {
   const Notifications = obtenerModulo()
   if (!Notifications) return
 
-  await Promise.all(
-    RECORDATORIOS_BCV.map((recordatorio) =>
-      Notifications.cancelScheduledNotificationAsync(`bcv-${recordatorio.sufijo}`)
-    )
-  )
+  await Promise.all([
+    ...IDENTIFICADORES_BCV_LEGADO.map((identificador) =>
+      Notifications.cancelScheduledNotificationAsync(identificador)
+    ),
+    Notifications.cancelScheduledNotificationAsync(IDENTIFICADOR_BCV_DIARIO)
+  ])
 
-  await Promise.all(
-    RECORDATORIOS_BCV.map((recordatorio) =>
-      Notifications.scheduleNotificationAsync({
-        identifier: `bcv-${recordatorio.sufijo}`,
-        content: {
-          title: 'Tasas BCV del dia',
-          body: 'Consulta el valor oficial del dolar y el euro en Cashy.'
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-          hour: recordatorio.hora,
-          minute: 0,
-          repeats: true,
-          channelId: Platform.OS === 'android' ? REMINDERS_CHANNEL : undefined
-        }
-      })
-    )
-  )
+  if (!ajustes.bcvEnabled) return
+  if (!(await permisoActual())) return
+
+  const cuerpo = tasas
+    ? `USD ${formatNumber(tasas.bcvUsd)} · EUR ${formatNumber(tasas.bcvEur)}`
+    : 'Consulta el valor oficial del dolar y el euro en Cashy.'
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: IDENTIFICADOR_BCV_DIARIO,
+    content: {
+      title: 'Tasa BCV del dia',
+      body: cuerpo
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+      hour: ajustes.bcvHour,
+      minute: 0,
+      repeats: true,
+      channelId: Platform.OS === 'android' ? REMINDERS_CHANNEL : undefined
+    }
+  })
 }
 
 /**
@@ -180,7 +221,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
 /**
  * Agenda el recordatorio un dia antes del vencimiento del gasto fijo.
  * Cancela cualquier recordatorio previo del mismo gasto para no duplicar.
- * No-op dentro de Expo Go.
+ * No-op dentro de Expo Go, sin recordatorios habilitados en ajustes o
+ * cuando el gasto no califica.
  * @param expense Gasto fijo activo con proximo vencimiento definido
  * @param hour Hora del dia (0-23) en que debe llegar el aviso
  */
@@ -188,6 +230,7 @@ export async function scheduleReminder(expense: Expense, hour: number): Promise<
   const Notifications = obtenerModulo()
   if (!Notifications) return
   if (expense.type !== 'fixed' || !expense.active || !expense.nextDueDate) return
+  if (!(await loadSettings()).remindersEnabled) return
 
   const disparo = fromISODate(expense.nextDueDate)
   disparo.setDate(disparo.getDate() - 1)
@@ -204,7 +247,8 @@ export async function scheduleReminder(expense: Expense, hour: number): Promise<
       body: `Vence mañana ${formatDate(expense.nextDueDate)} · ${formatAmount(
         expense.amount,
         expense.currency
-      )}`
+      )}`,
+      data: { expenseId: expense.id }
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -227,14 +271,35 @@ export async function cancelReminder(expenseId: string): Promise<void> {
 }
 
 /**
+ * Retira todos los recordatorios de gastos agendados.
+ * Invocada al apagar los recordatorios desde Ajustes para que
+ * no queden disparos pendientes. No-op dentro de Expo Go.
+ */
+export async function cancelarTodosRecordatorios(): Promise<void> {
+  const Notifications = obtenerModulo()
+  if (!Notifications) return
+
+  const agendadas = await Notifications.getAllScheduledNotificationsAsync()
+
+  await Promise.all(
+    agendadas
+      .map((notificacion) => notificacion.identifier)
+      .filter((identificador) => identificador.startsWith(REMINDER_PREFIX))
+      .map((identificador) => Notifications.cancelScheduledNotificationAsync(identificador))
+  )
+}
+
+/**
  * Sincroniza vencimientos y recordatorios de todos los gastos fijos.
  * Fase 1: avanza y persiste en lote los vencimientos vencidos.
- * Fase 2: reagenda en paralelo cada aviso vigente.
- * Ejecutar al abrir la aplicacion. La actualizacion de vencimientos
- * tambien corre en Expo Go; solo el aviso nativo queda omitido.
- * @param reminderHour Hora configurada para los avisos
+ * Fase 2: reagenda en paralelo cada aviso vigente cuando los
+ * recordatorios estan habilitados.
+ * Ejecutar al abrir la aplicacion y desde la tarea en background.
+ * La actualizacion de vencimientos tambien corre en Expo Go; solo
+ * el aviso nativo queda omitido.
+ * @param ajustes Preferencias del usuario con hora y estado del aviso
  */
-export async function syncReminders(reminderHour: number): Promise<void> {
+export async function syncReminders(ajustes: AppSettings): Promise<void> {
   const expenses = await getExpenses()
   const hoyISO = toISODate(new Date())
 
@@ -261,6 +326,7 @@ export async function syncReminders(reminderHour: number): Promise<void> {
     )
   )
 
+  if (!ajustes.remindersEnabled) return
   if (!(await permisoActual())) return
 
   const pendientes: Promise<void>[] = []
@@ -270,7 +336,9 @@ export async function syncReminders(reminderHour: number): Promise<void> {
 
     const vencimiento = vencimientosNuevos.get(expense.id) ?? expense.nextDueDate ?? ''
 
-    pendientes.push(scheduleReminder({ ...expense, nextDueDate: vencimiento }, reminderHour))
+    pendientes.push(
+      scheduleReminder({ ...expense, nextDueDate: vencimiento }, ajustes.reminderHour)
+    )
   }
 
   await Promise.all(pendientes)
