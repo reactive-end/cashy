@@ -14,7 +14,9 @@ const SETTINGS_KEY = 'settings'
 export const DEFAULT_SETTINGS: AppSettings = {
   baseCurrency: 'USD',
   reminderHour: 9,
+  reminderMinute: 0,
   bcvHour: 9,
+  bcvMinute: 0,
   remindersEnabled: true,
   bcvEnabled: true
 }
@@ -36,27 +38,32 @@ const VALID_BASE_CURRENCIES: readonly BaseCurrency[] = ['VES', 'USD', 'USDT']
  * @returns AppSettings completo o null cuando la base es invalida
  */
 function parseAppSettings(value: object): AppSettings | null {
-  const baseValida =
+  const baseValid =
     'baseCurrency' in value &&
     typeof value.baseCurrency === 'string' &&
     VALID_BASE_CURRENCIES.includes(value.baseCurrency as BaseCurrency) &&
     'reminderHour' in value &&
     typeof value.reminderHour === 'number'
 
-  if (!baseValida) return null
+  if (!baseValid) return null
 
-  const leidos = value as Partial<AppSettings>
+  const parsed = value as Partial<AppSettings>
 
   return {
-    baseCurrency: leidos.baseCurrency as BaseCurrency,
-    reminderHour: leidos.reminderHour as number,
-    bcvHour: typeof leidos.bcvHour === 'number' ? leidos.bcvHour : DEFAULT_SETTINGS.bcvHour,
+    baseCurrency: parsed.baseCurrency as BaseCurrency,
+    reminderHour: parsed.reminderHour as number,
+    reminderMinute:
+      typeof parsed.reminderMinute === 'number'
+        ? parsed.reminderMinute
+        : DEFAULT_SETTINGS.reminderMinute,
+    bcvHour: typeof parsed.bcvHour === 'number' ? parsed.bcvHour : DEFAULT_SETTINGS.bcvHour,
+    bcvMinute: typeof parsed.bcvMinute === 'number' ? parsed.bcvMinute : DEFAULT_SETTINGS.bcvMinute,
     remindersEnabled:
-      typeof leidos.remindersEnabled === 'boolean'
-        ? leidos.remindersEnabled
+      typeof parsed.remindersEnabled === 'boolean'
+        ? parsed.remindersEnabled
         : DEFAULT_SETTINGS.remindersEnabled,
     bcvEnabled:
-      typeof leidos.bcvEnabled === 'boolean' ? leidos.bcvEnabled : DEFAULT_SETTINGS.bcvEnabled
+      typeof parsed.bcvEnabled === 'boolean' ? parsed.bcvEnabled : DEFAULT_SETTINGS.bcvEnabled
   }
 }
 

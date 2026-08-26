@@ -18,20 +18,20 @@ export async function fetchJson<T extends object>(
   url: string,
   validate: (value: object) => value is T
 ): Promise<T> {
-  const controlador = new AbortController()
-  const temporizador = setTimeout(() => controlador.abort(), REQUEST_TIMEOUT_MS)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   try {
-    const respuesta = await fetch(url, {
-      signal: controlador.signal,
+    const response = await fetch(url, {
+      signal: controller.signal,
       headers: { Accept: 'application/json' }
     })
 
-    if (!respuesta.ok) {
-      throw new Error(`El servidor respondió con el código ${respuesta.status}`)
+    if (!response.ok) {
+      throw new Error(`El servidor respondió con el código ${response.status}`)
     }
 
-    const data = await respuesta.json()
+    const data = await response.json()
 
     if (!validate(data)) {
       throw new Error('La respuesta del servidor no tiene el formato esperado')
@@ -39,6 +39,6 @@ export async function fetchJson<T extends object>(
 
     return data
   } finally {
-    clearTimeout(temporizador)
+    clearTimeout(timer)
   }
 }

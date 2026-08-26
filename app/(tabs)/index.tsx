@@ -37,21 +37,21 @@ export default function Home() {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency = settings?.baseCurrency ?? 'USD'
-  const gastos = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
 
   // Aviso temporal al terminar un refresco manual de tasas.
-  const [avisoTasas, setAvisoTasas] = useState<{ ok: boolean } | null>(null)
-  const estabaRefrescando = useRef(false)
+  const [ratesNotice, setRatesNotice] = useState<{ ok: boolean } | null>(null)
+  const wasRefreshing = useRef(false)
 
   useEffect(() => {
     if (ratesState.refreshing) {
-      estabaRefrescando.current = true
+      wasRefreshing.current = true
       return
     }
 
-    if (estabaRefrescando.current && ratesState.lastRefreshOk !== null) {
-      estabaRefrescando.current = false
-      setAvisoTasas({ ok: ratesState.lastRefreshOk })
+    if (wasRefreshing.current && ratesState.lastRefreshOk !== null) {
+      wasRefreshing.current = false
+      setRatesNotice({ ok: ratesState.lastRefreshOk })
     }
   }, [ratesState.refreshing, ratesState.lastRefreshOk])
 
@@ -61,17 +61,17 @@ export default function Home() {
       onRefresh={() => ratesState.refresh()}
       refreshing={ratesState.refreshing}
       overlay={
-        avisoTasas ? (
+        ratesNotice ? (
           <AlertDialog
             visible
-            title={avisoTasas.ok ? 'Todo en orden' : 'Algo fallo'}
+            title={ratesNotice.ok ? 'Todo en orden' : 'Algo fallo'}
             message={
-              avisoTasas.ok
+              ratesNotice.ok
                 ? 'Tasas actualizadas correctamente'
                 : 'No se pudieron actualizar las tasas'
             }
-            tone={avisoTasas.ok ? 'success' : 'danger'}
-            onClose={() => setAvisoTasas(null)}
+            tone={ratesNotice.ok ? 'success' : 'danger'}
+            onClose={() => setRatesNotice(null)}
           />
         ) : null
       }
@@ -85,7 +85,7 @@ export default function Home() {
         <RatesGrid ratesState={ratesState} />
 
         <MonthlySummary
-          summary={gastos.monthlySummary}
+          summary={expensesState.monthlySummary}
           baseCurrency={baseCurrency}
           loading={ratesState.loading || !ratesState.rates}
         />
@@ -99,7 +99,7 @@ export default function Home() {
           />
           <SectionHeader title="Próximos pagos" />
           <UpcomingPayments
-            payments={gastos.upcomingPayments}
+            payments={expensesState.upcomingPayments}
             onPaymentPress={(id) => router.push({ pathname: '/expense/[id]', params: { id } })}
           />
         </View>

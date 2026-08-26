@@ -22,6 +22,7 @@ export function Input({
   onChangeText,
   placeholder,
   numeric = false,
+  email = false,
   prefix,
   errorMessage,
   multiline = false,
@@ -54,7 +55,7 @@ export function Input({
           editable={!disabled}
           multiline={multiline}
           testID={testID}
-          keyboardType={numeric ? 'decimal-pad' : 'default'}
+          keyboardType={numeric ? 'decimal-pad' : email ? 'email-address' : 'default'}
           accessibilityLabel={label}
         />
       </View>

@@ -6,6 +6,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
 import * as expensesRepo from '@src/db/expenses'
+import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { useExpenses } from '@src/hooks/useExpenses'
 import * as notificaciones from '@src/lib/notifications'
 import { fromISODate, toISODate } from '@src/lib/recurrences'
@@ -241,13 +242,13 @@ describe('useExpenses', () => {
       expect(updateExpenseMock).not.toHaveBeenCalled()
     })
 
-    it('reporta error cuando la carga inicial falla', async () => {
+    it('reporta el mensaje amigable cuando la carga inicial falla', async () => {
       getExpensesMock.mockRejectedValueOnce(new Error('db bloqueada'))
 
       const inicial = await renderHook(() => useExpenses(buildRates(), 'USD', 9))
       await waitFor(() => {
         expect(inicial.result.current.loading).toBe(false)
-        expect(inicial.result.current.error).toBe('db bloqueada')
+        expect(inicial.result.current.error).toBe(EXPENSES_LOAD_ERROR_MESSAGE)
       })
     })
   })

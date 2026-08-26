@@ -8,30 +8,26 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { loadSettings, saveSettings } from '@src/db/settings'
-import {
-  cancelarTodosRecordatorios,
-  sincronizarAvisosBcv,
-  syncReminders
-} from '@src/lib/notifications'
+import { cancelAllReminders, syncBcvNotice, syncReminders } from '@src/lib/notifications'
 import { getExchangeRates } from '@src/services/rates'
 import type { AppSettings, BaseCurrency } from '@src/types/domain'
 
 /** Cache compartido: una sola fuente de verdad en toda la app */
-let cacheCompartido: AppSettings | null = null
+let sharedCache: AppSettings | null = null
 
 /** Carga inicial en vuelo para evitar lecturas duplicadas */
-let cargaEnVuelo: Promise<AppSettings> | null = null
+let inFlightLoad: Promise<AppSettings> | null = null
 
 /** Suscriptores notificados en cada cambio */
-const oyentes = new Set<(ajustes: AppSettings) => void>()
+const listeners = new Set<(settings: AppSettings) => void>()
 
 /**
  * Notifica a todos los consumidores el estado vigente.
  */
-function notificar(): void {
-  if (!cacheCompartido) return
-  for (const oyente of oyentes) {
-    oyente(cacheCompartido)
+function notify(): void {
+  if (!sharedCache) return
+  for (const listener of listeners) {
+    listener(sharedCache)
   }
 }
 
@@ -39,33 +35,33 @@ function notificar(): void {
  * Lee los ajustes una sola vez por sesion; las demas llamadas
  * consumen el cache sin tocar almacenamiento ni red.
  */
-async function asegurarCargados(): Promise<AppSettings> {
-  if (cacheCompartido) return cacheCompartido
+async function ensureLoaded(): Promise<AppSettings> {
+  if (sharedCache) return sharedCache
 
-  if (!cargaEnVuelo) {
-    cargaEnVuelo = loadSettings()
-      .then((leidos) => {
-        cacheCompartido = leidos
-        notificar()
-        return leidos
+  if (!inFlightLoad) {
+    inFlightLoad = loadSettings()
+      .then((loaded) => {
+        sharedCache = loaded
+        notify()
+        return loaded
       })
       .catch(() => {
-        cargaEnVuelo = null
+        inFlightLoad = null
         throw new Error('No se pudieron leer los ajustes')
       })
   }
 
-  return cargaEnVuelo
+  return inFlightLoad
 }
 
 /**
  * Persiste y propaga inmediatamente un conjunto completo de ajustes.
- * @param ajustes Estado nuevo ya validado
+ * @param settings Estado nuevo ya validado
  */
-function persistir(ajustes: AppSettings): void {
-  cacheCompartido = ajustes
-  notificar()
-  void saveSettings(ajustes)
+function persist(settings: AppSettings): void {
+  sharedCache = settings
+  notify()
+  void saveSettings(settings)
 }
 
 /** Estado y acciones expuestos por el hook de ajustes */
@@ -74,10 +70,10 @@ export interface UseSettingsResult {
   settings: AppSettings | null
   /** Cambia la moneda base y persiste de inmediato */
   changeBaseCurrency: (currency: BaseCurrency) => Promise<void>
-  /** Cambia la hora de recordatorios (0-23), persiste y reagenda */
-  changeReminderHour: (hour: number) => Promise<void>
-  /** Cambia la hora del aviso BCV (0-23), persiste y reagenda */
-  changeBcvHour: (hour: number) => Promise<void>
+  /** Cambia hora y minuto de recordatorios, persiste y reagenda */
+  changeReminderTime: (hour: number, minute: number) => Promise<void>
+  /** Cambia hora y minuto del aviso BCV, persiste y reagenda */
+  changeBcvTime: (hour: number, minute: number) => Promise<void>
   /** Activa o apaga los recordatorios y aplica el cambio al instante */
   setRemindersEnabled: (enabled: boolean) => Promise<void>
   /** Activa o apaga el aviso BCV y aplica el cambio al instante */
@@ -90,75 +86,83 @@ export interface UseSettingsResult {
  * @returns Estado reactivo compartido con acciones de modificacion
  */
 export function useSettings(): UseSettingsResult {
-  const [settings, setSettings] = useState<AppSettings | null>(cacheCompartido)
+  const [settings, setSettings] = useState<AppSettings | null>(sharedCache)
 
   useEffect(() => {
-    const oyente = (nuevos: AppSettings) => setSettings(nuevos)
-    oyentes.add(oyente)
+    const listener = (updated: AppSettings) => setSettings(updated)
+    listeners.add(listener)
 
-    void asegurarCargados().catch(() => {
+    void ensureLoaded().catch(() => {
       // Ante fallo de lectura los ajustes quedan en null y la UI usa defaults.
     })
 
     return () => {
-      oyentes.delete(oyente)
+      listeners.delete(listener)
     }
   }, [])
 
-  const changeBaseCurrency = useCallback(async (moneda: BaseCurrency) => {
-    const actuales = await asegurarCargados()
-    persistir({ ...actuales, baseCurrency: moneda })
+  const changeBaseCurrency = useCallback(async (currency: BaseCurrency) => {
+    const current = await ensureLoaded()
+    persist({ ...current, baseCurrency: currency })
   }, [])
 
-  const changeReminderHour = useCallback(async (hora: number) => {
-    const actuales = await asegurarCargados()
-    const nuevos: AppSettings = { ...actuales, reminderHour: Math.min(23, Math.max(0, hora)) }
-    persistir(nuevos)
+  const changeReminderTime = useCallback(async (hour: number, minute: number) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = {
+      ...current,
+      reminderHour: Math.min(23, Math.max(0, hour)),
+      reminderMinute: Math.min(59, Math.max(0, minute))
+    }
+    persist(updated)
 
-    await syncReminders(nuevos)
+    await syncReminders(updated)
   }, [])
 
-  const changeBcvHour = useCallback(async (hora: number) => {
-    const actuales = await asegurarCargados()
-    const nuevos: AppSettings = { ...actuales, bcvHour: Math.min(23, Math.max(0, hora)) }
-    persistir(nuevos)
+  const changeBcvTime = useCallback(async (hour: number, minute: number) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = {
+      ...current,
+      bcvHour: Math.min(23, Math.max(0, hour)),
+      bcvMinute: Math.min(59, Math.max(0, minute))
+    }
+    persist(updated)
 
-    const tasas = await getExchangeRates().catch(() => undefined)
-    await sincronizarAvisosBcv(nuevos, tasas)
+    const rates = await getExchangeRates().catch(() => undefined)
+    await syncBcvNotice(updated, rates)
   }, [])
 
-  const setRemindersEnabled = useCallback(async (habilitado: boolean) => {
-    const actuales = await asegurarCargados()
-    const nuevos: AppSettings = { ...actuales, remindersEnabled: habilitado }
-    persistir(nuevos)
+  const setRemindersEnabled = useCallback(async (enabled: boolean) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = { ...current, remindersEnabled: enabled }
+    persist(updated)
 
-    if (habilitado) {
-      await syncReminders(nuevos)
+    if (enabled) {
+      await syncReminders(updated)
       return
     }
 
-    await cancelarTodosRecordatorios()
+    await cancelAllReminders()
   }, [])
 
-  const setBcvEnabled = useCallback(async (habilitado: boolean) => {
-    const actuales = await asegurarCargados()
-    const nuevos: AppSettings = { ...actuales, bcvEnabled: habilitado }
-    persistir(nuevos)
+  const setBcvEnabled = useCallback(async (enabled: boolean) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = { ...current, bcvEnabled: enabled }
+    persist(updated)
 
-    if (!habilitado) {
-      await sincronizarAvisosBcv(nuevos)
+    if (!enabled) {
+      await syncBcvNotice(updated)
       return
     }
 
-    const tasas = await getExchangeRates().catch(() => undefined)
-    await sincronizarAvisosBcv(nuevos, tasas)
+    const rates = await getExchangeRates().catch(() => undefined)
+    await syncBcvNotice(updated, rates)
   }, [])
 
   return {
     settings,
     changeBaseCurrency,
-    changeReminderHour,
-    changeBcvHour,
+    changeReminderTime,
+    changeBcvTime,
     setRemindersEnabled,
     setBcvEnabled
   }
@@ -168,8 +172,8 @@ export function useSettings(): UseSettingsResult {
  * Restablece el cache compartido de ajustes.
  * Exclusivo para pruebas: garantiza estado limpio entre casos.
  */
-export function __reiniciarCacheParaPruebas(): void {
-  cacheCompartido = null
-  cargaEnVuelo = null
-  oyentes.clear()
+export function __resetCacheForTests(): void {
+  sharedCache = null
+  inFlightLoad = null
+  listeners.clear()
 }

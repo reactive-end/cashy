@@ -6,45 +6,45 @@ import { emit, subscribe } from '@src/lib/events'
 
 describe('bus de eventos', () => {
   it('notifica a todos los oyentes suscritos', () => {
-    const oyenteA = jest.fn()
-    const oyenteB = jest.fn()
-    const desuscribirA = subscribe('expenses-changed', oyenteA)
-    const desuscribirB = subscribe('expenses-changed', oyenteB)
+    const listenerA = jest.fn()
+    const listenerB = jest.fn()
+    const unsubscribeA = subscribe('expenses-changed', listenerA)
+    const unsubscribeB = subscribe('expenses-changed', listenerB)
 
     emit('expenses-changed')
 
-    expect(oyenteA).toHaveBeenCalledTimes(1)
-    expect(oyenteB).toHaveBeenCalledTimes(1)
+    expect(listenerA).toHaveBeenCalledTimes(1)
+    expect(listenerB).toHaveBeenCalledTimes(1)
 
-    desuscribirA()
-    desuscribirB()
+    unsubscribeA()
+    unsubscribeB()
   })
 
   it('deja de notificar tras la desuscripcion', () => {
-    const oyente = jest.fn()
-    const desuscribir = subscribe('expenses-changed', oyente)
+    const listener = jest.fn()
+    const unsubscribe = subscribe('expenses-changed', listener)
 
-    desuscribir()
+    unsubscribe()
     emit('expenses-changed')
 
-    expect(oyente).not.toHaveBeenCalled()
+    expect(listener).not.toHaveBeenCalled()
   })
 
   it('un oyente que lanza no bloquea a los demas', () => {
-    const oyenteSano = jest.fn()
-    const desuscribirRoto = subscribe('expenses-changed', () => {
-      throw new Error('oyente roto')
+    const healthyListener = jest.fn()
+    const unsubscribeBroken = subscribe('expenses-changed', () => {
+      throw new Error('broken listener')
     })
 
     expect(() => emit('expenses-changed')).not.toThrow()
-    expect(oyenteSano).not.toHaveBeenCalled()
+    expect(healthyListener).not.toHaveBeenCalled()
 
-    const desuscribirSano = subscribe('expenses-changed', oyenteSano)
+    const unsubscribeHealthy = subscribe('expenses-changed', healthyListener)
     emit('expenses-changed')
 
-    expect(oyenteSano).toHaveBeenCalledTimes(1)
+    expect(healthyListener).toHaveBeenCalledTimes(1)
 
-    desuscribirRoto()
-    desuscribirSano()
+    unsubscribeBroken()
+    unsubscribeHealthy()
   })
 })

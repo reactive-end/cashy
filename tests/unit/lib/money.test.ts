@@ -12,25 +12,25 @@ import {
 } from '@src/lib/money'
 
 /** Escribe una secuencia de teclas devolviendo el estado final */
-function escribir(secuencia: string) {
-  let estado = initialAmountState()
+function typeSequence(sequence: string) {
+  let state = initialAmountState()
 
-  for (const tecla of secuencia.split('')) {
-    estado = amountAfterInput(estado, estado.texto + tecla)
+  for (const key of sequence.split('')) {
+    state = amountAfterInput(state, state.text + key)
   }
 
-  return estado
+  return state
 }
 
 /** Continua escribiendo teclas sobre un estado existente */
-function teclar(estado: ReturnType<typeof initialAmountState>, secuencia: string) {
-  let actual = estado
+function pressKey(state: ReturnType<typeof initialAmountState>, sequence: string) {
+  let current = state
 
-  for (const tecla of secuencia.split('')) {
-    actual = amountAfterInput(actual, actual.texto + tecla)
+  for (const key of sequence.split('')) {
+    current = amountAfterInput(current, current.text + key)
   }
 
-  return actual
+  return current
 }
 
 describe('centsFromText', () => {
@@ -64,110 +64,110 @@ describe('textFromCents', () => {
 
 describe('amountAfterInput', () => {
   it('nace prerellenado con 0.00 en modo cents-first', () => {
-    const estado = initialAmountState()
+    const state = initialAmountState()
 
-    expect(estado.texto).toBe('0.00')
-    expect(estado.centavos).toBe(0)
+    expect(state.text).toBe('0.00')
+    expect(state.cents).toBe(0)
   })
 
   it('empuja los digitos desde los decimales hacia la izquierda', () => {
-    const estado = escribir('5')
+    const state = typeSequence('5')
 
-    expect(estado.texto).toBe('0.05')
-    expect(escribir('50').texto).toBe('0.50')
-    expect(escribir('500').texto).toBe('5.00')
-    expect(escribir('1000').centavos).toBe(1000)
-    expect(escribir('1000').texto).toBe('10.00')
+    expect(state.text).toBe('0.05')
+    expect(typeSequence('50').text).toBe('0.50')
+    expect(typeSequence('500').text).toBe('5.00')
+    expect(typeSequence('1000').cents).toBe(1000)
+    expect(typeSequence('1000').text).toBe('10.00')
   })
 
   it('el punto conserva la parte entera y abre la edicion decimal', () => {
-    const estado = amountAfterInput(escribir('1000'), '10.00.')
+    const state = amountAfterInput(typeSequence('1000'), '10.00.')
 
-    expect(estado.modo).toBe('fraction')
-    expect(estado.texto).toBe('10.00')
-    expect(estado.centavos).toBe(1000)
+    expect(state.mode).toBe('fraction')
+    expect(state.text).toBe('10.00')
+    expect(state.cents).toBe(1000)
   })
 
   it('los digitos tras el punto llenan los decimales desde la derecha', () => {
-    let estado = teclar(escribir('1000'), '.36')
+    const state = pressKey(typeSequence('1000'), '.36')
 
-    expect(estado.texto).toBe('10.36')
-    expect(estado.centavos).toBe(1036)
+    expect(state.text).toBe('10.36')
+    expect(state.cents).toBe(1036)
   })
 
   it('un tercer digito desplaza los decimales dentro del modo fraccionario', () => {
-    const estado = teclar(teclar(escribir('1000'), '.36'), '7')
+    const state = pressKey(pressKey(typeSequence('1000'), '.36'), '7')
 
-    expect(estado.texto).toBe('10.67')
-    expect(estado.centavos).toBe(1067)
+    expect(state.text).toBe('10.67')
+    expect(state.cents).toBe(1067)
   })
 
   it('el borrado retrocede un digito en modo entero', () => {
-    const estado = amountAfterInput(escribir('1250'), '12.5')
+    const state = amountAfterInput(typeSequence('1250'), '12.5')
 
-    expect(estado.texto).toBe('1.25')
-    expect(estado.centavos).toBe(125)
+    expect(state.text).toBe('1.25')
+    expect(state.cents).toBe(125)
   })
 
   it('el borrado retrocede los decimales y sale al vaciarlos', () => {
-    let estado = teclar(escribir('1000'), '.36')
+    let state = pressKey(typeSequence('1000'), '.36')
 
-    expect(estado.texto).toBe('10.36')
+    expect(state.text).toBe('10.36')
 
-    estado = amountAfterInput(estado, '10.3')
+    state = amountAfterInput(state, '10.3')
 
-    expect(estado.texto).toBe('10.30')
-    expect(estado.centavos).toBe(1030)
+    expect(state.text).toBe('10.30')
+    expect(state.cents).toBe(1030)
 
-    estado = amountAfterInput(estado, '10.00')
+    state = amountAfterInput(state, '10.00')
 
-    expect(estado.modo).toBe('integer')
-    expect(estado.texto).toBe('10.00')
-    expect(estado.centavos).toBe(1000)
+    expect(state.mode).toBe('integer')
+    expect(state.text).toBe('10.00')
+    expect(state.cents).toBe(1000)
   })
 
   it('borrar desde 0.00 se queda en cero sin romperse', () => {
-    const estado = amountAfterInput(initialAmountState(), '0.0')
+    const state = amountAfterInput(initialAmountState(), '0.0')
 
-    expect(estado.texto).toBe('0.00')
-    expect(estado.centavos).toBe(0)
+    expect(state.text).toBe('0.00')
+    expect(state.cents).toBe(0)
   })
 
   it('permite editar con el cursor en medio respetando el peso posicional', () => {
-    const previo = escribir('1000')
+    const previous = typeSequence('1000')
 
     // Cursor tras el "1": insertar 2 convierte 10.00 en 120.00? no:
     // los digitos son centavos, "1200000" = 12.000,00
-    const insertado = amountAfterInput(previo, '12000.00')
+    const inserted = amountAfterInput(previous, '12000.00')
 
-    expect(insertado.modo).toBe('integer')
-    expect(insertado.centavos).toBe(1200000)
-    expect(insertado.texto).toBe('12000.00')
+    expect(inserted.mode).toBe('integer')
+    expect(inserted.cents).toBe(1200000)
+    expect(inserted.text).toBe('12000.00')
 
     // Borrar un cero a mitad: 10.00 -> 1.00? "100.00" = 100,00
-    const borrado = amountAfterInput(previo, '100.00')
+    const removed = amountAfterInput(previous, '100.00')
 
-    expect(borrado.modo).toBe('integer')
-    expect(borrado.centavos).toBe(10000)
-    expect(borrado.texto).toBe('100.00')
+    expect(removed.mode).toBe('integer')
+    expect(removed.cents).toBe(10000)
+    expect(removed.text).toBe('100.00')
   })
 
   it('reconstruye con tolerancia ediciones no reconocidas (pegado o cursor medio)', () => {
-    const previo = escribir('1000')
-    const estado = amountAfterInput(previo, '910.00')
+    const previous = typeSequence('1000')
+    const state = amountAfterInput(previous, '910.00')
 
-    expect(estado.modo).toBe('integer')
-    expect(estado.texto).toBe('910.00')
-    expect(estado.centavos).toBe(91000)
+    expect(state.mode).toBe('integer')
+    expect(state.text).toBe('910.00')
+    expect(state.cents).toBe(91000)
   })
 
   it('ignora separadores repetidos en modo fraccionario', () => {
-    let estado = escribir('1000')
-    estado = amountAfterInput(estado, '10.00.')
-    const trasDoblePunto = amountAfterInput(estado, '10.00.')
+    let state = typeSequence('1000')
+    state = amountAfterInput(state, '10.00.')
+    const afterDoubleDot = amountAfterInput(state, '10.00.')
 
-    expect(trasDoblePunto.texto).toBe('10.00')
-    expect(trasDoblePunto.centavos).toBe(1000)
+    expect(afterDoubleDot.text).toBe('10.00')
+    expect(afterDoubleDot.cents).toBe(1000)
   })
 })
 

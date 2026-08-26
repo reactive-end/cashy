@@ -94,7 +94,7 @@ export function useExpenseForm(
   onSave: (input: ExpenseInput) => Promise<void>,
   onDelete?: () => Promise<void>
 ): UseExpenseFormResult {
-  const hoyISO = toISODate(new Date())
+  const todayISO = toISODate(new Date())
 
   const [type, setType] = useState<ExpenseType>(initialExpense?.type ?? 'unique')
   const [name, setName] = useState(initialExpense?.name ?? '')
@@ -105,13 +105,13 @@ export function useExpenseForm(
   const [category, setCategory] = useState(initialExpense?.category ?? '')
   const [note, setNote] = useState(initialExpense?.note ?? '')
   const [recurrence, setRecurrence] = useState<Recurrence>(initialExpense?.recurrence ?? 'monthly')
-  const [dueDateISO, setDueDateISO] = useState(initialExpense?.nextDueDate ?? hoyISO)
+  const [dueDateISO, setDueDateISO] = useState(initialExpense?.nextDueDate ?? todayISO)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
 
-  const montoTexto = useMemo(() => textFromCents(amountCents), [amountCents])
+  const amountText = useMemo(() => textFromCents(amountCents), [amountCents])
 
   const dueDateLabel = useMemo(() => formatDateLabel(dueDateISO), [dueDateISO])
 
@@ -124,13 +124,13 @@ export function useExpenseForm(
   }, [])
 
   const validateAndSubmit = useCallback(async () => {
-    const nuevosErrores: FormErrors = {}
+    const newErrors: FormErrors = {}
 
-    if (!name.trim()) nuevosErrores.name = 'Ponle un nombre al gasto'
-    if (amountCents <= 0) nuevosErrores.amount = 'Ingresa un monto mayor que cero'
+    if (!name.trim()) newErrors.name = 'Ponle un nombre al gasto'
+    if (amountCents <= 0) newErrors.amount = 'Ingresa un monto mayor que cero'
 
-    setErrors(nuevosErrores)
-    if (Object.keys(nuevosErrores).length > 0 || saving) return
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length > 0 || saving) return
 
     setSaving(true)
 
@@ -168,7 +168,7 @@ export function useExpenseForm(
   return {
     type,
     name,
-    amountText: montoTexto,
+    amountText,
     currency,
     category,
     note,

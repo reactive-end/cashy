@@ -98,8 +98,12 @@ export interface AppSettings {
   baseCurrency: BaseCurrency
   /** Hour of the day (0-23) when payment reminders arrive */
   reminderHour: number
+  /** Minute of the hour (0-59) when payment reminders arrive */
+  reminderMinute: number
   /** Hour of the day (0-23) when the daily BCV rate notice arrives */
   bcvHour: number
+  /** Minute of the hour (0-59) when the daily BCV rate notice arrives */
+  bcvMinute: number
   /** Master switch for fixed expense payment reminders */
   remindersEnabled: boolean
   /** Master switch for the daily BCV rate notification */
@@ -121,4 +125,37 @@ export interface UpcomingPayment {
   expense: Expense
   /** Days until the due date (0 = today) */
   daysRemaining: number
+}
+
+/** Basic user profile captured during onboarding */
+export interface UserProfile {
+  /** Nombres del usuario (solo letras, minimo 3 caracteres) */
+  firstName: string
+  /** Apellidos del usuario (mismo formato que el nombre) */
+  lastName: string
+  /** Correo electronico de contacto validado por formato */
+  email: string
+}
+
+/** Income source entered by the user with its monthly payday */
+export interface Income {
+  id: string
+  /** Concepto del ingreso, por ejemplo Salario o Ingresos pasivos */
+  name: string
+  /** Monto mensual en decimales del dominio */
+  amount: number
+  /** Moneda en que se percibe el ingreso */
+  currency: Currency
+  /** Dia del mes en que se cobra (1-31; se recorta en meses cortos) */
+  paydayDay: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** Data required to create or edit an income */
+export interface IncomeInput {
+  name: string
+  amount: number
+  currency: Currency
+  paydayDay: number
 }

@@ -8,10 +8,10 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import { getExpenses } from '@src/db/expenses'
 import { loadSettings, saveSettings } from '@src/db/settings'
-import { __reiniciarCacheParaPruebas } from '@src/hooks/useSettings'
+import { __resetCacheForTests } from '@src/hooks/useSettings'
 import { getExchangeRates } from '@src/services/rates'
 
-import Expenses from '../../app/(tabs)/expenses'
+import Finances from '../../app/(tabs)/finances'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
 import { wait } from '../helpers/wait'
@@ -20,7 +20,7 @@ import {
   buildRates,
   buildSettings,
   buildUniqueExpense,
-  isoEnDias
+  isoDaysFromToday
 } from '../helpers/factories'
 
 const mockPush = jest.fn()
@@ -47,7 +47,7 @@ function sembrar() {
       id: 'fijo-1',
       name: 'Alquiler',
       amount: 300,
-      nextDueDate: isoEnDias(1)
+      nextDueDate: isoDaysFromToday(1)
     }),
     buildUniqueExpense({ id: 'unico-1', name: 'Licuadora', amount: 250000 })
   ]
@@ -100,7 +100,7 @@ describe('pantalla Gastos', () => {
   })
 
   it('alterna entre fijos y unicos segun el segmento', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     expect(await pantalla.findByText('Alquiler')).toBeTruthy()
@@ -114,7 +114,7 @@ describe('pantalla Gastos', () => {
 
   it('ofrece crear el primer gasto cuando la lista esta vacia', async () => {
     getExpensesMock.mockResolvedValue([])
-    const { getByText } = await render(<Expenses />)
+    const { getByText } = await render(<Finances />)
 
     await waitFor(() => expect(getByText(/Sin gastos fijos todavia/)).toBeTruthy())
 
@@ -126,7 +126,7 @@ describe('pantalla Gastos', () => {
 
 describe('pantalla Ajustes', () => {
   beforeEach(() => {
-    __reiniciarCacheParaPruebas()
+    __resetCacheForTests()
     jest.clearAllMocks()
     getExchangeRatesMock.mockResolvedValue(buildRates())
     loadSettingsMock.mockResolvedValue(buildSettings())
@@ -163,13 +163,15 @@ describe('pantalla Gastos con paginacion', () => {
   })
 
   it('pagina los unicos de ocho en ocho y reinicia al cambiar segmento', async () => {
-    const fijos = [buildFixedExpense({ id: 'fijo-0', name: 'Alquiler', nextDueDate: isoEnDias(1) })]
+    const fijos = [
+      buildFixedExpense({ id: 'fijo-0', name: 'Alquiler', nextDueDate: isoDaysFromToday(1) })
+    ]
     const muchos = Array.from({ length: 12 }, (_, i) =>
       buildUniqueExpense({ id: `unico-${i}`, name: `Gasto ${i}` })
     )
     getExpensesMock.mockResolvedValue([...fijos, ...muchos])
 
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     // Segmento Fijos: solo 2 filas, paginador visible con botones deshabilitados.

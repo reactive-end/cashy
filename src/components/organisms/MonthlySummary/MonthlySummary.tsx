@@ -11,36 +11,38 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { COLORS } from '@src/constants/theme'
-import { formatAmount, currencySymbol } from '@src/lib/format'
+import { currencySymbol, formatAmount } from '@src/lib/format'
 
 import type { MonthlySummaryProps } from './MonthlySummary.d'
+
+interface SummaryColumnProps {
+  title: string
+  value: string | null
+  footer: string
+  loading: boolean
+  highlighted?: boolean
+  alignEnd?: boolean
+}
 
 /**
  * Columna individual con etiqueta, valor y pie.
  * @param props Etiqueta superior, monto o carga, texto inferior y alineacion
  * @returns Columna del resumen lista para la tarjeta
  */
-function Columna({
-  titulo,
-  valor,
-  pie,
+function SummaryColumn({
+  title,
+  value,
+  footer,
   loading,
-  destacado = false,
+  highlighted = false,
   alignEnd = false
-}: {
-  titulo: string
-  valor: string | null
-  pie: string
-  loading: boolean
-  destacado?: boolean
-  alignEnd?: boolean
-}) {
-  const alineacion = alignEnd ? 'items-end text-right' : 'items-start'
+}: SummaryColumnProps) {
+  const alignment = alignEnd ? 'items-end text-right' : 'items-start'
 
   return (
-    <View className={`flex-1 min-w-0 gap-1 ${alignEnd ? 'pl-3' : 'pr-3'} ${alineacion}`}>
+    <View className={`flex-1 min-w-0 gap-1 ${alignEnd ? 'pl-3' : 'pr-3'} ${alignment}`}>
       <Typography variant="caption" numberOfLines={1}>
-        {titulo}
+        {title}
       </Typography>
 
       {loading ? (
@@ -50,16 +52,16 @@ function Columna({
       ) : (
         <Typography
           variant="display"
-          className={`w-full text-[20px] leading-[24px] ${destacado ? 'text-accent' : ''}`}
+          className={`w-full text-[20px] leading-[24px] ${highlighted ? 'text-accent' : ''}`}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
-          {valor}
+          {value}
         </Typography>
       )}
 
       <Typography variant="caption" numberOfLines={1}>
-        {pie}
+        {footer}
       </Typography>
     </View>
   )
@@ -71,7 +73,7 @@ function Columna({
  * @returns Tarjeta de totales para la pantalla de inicio
  */
 export function MonthlySummary({ summary, baseCurrency, loading = false }: MonthlySummaryProps) {
-  const sinDatos = !loading && !summary
+  const noData = !loading && !summary
 
   return (
     <Card highlighted className="gap-4">
@@ -81,34 +83,34 @@ export function MonthlySummary({ summary, baseCurrency, loading = false }: Month
       </View>
 
       <View className="flex-row">
-        <Columna
-          titulo="Gastos fijos"
-          valor={
+        <SummaryColumn
+          title="Gastos fijos"
+          value={
             summary
               ? formatAmount(summary.totalFixed, baseCurrency)
               : `${currencySymbol(baseCurrency)} --`
           }
-          pie="proyectados"
+          footer="proyectados"
           loading={loading}
-          destacado
+          highlighted
         />
 
         <View className="w-px bg-line" />
 
-        <Columna
-          titulo="Gastos unicos"
-          valor={
+        <SummaryColumn
+          title="Gastos unicos"
+          value={
             summary
               ? formatAmount(summary.totalUnique, baseCurrency)
               : `${currencySymbol(baseCurrency)} --`
           }
-          pie={summary ? `${summary.uniqueCount} registrados` : 'sin datos'}
+          footer={summary ? `${summary.uniqueCount} registrados` : 'sin datos'}
           loading={loading}
           alignEnd
         />
       </View>
 
-      {sinDatos ? (
+      {noData ? (
         <Typography variant="caption">
           No pudimos cargar las tasas del dia; los totales esperan una conexion valida.
         </Typography>

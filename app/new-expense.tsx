@@ -26,7 +26,7 @@ export default function NewExpense() {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency = settings?.baseCurrency ?? 'USD'
-  const gastos = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
 
   return (
     <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
@@ -45,8 +45,8 @@ export default function NewExpense() {
         showsVerticalScrollIndicator={false}
       >
         <ExpenseForm
-          onSave={async (entrada) => {
-            await gastos.createExpense(entrada)
+          onSave={async (input) => {
+            await expensesState.createExpense(input)
             router.back()
           }}
         />

@@ -12,7 +12,7 @@ import {
   toISODate
 } from '@src/lib/recurrences'
 
-import { AHORA } from '../../helpers/factories'
+import { NOW } from '../../helpers/factories'
 
 describe('daysInMonth', () => {
   it.each([
@@ -29,21 +29,21 @@ describe('daysInMonth', () => {
 
 describe('advanceDueDate', () => {
   it('avanza 7 dias en recurrencia semanal', () => {
-    const resultado = advanceDueDate(fromISODate('2026-09-01'), 'weekly')
+    const result = advanceDueDate(fromISODate('2026-09-01'), 'weekly')
 
-    expect(toISODate(resultado)).toBe('2026-09-08')
+    expect(toISODate(result)).toBe('2026-09-08')
   })
 
   it('avanza 15 dias en recurrencia quincenal', () => {
-    const resultado = advanceDueDate(fromISODate('2026-09-01'), 'biweekly')
+    const result = advanceDueDate(fromISODate('2026-09-01'), 'biweekly')
 
-    expect(toISODate(resultado)).toBe('2026-09-16')
+    expect(toISODate(result)).toBe('2026-09-16')
   })
 
   it('mantiene el dia del mes en meses de 30 dias', () => {
-    const resultado = advanceDueDate(fromISODate('2026-04-15'), 'monthly')
+    const result = advanceDueDate(fromISODate('2026-04-15'), 'monthly')
 
-    expect(toISODate(resultado)).toBe('2026-05-15')
+    expect(toISODate(result)).toBe('2026-05-15')
   })
 
   it('acota el 31 al largo real de febrero', () => {
@@ -64,15 +64,15 @@ describe('advanceDueDate', () => {
   })
 
   it('acota el 29 de febrero bisiesto en la recurrencia anual', () => {
-    const resultado = advanceDueDate(fromISODate('2024-02-29'), 'yearly')
+    const result = advanceDueDate(fromISODate('2024-02-29'), 'yearly')
 
-    expect(toISODate(resultado)).toBe('2025-02-28')
+    expect(toISODate(result)).toBe('2025-02-28')
   })
 
   it('conserva el dia cuando el destino anual tambien tiene ese dia', () => {
-    const resultado = advanceDueDate(fromISODate('2023-05-31'), 'yearly')
+    const result = advanceDueDate(fromISODate('2023-05-31'), 'yearly')
 
-    expect(toISODate(resultado)).toBe('2024-05-31')
+    expect(toISODate(result)).toBe('2024-05-31')
   })
 })
 
@@ -91,7 +91,7 @@ describe('isSameDay', () => {
 
 describe('daysUntil', () => {
   beforeEach(() => {
-    jest.useFakeTimers({ now: AHORA })
+    jest.useFakeTimers({ now: NOW })
   })
 
   afterEach(() => {
@@ -121,11 +121,11 @@ describe('toISODate / fromISODate', () => {
   })
 
   it('interpreta la cadena a medianoche local', () => {
-    const fecha = fromISODate('2026-09-01')
+    const date = fromISODate('2026-09-01')
 
-    expect(fecha.getHours()).toBe(0)
-    expect(fecha.getFullYear()).toBe(2026)
-    expect(fecha.getMonth()).toBe(8)
-    expect(fecha.getDate()).toBe(1)
+    expect(date.getHours()).toBe(0)
+    expect(date.getFullYear()).toBe(2026)
+    expect(date.getMonth()).toBe(8)
+    expect(date.getDate()).toBe(1)
   })
 })

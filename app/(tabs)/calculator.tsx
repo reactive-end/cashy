@@ -23,7 +23,7 @@ import { CURRENCIES, type Currency } from '@src/types/domain'
  * @returns Entrada de monto con selector de origen y tres resultados
  */
 /** Etiquetas descriptivas por moneda con la fuente de la tasa */
-const ETIQUETAS_MONEDA: Record<Currency, string> = {
+const CURRENCY_LABELS: Record<Currency, string> = {
   VES: 'Bolivares',
   USD: 'Dolares · Tasa BCV',
   EUR: 'Euros · Tasa BCV',
@@ -32,38 +32,38 @@ const ETIQUETAS_MONEDA: Record<Currency, string> = {
 
 export default function Calculator() {
   const ratesState = useRates()
-  const [montoCents, setMontoCents] = useState(0)
-  const [origen, setOrigen] = useState<Currency>('USD')
+  const [amountCents, setAmountCents] = useState(0)
+  const [origin, setOrigin] = useState<Currency>('USD')
 
   // Callback estable: MoneyInput nunca se re-renderiza desde el padre.
-  const alCambiarCentavos = useCallback((centavos: number) => setMontoCents(centavos), [])
+  const handleCentsChange = useCallback((cents: number) => setAmountCents(cents), [])
 
   // Captura cents-first como el formulario de gastos: los digitos
   // tecleados empujan la cifra desde los decimales (0.01 -> 10.00).
-  const monto = amountFromCents(montoCents)
+  const amount = amountFromCents(amountCents)
 
-  const resultados = useMemo(() => {
-    const tasas = ratesState.rates
+  const results = useMemo(() => {
+    const currentRates = ratesState.rates
 
-    if (!tasas) return []
+    if (!currentRates) return []
 
-    const calculados: { destino: Currency; montoConvertido: number }[] = []
+    const computed: { target: Currency; convertedAmount: number }[] = []
 
-    for (const destino of CURRENCIES) {
-      if (destino === origen) continue
+    for (const target of CURRENCIES) {
+      if (target === origin) continue
 
-      calculados.push({ destino, montoConvertido: convert(monto, origen, destino, tasas) })
+      computed.push({ target, convertedAmount: convert(amount, origin, target, currentRates) })
     }
 
-    return calculados
-  }, [monto, origen, ratesState.rates])
+    return computed
+  }, [amount, origin, ratesState.rates])
 
-  const refrescarTasas = async () => {
+  const refreshRates = async () => {
     await ratesState.refresh()
   }
 
   return (
-    <Screen scrollable onRefresh={refrescarTasas} refreshing={ratesState.refreshing}>
+    <Screen scrollable onRefresh={refreshRates} refreshing={ratesState.refreshing}>
       <View className="gap-6 pt-6">
         <Typography variant="display">Calculadora</Typography>
 
@@ -73,13 +73,13 @@ export default function Calculator() {
               Monto a convertir
             </Typography>
             <Typography variant="figure" className="text-[14px] text-accent">
-              {formatAmount(monto, origen)}
+              {formatAmount(amount, origin)}
             </Typography>
           </View>
 
           <MoneyInput
-            symbol={currencySymbol(origen)}
-            onCents={alCambiarCentavos}
+            symbol={currencySymbol(origin)}
+            onCents={handleCentsChange}
             testID="input-monto"
           />
 
@@ -90,12 +90,12 @@ export default function Calculator() {
               { value: 'EUR', label: '€' },
               { value: 'USDT', label: 'USDT' }
             ]}
-            value={origen}
-            onChange={(valor) => setOrigen(valor as Currency)}
+            value={origin}
+            onChange={(value) => setOrigin(value as Currency)}
           />
 
           <Typography variant="caption" className="text-faint">
-            {ETIQUETAS_MONEDA[origen]}
+            {CURRENCY_LABELS[origin]}
           </Typography>
         </Card>
 
@@ -103,14 +103,14 @@ export default function Calculator() {
           <Typography variant="caption">Cargando tasas del dia...</Typography>
         ) : (
           <View className="gap-3">
-            {resultados.map((resultado) => (
-              <Card key={resultado.destino} noPadding className="px-4 py-3.5">
+            {results.map((result) => (
+              <Card key={result.target} noPadding className="px-4 py-3.5">
                 <View className="flex-row items-baseline justify-between gap-3">
                   <Typography variant="caption" className="text-faint">
-                    {ETIQUETAS_MONEDA[resultado.destino]}
+                    {CURRENCY_LABELS[result.target]}
                   </Typography>
                   <Typography variant="title" numberOfLines={1} adjustsFontSizeToFit>
-                    {formatAmount(resultado.montoConvertido, resultado.destino)}
+                    {formatAmount(result.convertedAmount, result.target)}
                   </Typography>
                 </View>
               </Card>

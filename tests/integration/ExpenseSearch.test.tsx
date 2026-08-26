@@ -10,7 +10,7 @@ import { getExpenses } from '@src/db/expenses'
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
-import Expenses from '../../app/(tabs)/expenses'
+import Finances from '../../app/(tabs)/finances'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -54,7 +54,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('filtra por nombre al pulsar el boton Buscar', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByText('Unicos'))
@@ -71,7 +71,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('filtra por categoria ademas del nombre', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByText('Unicos'))
@@ -87,7 +87,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('muestra estado vacio cuando la busqueda no arroja resultados', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.changeText(pantalla.getByPlaceholderText('Buscar gastos...'), 'zeppelin')
@@ -99,7 +99,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('navega a nuevo gasto desde el boton de icono agregar', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Agregar gasto'))
@@ -108,7 +108,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('mantiene la paginacion visible con una sola pagina y botones deshabilitados', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     expect(await pantalla.findByText(/Página 1 de 1/)).toBeTruthy()

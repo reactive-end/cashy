@@ -11,21 +11,21 @@ interface StubProps {
   children?: ReactNode
 }
 
-function crearStub() {
+function createStub() {
   return function Stub({ children }: StubProps) {
     return <View>{children}</View>
   }
 }
 
-export const Svg = crearStub()
-export const Path = crearStub()
-export const Circle = crearStub()
-export const Rect = crearStub()
-export const Line = crearStub()
-export const Polyline = crearStub()
-export const Polygon = crearStub()
-export const Ellipse = crearStub()
-export const G = crearStub()
-export const Defs = crearStub()
-export const ClipPath = crearStub()
-export const Mask = crearStub()
+export const Svg = createStub()
+export const Path = createStub()
+export const Circle = createStub()
+export const Rect = createStub()
+export const Line = createStub()
+export const Polyline = createStub()
+export const Polygon = createStub()
+export const Ellipse = createStub()
+export const G = createStub()
+export const Defs = createStub()
+export const ClipPath = createStub()
+export const Mask = createStub()

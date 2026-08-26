@@ -15,6 +15,8 @@ export interface InputProps {
   placeholder?: string
   /** Muestra teclado numerico decimal (montos) */
   numeric?: boolean
+  /** Muestra teclado de correo electronico */
+  email?: boolean
   /** Texto fijo mostrado antes del contenido (ejemplo Bs.) */
   prefix?: string
   /** Mensaje de validacion; su presencia marca el campo con error */

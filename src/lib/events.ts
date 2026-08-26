@@ -1,15 +1,18 @@
 /**
  * Minimal typed event bus for cross-instance synchronization.
  * Cada instancia de useExpenses se suscribe a 'expenses-changed'
- * y recarga al ocurrir mutaciones desde otras pantallas.
+ * y recarga al ocurrir mutaciones desde otras pantallas. El mismo
+ * patron sincroniza ingresos e identidad del usuario.
  */
 
 /** Eventos disponibles en la aplicacion */
-export type AppEvent = 'expenses-changed'
+export type AppEvent = 'expenses-changed' | 'incomes-changed' | 'profile-changed'
 
 /** Registro de oyentes por evento */
 const listeners: Record<AppEvent, Set<() => void>> = {
-  'expenses-changed': new Set()
+  'expenses-changed': new Set(),
+  'incomes-changed': new Set(),
+  'profile-changed': new Set()
 }
 
 /**

@@ -12,11 +12,11 @@ import {
   updateExpense
 } from '@src/db/expenses'
 
-import { FakeDatabase, iniciarBaseFalsa } from '../../helpers/expoSqliteMock'
+import { FakeDatabase, initFakeDatabase } from '../../helpers/expoSqliteMock'
 import { buildExpenseInput, buildFixedExpense } from '../../helpers/factories'
 
 /** Fila cruda snake_case equivalente al gasto fijo de fabrica */
-const FILA_FIJA = {
+const FIXED_ROW = {
   id: 'gasto-fijo-1',
   name: 'Netflix',
   amount: 9.99,
@@ -38,19 +38,19 @@ describe('repositorio de gastos', () => {
     // El singleton de conexion vive en src/db/base; hay que liberarlo
     // para que cada prueba abra la instancia falsa recien creada.
     await closeDatabase()
-    base = iniciarBaseFalsa()
+    base = initFakeDatabase()
   })
 
   describe('getExpenses', () => {
     it('consulta ordenada por creacion y mapea snake_case a dominio', async () => {
-      const filaSegunda = { ...FILA_FIJA, id: 'gasto-segundo', name: 'Spotify' }
-      base.encolar([filaSegunda, FILA_FIJA])
+      const secondRow = { ...FIXED_ROW, id: 'gasto-segundo', name: 'Spotify' }
+      base.queue([secondRow, FIXED_ROW])
 
-      const gastos = await getExpenses()
+      const expenses = await getExpenses()
 
-      expect(base.buscar('SELECT')[0].sql).toContain('ORDER BY created_at DESC')
-      expect(gastos).toHaveLength(2)
-      expect(gastos[1]).toMatchObject({
+      expect(base.findByFragment('SELECT')[0].sql).toContain('ORDER BY created_at DESC')
+      expect(expenses).toHaveLength(2)
+      expect(expenses[1]).toMatchObject({
         id: 'gasto-fijo-1',
         name: 'Netflix',
         amount: 9.99,
@@ -72,12 +72,12 @@ describe('repositorio de gastos', () => {
 
   describe('getExpense', () => {
     it('devuelve el gasto mapeado cuando la fila existe', async () => {
-      base.encolar([FILA_FIJA])
+      base.queue([FIXED_ROW])
 
-      const gasto = await getExpense('gasto-fijo-1')
+      const expense = await getExpense('gasto-fijo-1')
 
-      expect(gasto).not.toBeNull()
-      expect(gasto?.nextDueDate).toBe('2026-09-01')
+      expect(expense).not.toBeNull()
+      expect(expense?.nextDueDate).toBe('2026-09-01')
     })
 
     it('devuelve null cuando no encuentra el identificador', async () => {
@@ -87,13 +87,13 @@ describe('repositorio de gastos', () => {
 
   describe('insertExpense', () => {
     it('emite INSERT con parametros en el orden exacto de columnas', async () => {
-      base.encolar([FILA_FIJA])
-      const entrada = buildExpenseInput()
+      base.queue([FIXED_ROW])
+      const input = buildExpenseInput()
 
-      await insertExpense(entrada, 'id-nuevo')
+      await insertExpense(input, 'id-nuevo')
 
-      const insercion = base.buscar('INSERT INTO expenses')[0]
-      expect(insercion.params).toEqual([
+      const insertion = base.findByFragment('INSERT INTO expenses')[0]
+      expect(insertion.params).toEqual([
         'id-nuevo',
         'Spotify',
         5.99,
@@ -109,12 +109,12 @@ describe('repositorio de gastos', () => {
     })
 
     it('serializa opcionales ausentes como null', async () => {
-      base.encolar([FILA_FIJA])
-      const entrada = buildExpenseInput({ category: undefined, note: undefined })
+      base.queue([FIXED_ROW])
+      const input = buildExpenseInput({ category: undefined, note: undefined })
 
-      await insertExpense(entrada, 'id-minimo')
+      await insertExpense(input, 'id-minimo')
 
-      const params = base.buscar('INSERT INTO expenses')[0].params ?? []
+      const params = base.findByFragment('INSERT INTO expenses')[0].params ?? []
       expect(params[5]).toBeNull()
       expect(params[6]).toBeNull()
     })
@@ -122,15 +122,15 @@ describe('repositorio de gastos', () => {
 
   describe('updateExpense', () => {
     it('combina cambios sobre el gasto actual y emite UPDATE completo', async () => {
-      base.encolar([FILA_FIJA])
+      base.queue([FIXED_ROW])
 
       await updateExpense('gasto-fijo-1', { name: 'Netflix Premium', active: false })
 
-      const actualizacion = base.buscar('UPDATE expenses SET')[0]
-      expect(actualizacion.sql).toContain('active = ?')
-      expect(actualizacion.params?.[0]).toBe('Netflix Premium')
-      expect(actualizacion.params?.[8]).toBe(0)
-      expect(actualizacion.params?.[actualizacion.params.length - 1]).toBe('gasto-fijo-1')
+      const update = base.findByFragment('UPDATE expenses SET')[0]
+      expect(update.sql).toContain('active = ?')
+      expect(update.params?.[0]).toBe('Netflix Premium')
+      expect(update.params?.[8]).toBe(0)
+      expect(update.params?.[update.params.length - 1]).toBe('gasto-fijo-1')
     })
 
     it('lanza error cuando el identificador no existe', async () => {
@@ -142,19 +142,19 @@ describe('repositorio de gastos', () => {
     it('emite DELETE filtrando por identificador', async () => {
       await deleteExpense('gasto-fijo-1')
 
-      const borrado = base.buscar('DELETE FROM expenses')[0]
-      expect(borrado.sql).toContain('WHERE id = ?')
-      expect(borrado.params).toEqual(['gasto-fijo-1'])
+      const deletion = base.findByFragment('DELETE FROM expenses')[0]
+      expect(deletion.sql).toContain('WHERE id = ?')
+      expect(deletion.params).toEqual(['gasto-fijo-1'])
     })
   })
 
   describe('mapeo de dominio', () => {
     it('coincide con los campos del gasto de fabrica tras el ciclo completo', async () => {
-      base.encolar([FILA_FIJA])
+      base.queue([FIXED_ROW])
 
-      const gasto = await getExpense('gasto-fijo-1')
+      const expense = await getExpense('gasto-fijo-1')
 
-      expect(gasto).toEqual(buildFixedExpense())
+      expect(expense).toEqual(buildFixedExpense())
     })
   })
 })

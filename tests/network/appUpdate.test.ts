@@ -4,7 +4,7 @@
  * APK y la comparacion contra la version instalada.
  */
 
-import { consultarUltimoRelease, hayActualizacionDisponible } from '@src/services/appUpdate'
+import { fetchLatestRelease, isUpdateAvailable } from '@src/services/appUpdate'
 
 import { installFetchMock } from '../helpers/networkMock'
 
@@ -26,7 +26,7 @@ function releaseValido(overrides: object = {}): object {
   }
 }
 
-describe('consultarUltimoRelease', () => {
+describe('fetchLatestRelease', () => {
   let controlador: ReturnType<typeof installFetchMock>
 
   afterEach(() => {
@@ -41,12 +41,12 @@ describe('consultarUltimoRelease', () => {
       }
     ])
 
-    const release = await consultarUltimoRelease()
+    const release = await fetchLatestRelease()
 
     expect(release).toEqual({
       version: '1.2.0',
-      urlApk: 'https://github.com/x.apk',
-      notas: 'Correcciones de estabilidad'
+      apkUrl: 'https://github.com/x.apk',
+      notes: 'Correcciones de estabilidad'
     })
   })
 
@@ -58,7 +58,7 @@ describe('consultarUltimoRelease', () => {
       }
     ])
 
-    await expect(consultarUltimoRelease()).resolves.toBeNull()
+    await expect(fetchLatestRelease()).resolves.toBeNull()
   })
 
   it('devuelve null ante error de red o respuesta invalida', async () => {
@@ -66,7 +66,7 @@ describe('consultarUltimoRelease', () => {
       { match: /releases\/latest/, respond: () => new Error('sin conexion') }
     ])
 
-    await expect(consultarUltimoRelease()).resolves.toBeNull()
+    await expect(fetchLatestRelease()).resolves.toBeNull()
   })
 
   it('devuelve null cuando GitHub responde sin exito', async () => {
@@ -77,7 +77,7 @@ describe('consultarUltimoRelease', () => {
       }
     ])
 
-    await expect(consultarUltimoRelease()).resolves.toBeNull()
+    await expect(fetchLatestRelease()).resolves.toBeNull()
   })
 
   it('devuelve null cuando el JSON no responde a la forma esperada', async () => {
@@ -85,14 +85,14 @@ describe('consultarUltimoRelease', () => {
       { match: /releases\/latest/, respond: () => ({ body: { message: 'sin tag' } }) }
     ])
 
-    await expect(consultarUltimoRelease()).resolves.toBeNull()
+    await expect(fetchLatestRelease()).resolves.toBeNull()
   })
 })
 
-describe('hayActualizacionDisponible', () => {
+describe('isUpdateAvailable', () => {
   it('compara contra la version instalada de la configuracion', () => {
-    expect(hayActualizacionDisponible({ version: '1.2.0', urlApk: 'x', notas: '' })).toBe(true)
-    expect(hayActualizacionDisponible({ version: '1.0.1', urlApk: 'x', notas: '' })).toBe(false)
-    expect(hayActualizacionDisponible({ version: '1.0.0', urlApk: 'x', notas: '' })).toBe(false)
+    expect(isUpdateAvailable({ version: '1.2.0', apkUrl: 'x', notes: '' })).toBe(true)
+    expect(isUpdateAvailable({ version: '1.0.1', apkUrl: 'x', notes: '' })).toBe(false)
+    expect(isUpdateAvailable({ version: '1.0.0', apkUrl: 'x', notes: '' })).toBe(false)
   })
 })

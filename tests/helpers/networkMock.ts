@@ -5,7 +5,7 @@
  */
 
 /** Respuesta que entrega una ruta simulada */
-export interface RespuestaSimulada {
+export interface MockedResponse {
   /** Codigo HTTP; por defecto 200 */
   status?: number
   /** Cuerpo serializable que devuelve json() */
@@ -15,17 +15,17 @@ export interface RespuestaSimulada {
 }
 
 /** Ruta que decide la respuesta segun la URL solicitada */
-export interface RutaFetchMock {
+export interface FetchMockRoute {
   /** Patron contra el que se compara la URL completa */
   match: RegExp
   /** Devuelve la respuesta o un Error para simular fallo de red */
-  respond: (url: string) => RespuestaSimulada | Error
+  respond: (url: string) => MockedResponse | Error
 }
 
 /** Control devuelto por installFetchMock para inspeccionar y limpiar */
-export interface ControladorFetch {
+export interface FetchMockController {
   /** URLs solicitadas en orden de llegada */
-  llamadas: string[]
+  calls: string[]
   /** Restaura el fetch original */
   restore: () => void
 }
@@ -36,14 +36,14 @@ export interface ControladorFetch {
  * @param routes Rutas disponibles durante la prueba
  * @returns Controlador con llamadas registradas y limpieza
  */
-export function installFetchMock(routes: RutaFetchMock[]): ControladorFetch {
-  const fetchOriginal = globalThis.fetch
-  const llamadas: string[] = []
+export function installFetchMock(routes: FetchMockRoute[]): FetchMockController {
+  const originalFetch = globalThis.fetch
+  const calls: string[] = []
 
-  const fetchFalso: typeof fetch = (input, init) => {
+  const fakeFetch: typeof fetch = (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
 
-    llamadas.push(url)
+    calls.push(url)
 
     return new Promise<Response>((resolve, reject) => {
       if (init?.signal?.aborted) {
@@ -51,49 +51,49 @@ export function installFetchMock(routes: RutaFetchMock[]): ControladorFetch {
         return
       }
 
-      const ruta = routes.find((candidata) => candidata.match.test(url))
+      const route = routes.find((candidate) => candidate.match.test(url))
 
-      if (!ruta) {
+      if (!route) {
         reject(new Error(`No hay mock registrado para ${url}`))
         return
       }
 
-      const resultado = ruta.respond(url)
+      const result = route.respond(url)
 
-      if (resultado instanceof Error) {
-        reject(resultado)
+      if (result instanceof Error) {
+        reject(result)
         return
       }
 
-      const construirRespuesta = () => {
-        const status = resultado.status ?? 200
+      const buildResponse = () => {
+        const status = result.status ?? 200
         resolve({
           ok: status >= 200 && status < 300,
           status,
-          json: async () => resultado.body
+          json: async () => result.body
         } as Response)
       }
 
-      if (!resultado.delayMs) {
-        construirRespuesta()
+      if (!result.delayMs) {
+        buildResponse()
         return
       }
 
-      const temporizador = setTimeout(construirRespuesta, resultado.delayMs)
+      const timer = setTimeout(buildResponse, result.delayMs)
 
       init?.signal?.addEventListener('abort', () => {
-        clearTimeout(temporizador)
+        clearTimeout(timer)
         reject(new Error('Aborted'))
       })
     })
   }
 
-  globalThis.fetch = fetchFalso
+  globalThis.fetch = fakeFetch
 
   return {
-    llamadas,
+    calls,
     restore: () => {
-      globalThis.fetch = fetchOriginal
+      globalThis.fetch = originalFetch
     }
   }
 }

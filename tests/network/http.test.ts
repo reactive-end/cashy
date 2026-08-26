@@ -30,7 +30,7 @@ describe('fetchJson', () => {
     await expect(fetchJson('https://x.test/api/ok', esCargaValida)).resolves.toEqual({
       valor: 42
     })
-    expect(controlador.llamadas).toEqual(['https://x.test/api/ok'])
+    expect(controlador.calls).toEqual(['https://x.test/api/ok'])
   })
 
   it('lanza error con el codigo HTTP cuando la respuesta no es 2xx', async () => {

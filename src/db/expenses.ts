@@ -83,7 +83,7 @@ export async function getExpense(id: string): Promise<Expense | null> {
  */
 export async function insertExpense(input: ExpenseInput, id: string): Promise<Expense> {
   const db = await openDatabase()
-  const ahora = new Date().toISOString()
+  const timestamp = new Date().toISOString()
 
   await db.runAsync(
     `INSERT INTO expenses (
@@ -100,8 +100,8 @@ export async function insertExpense(input: ExpenseInput, id: string): Promise<Ex
       input.note ?? null,
       input.recurrence ?? null,
       input.nextDueDate ?? null,
-      ahora,
-      ahora
+      timestamp,
+      timestamp
     ]
   )
 

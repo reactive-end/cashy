@@ -14,8 +14,6 @@ exports[`instantaneas de moleculas ExpenseItem muestra variantes con insignia y 
 ]
 `;
 
-exports[`instantaneas de moleculas HourPicker muestra el campo con la hora en formato 12 horas 1`] = `"{"type":"View","props":{},"children":[{"type":"View","props":{"className":"flex-row items-center justify-between rounded-xl border border-line bg-paper px-4 py-3 active:opacity-70","accessibilityRole":"button","accessibilityLabel":"Hora de prueba","accessibilityValue":{"text":"1:00 p.m."},"accessible":true,"accessibilityState":{"disabled":false},"focusable":true,"collapsable":false},"children":[{"type":"Text","props":{"className":"font-sans text-[15px] leading-[22px] text-ink "},"children":["1:00 p.m."]},{"type":"View","props":{"testID":"lucide-clock"},"children":[]}]}]}"`;
-
 exports[`instantaneas de moleculas RateCard distingue carga de dato 1`] = `
 [
   "{"type":"View","props":{"className":"rounded-2xl bg-card border border-line p-4 min-h-[96px] gap-3 overflow-hidden "},"children":[{"type":"View","props":{"className":"size-9 items-center justify-center rounded-full bg-accent-soft"},"children":[{"type":"View","props":{"testID":"lucide-circle-dollar"},"children":[]}]},{"type":"View","props":{"className":"w-full min-h-[40px] gap-0.5"},"children":[{"type":"Text","props":{"className":"font-sans text-[12px] leading-[16px] text-faint ","numberOfLines":1},"children":["Dolar BCV"]},{"type":"Text","props":{"className":"font-display text-[30px] leading-[36px] text-ink w-full text-[18px] leading-[22px]","accessibilityRole":"header","numberOfLines":1,"adjustsFontSizeToFit":true},"children":["Bs. 779,95"]}]}]}",

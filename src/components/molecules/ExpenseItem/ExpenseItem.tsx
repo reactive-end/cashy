@@ -27,7 +27,7 @@ export function ExpenseItem({
   badge,
   onPress
 }: ExpenseItemProps) {
-  const mostrarOriginal =
+  const showOriginal =
     formattedOriginalAmount !== undefined && formattedOriginalAmount !== formattedAmount
 
   return (
@@ -59,7 +59,7 @@ export function ExpenseItem({
           <Typography variant="figure" className="text-[12px] leading-[16px]">
             {formattedAmount}
           </Typography>
-          {mostrarOriginal ? (
+          {showOriginal ? (
             <Typography variant="caption">{formattedOriginalAmount}</Typography>
           ) : null}
         </View>

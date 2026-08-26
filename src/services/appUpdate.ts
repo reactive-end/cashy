@@ -9,13 +9,13 @@ import Constants from 'expo-constants'
 import { Directory, File, Paths } from 'expo-file-system'
 import * as IntentLauncher from 'expo-intent-launcher'
 
-import { esVersionMasNueva } from '@src/lib/versiones'
+import { isNewerVersion } from '@src/lib/versions'
 
 /** Ruta del repositorio donde se publican los releases */
-const REPOSITORIO = 'reactive-end/cashy'
+const REPOSITORY = 'reactive-end/cashy'
 
 /** Carpeta relativa al cache donde se descarga el APK */
-const CARPETA_DESCARGA = 'actualizaciones'
+const DOWNLOAD_FOLDER = 'actualizaciones'
 
 /** Forma cruda de un asset adjunto a un release de GitHub */
 interface GithubAsset {
@@ -31,13 +31,13 @@ interface GithubRelease {
 }
 
 /** Informacion tipada del ultimo release utilizable */
-export interface UltimoRelease {
+export interface LatestRelease {
   /** Version normalizada sin prefijo "v" */
   version: string
   /** URL de descarga directa del asset APK */
-  urlApk: string
+  apkUrl: string
   /** Notas de la version publicadas en el release */
-  notas: string
+  notes: string
 }
 
 /**
@@ -46,12 +46,12 @@ export interface UltimoRelease {
  * @param value Objeto sin tipo leido desde la API
  * @returns Release validado o null cuando la forma no es utilizable
  */
-function validarRelease(value: object): UltimoRelease | null {
-  const candidato = value as GithubRelease
+function validateRelease(value: object): LatestRelease | null {
+  const candidate = value as GithubRelease
 
-  if (typeof candidato.tag_name !== 'string' || candidato.tag_name.length === 0) return null
+  if (typeof candidate.tag_name !== 'string' || candidate.tag_name.length === 0) return null
 
-  const apk = candidato.assets?.find(
+  const apk = candidate.assets?.find(
     (asset) =>
       typeof asset.browser_download_url === 'string' &&
       typeof asset.name === 'string' &&
@@ -61,9 +61,9 @@ function validarRelease(value: object): UltimoRelease | null {
   if (!apk || typeof apk.browser_download_url !== 'string') return null
 
   return {
-    version: candidato.tag_name.replace(/^v/i, ''),
-    urlApk: apk.browser_download_url,
-    notas: typeof candidato.body === 'string' ? candidato.body : ''
+    version: candidate.tag_name.replace(/^v/i, ''),
+    apkUrl: apk.browser_download_url,
+    notes: typeof candidate.body === 'string' ? candidate.body : ''
   }
 }
 
@@ -71,7 +71,7 @@ function validarRelease(value: object): UltimoRelease | null {
  * Version instalada de la aplicacion segun la configuracion expo.
  * @returns Version actual o cadena vacia si no esta disponible
  */
-export function versionInstalada(): string {
+export function installedVersion(): string {
   return Constants.expoConfig?.version ?? ''
 }
 
@@ -80,17 +80,17 @@ export function versionInstalada(): string {
  * @returns Datos del release con APK, o null si no hay release
  * utilizable o la consulta falla
  */
-export async function consultarUltimoRelease(): Promise<UltimoRelease | null> {
+export async function fetchLatestRelease(): Promise<LatestRelease | null> {
   try {
-    const respuesta = await fetch(`https://api.github.com/repos/${REPOSITORIO}/releases/latest`, {
+    const response = await fetch(`https://api.github.com/repos/${REPOSITORY}/releases/latest`, {
       headers: { Accept: 'application/vnd.github+json' }
     })
 
-    if (!respuesta.ok) return null
+    if (!response.ok) return null
 
-    const cuerpo: object = await respuesta.json()
+    const body: object = await response.json()
 
-    return validarRelease(cuerpo)
+    return validateRelease(body)
   } catch {
     return null
   }
@@ -101,38 +101,38 @@ export async function consultarUltimoRelease(): Promise<UltimoRelease | null> {
  * @param release Ultimo release consultado
  * @returns true cuando la version del release supera a la instalada
  */
-export function hayActualizacionDisponible(release: UltimoRelease): boolean {
-  const actual = versionInstalada()
+export function isUpdateAvailable(release: LatestRelease): boolean {
+  const current = installedVersion()
 
-  if (!actual) return false
+  if (!current) return false
 
-  return esVersionMasNueva(actual, release.version)
+  return isNewerVersion(current, release.version)
 }
 
 /**
  * Descarga el APK del release en el cache de la aplicacion.
- * @param urlApk URL de descarga directa del asset
- * @param alProgresar Callback opcional con progreso 0-1
+ * @param apkUrl URL de descarga directa del asset
+ * @param onProgress Callback opcional con progreso 0-1
  * @returns Archivo descargado listo para instalarse
  */
-export async function descargarApk(
-  urlApk: string,
-  alProgresar?: (progreso: number) => void
+export async function downloadApk(
+  apkUrl: string,
+  onProgress?: (progress: number) => void
 ): Promise<File> {
-  const carpeta = new Directory(Paths.cache, CARPETA_DESCARGA)
-  carpeta.create({ idempotent: true, intermediates: true, overwrite: true })
+  const folder = new Directory(Paths.cache, DOWNLOAD_FOLDER)
+  folder.create({ idempotent: true, intermediates: true, overwrite: true })
 
-  const tarea = File.createDownloadTask(urlApk, carpeta, {
+  const task = File.createDownloadTask(apkUrl, folder, {
     onProgress: ({ bytesWritten, totalBytes }) => {
-      if (alProgresar && totalBytes > 0) alProgresar(bytesWritten / totalBytes)
+      if (onProgress && totalBytes > 0) onProgress(bytesWritten / totalBytes)
     }
   })
 
-  const archivo = await tarea.downloadAsync()
+  const file = await task.downloadAsync()
 
-  if (!archivo) throw new Error('Descarga cancelada')
+  if (!file) throw new Error('Download cancelled')
 
-  return archivo
+  return file
 }
 
 /**
@@ -140,9 +140,9 @@ export async function descargarApk(
  * Android mostrara su dialogo de confirmacion de instalacion.
  * @param archivo APK descargado en el cache
  */
-export async function instalarApk(archivo: File): Promise<void> {
+export async function installApk(file: File): Promise<void> {
   await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-    data: archivo.contentUri,
+    data: file.contentUri,
     type: 'application/vnd.android.package-archive',
     flags: 1
   })

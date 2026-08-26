@@ -23,12 +23,12 @@ export function CategoryBreakdown({ items, loading = false }: CategoryBreakdownP
   return (
     <View className="gap-4">
       {items.map((item, index) => (
-        <View key={item.nombre} className="gap-1.5">
+        <View key={item.name} className="gap-1.5">
           <View className="flex-row items-baseline justify-between gap-3">
             <Typography variant="body" numberOfLines={1}>
-              {item.nombre}
+              {item.name}
             </Typography>
-            <Typography variant="caption">{`${item.montoFormateado} · ${item.pct}%`}</Typography>
+            <Typography variant="caption">{`${item.formattedAmount} · ${item.pct}%`}</Typography>
           </View>
 
           <View className="h-2 w-full overflow-hidden rounded-full bg-line">

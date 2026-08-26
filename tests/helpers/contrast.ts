@@ -1,6 +1,6 @@
 /**
  * Utilidades de contraste WCAG 2.1 para las pruebas de accesibilidad.
- * Calculan luminancia relativa y ratio de contraste sobre la paleta del tema.
+ * Calculan luminancia relativa (WCAG) y ratio de contraste sobre la paleta del tema.
  */
 
 /** Color hexadecimal en formato #RRGGBB */
@@ -24,8 +24,8 @@ export function hexToRgb(hex: Hex): [number, number, number] {
  * @param canal Valor 0-1 del canal
  * @returns Valor lineal 0-1
  */
-function linearizar(canal: number): number {
-  return canal <= 0.03928 ? canal / 12.92 : Math.pow((canal + 0.055) / 1.055, 2.4)
+function linearize(channel: number): number {
+  return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
 }
 
 /**
@@ -33,8 +33,8 @@ function linearizar(canal: number): number {
  * @param hex Color a medir
  * @returns Luminancia entre 0 y 1
  */
-export function luminancia(hex: Hex): number {
-  const [r, g, b] = hexToRgb(hex).map(linearizar)
+export function luminance(hex: Hex): number {
+  const [r, g, b] = hexToRgb(hex).map(linearize)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
@@ -45,12 +45,12 @@ export function luminancia(hex: Hex): number {
  * @returns Ratio entre 1 y 21
  */
 export function contrastRatio(a: Hex, b: Hex): number {
-  const la = luminancia(a)
-  const lb = luminancia(b)
-  const clara = Math.max(la, lb)
-  const oscura = Math.min(la, lb)
-  return (clara + 0.05) / (oscura + 0.05)
+  const la = luminance(a)
+  const lb = luminance(b)
+  const lighter = Math.max(la, lb)
+  const darker = Math.min(la, lb)
+  return (lighter + 0.05) / (darker + 0.05)
 }
 
 /** Minimo AA para texto normal (menor a 18pt) */
-export const AA_TEXTO_NORMAL = 4.5
+export const AA_NORMAL_TEXT_RATIO = 4.5

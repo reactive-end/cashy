@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { getErrorMessage } from '@src/lib/errors'
+import { RATES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { getExchangeRates } from '@src/services/rates'
 import type { ExchangeRates } from '@src/types/domain'
 
@@ -36,45 +36,46 @@ export function useRates(): UseRatesResult {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRefreshOk, setLastRefreshOk] = useState<boolean | null>(null)
-  const montado = useRef(true)
+  const mounted = useRef(true)
 
   useEffect(() => {
-    montado.current = true
+    mounted.current = true
 
     getExchangeRates()
       .then((snapshot) => {
-        if (montado.current) setRates(snapshot)
+        if (mounted.current) setRates(snapshot)
       })
-      .catch((e) => {
-        if (montado.current) setError(getErrorMessage(e))
+      .catch(() => {
+        // Mensaje amigable fijo: nunca se filtran textos tecnicos de red.
+        if (mounted.current) setError(RATES_LOAD_ERROR_MESSAGE)
       })
       .finally(() => {
-        if (montado.current) setLoading(false)
+        if (mounted.current) setLoading(false)
       })
 
     return () => {
-      montado.current = false
+      mounted.current = false
     }
   }, [])
 
   const refresh = useCallback(async () => {
-    if (!montado.current) return
+    if (!mounted.current) return
     setRefreshing(true)
     setError(null)
 
     try {
       const snapshot = await getExchangeRates(true)
-      if (montado.current) {
+      if (mounted.current) {
         setRates(snapshot)
         setLastRefreshOk(true)
       }
-    } catch (e) {
-      if (montado.current) {
-        setError(getErrorMessage(e))
+    } catch {
+      if (mounted.current) {
+        setError(RATES_LOAD_ERROR_MESSAGE)
         setLastRefreshOk(false)
       }
     } finally {
-      if (montado.current) setRefreshing(false)
+      if (mounted.current) setRefreshing(false)
     }
   }, [])
 

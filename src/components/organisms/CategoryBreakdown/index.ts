@@ -1,2 +1,2 @@
 export { CategoryBreakdown } from './CategoryBreakdown'
-export type { CategoryBreakdownProps, CategoriaGrafica } from './CategoryBreakdown.d'
+export type { CategoryBreakdownProps, ChartCategory } from './CategoryBreakdown.d'

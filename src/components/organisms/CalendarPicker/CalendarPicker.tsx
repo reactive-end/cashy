@@ -19,14 +19,14 @@ import { useCalendar } from './useCalendar'
  * @param isoDate Fecha en formato yyyy-mm-dd
  * @returns Texto tipo "15 de agosto de 2026" para lectores de pantalla
  */
-const FORMATO_FECHA_LARGA = new Intl.DateTimeFormat('es-VE', {
+const LONG_DATE_FORMAT = new Intl.DateTimeFormat('es-VE', {
   day: 'numeric',
   month: 'long',
   year: 'numeric'
 })
 
-function etiquetaLarga(isoDate: string): string {
-  return FORMATO_FECHA_LARGA.format(fromISODate(isoDate))
+function longLabel(isoDate: string): string {
+  return LONG_DATE_FORMAT.format(fromISODate(isoDate))
 }
 
 /**
@@ -71,27 +71,27 @@ export function CalendarPicker({ value, minimumDate, onChange }: CalendarPickerP
       </View>
 
       <View className="flex-row">
-        {weekdayLabels.map((etiqueta) => (
-          <Typography key={etiqueta} variant="caption" className="w-[14.28%] text-center">
-            {etiqueta}
+        {weekdayLabels.map((label) => (
+          <Typography key={label} variant="caption" className="w-[14.28%] text-center">
+            {label}
           </Typography>
         ))}
       </View>
 
       <View className="flex-row flex-wrap gap-y-1">
-        {gridDays.map((celda) => {
-          const seleccionado = celda.isoDate === selectedISO
-          const deshabilitado = minimumDate !== undefined && celda.isoDate < minimumDate
+        {gridDays.map((cell) => {
+          const isSelected = cell.isoDate === selectedISO
+          const isDisabled = minimumDate !== undefined && cell.isoDate < minimumDate
 
-          const clasesCelda = `size-[14.28%] min-h-10 items-center justify-center ${
-            deshabilitado ? 'opacity-30' : ''
+          const cellClasses = `size-[14.28%] min-h-10 items-center justify-center ${
+            isDisabled ? 'opacity-30' : ''
           }`
 
-          if (deshabilitado) {
+          if (isDisabled) {
             return (
-              <View key={celda.isoDate} className={clasesCelda}>
+              <View key={cell.isoDate} className={cellClasses}>
                 <Typography variant="caption" className="text-[13px]">
-                  {celda.day}
+                  {cell.day}
                 </Typography>
               </View>
             )
@@ -99,25 +99,25 @@ export function CalendarPicker({ value, minimumDate, onChange }: CalendarPickerP
 
           return (
             <Pressable
-              key={celda.isoDate}
+              key={cell.isoDate}
               onPress={() => {
-                selectDay(celda.isoDate)
-                onChange(celda.isoDate)
+                selectDay(cell.isoDate)
+                onChange(cell.isoDate)
               }}
-              className={clasesCelda}
+              className={cellClasses}
               accessibilityRole="button"
-              accessibilityLabel={etiquetaLarga(celda.isoDate)}
+              accessibilityLabel={longLabel(cell.isoDate)}
             >
               <View
                 className={`size-8 items-center justify-center rounded-full ${
-                  seleccionado ? 'bg-accent' : celda.inMonth ? '' : 'opacity-30'
+                  isSelected ? 'bg-accent' : cell.inMonth ? '' : 'opacity-30'
                 }`}
               >
                 <Typography
                   variant="caption"
-                  className={`text-[13px] ${seleccionado ? 'text-paper' : 'text-ink'}`}
+                  className={`text-[13px] ${isSelected ? 'text-paper' : 'text-ink'}`}
                 >
-                  {celda.day}
+                  {cell.day}
                 </Typography>
               </View>
             </Pressable>

@@ -12,7 +12,7 @@ import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { EmptyState } from '@src/components/molecules/EmptyState'
 import { CategoryBreakdown } from '@src/components/organisms/CategoryBreakdown'
-import type { CategoriaGrafica } from '@src/components/organisms/CategoryBreakdown'
+import type { ChartCategory } from '@src/components/organisms/CategoryBreakdown'
 import { MonthlySummary } from '@src/components/organisms/MonthlySummary'
 import { useExpenses } from '@src/hooks/useExpenses'
 import { useRates } from '@src/hooks/useRates'
@@ -30,94 +30,94 @@ export default function Charts() {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const gastos = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
 
-  const cargandoDesglose = !ratesState.rates || gastos.loading
+  const breakdownLoading = !ratesState.rates || expensesState.loading
 
-  const categorias = useMemo<CategoriaGrafica[]>(() => {
+  const categories = useMemo<ChartCategory[]>(() => {
     if (!ratesState.rates) return []
 
-    const mapa = new Map<string, number>()
+    const amountsByCategory = new Map<string, number>()
 
-    for (const gasto of gastos.expenses) {
-      const clave = (gasto.category ?? '').trim() || 'Sin categoria'
-      const monto = convert(gasto.amount, gasto.currency, baseCurrency, ratesState.rates)
-      mapa.set(clave, (mapa.get(clave) ?? 0) + monto)
+    for (const expense of expensesState.expenses) {
+      const key = (expense.category ?? '').trim() || 'Sin categoria'
+      const amount = convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+      amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + amount)
     }
 
-    const totalGeneral = [...mapa.values()].reduce((suma, valor) => suma + valor, 0)
+    const grandTotal = [...amountsByCategory.values()].reduce((sum, value) => sum + value, 0)
 
-    if (totalGeneral <= 0) return []
+    if (grandTotal <= 0) return []
 
-    return [...mapa.entries()]
-      .map(([nombre, total]) => ({
-        nombre,
-        montoFormateado: formatAmount(total, baseCurrency),
-        pct: Math.round((total / totalGeneral) * 100)
+    return [...amountsByCategory.entries()]
+      .map(([name, total]) => ({
+        name,
+        formattedAmount: formatAmount(total, baseCurrency),
+        pct: Math.round((total / grandTotal) * 100)
       }))
       .sort((a, b) => b.pct - a.pct)
-  }, [gastos.expenses, ratesState.rates, baseCurrency])
+  }, [expensesState.expenses, ratesState.rates, baseCurrency])
 
   // Indicadores contables: total general, promedio diario y mayores gastos.
-  const indicadores = useMemo(() => {
+  const indicators = useMemo(() => {
     if (!ratesState.rates) return null
 
-    let totalUnicos = 0
+    let uniqueTotal = 0
 
-    for (const gasto of gastos.uniqueExpenses) {
-      totalUnicos += convert(gasto.amount, gasto.currency, baseCurrency, ratesState.rates)
+    for (const expense of expensesState.uniqueExpenses) {
+      uniqueTotal += convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
     }
 
-    const diaDelMes = new Date().getDate()
-    const promedioDiario = diaDelMes > 0 ? totalUnicos / diaDelMes : totalUnicos
+    const dayOfMonth = new Date().getDate()
+    const dailyAverage = dayOfMonth > 0 ? uniqueTotal / dayOfMonth : uniqueTotal
 
     return {
-      totalUnicos,
-      promedioDiario,
-      fijosActivos: gastos.fixedExpenses.length
+      uniqueTotal,
+      dailyAverage,
+      activeFixedCount: expensesState.fixedExpenses.length
     }
-  }, [gastos.uniqueExpenses, gastos.fixedExpenses, ratesState.rates, baseCurrency])
+  }, [expensesState.uniqueExpenses, expensesState.fixedExpenses, ratesState.rates, baseCurrency])
 
-  const mayoresGastos = useMemo(() => {
-    const tasas = ratesState.rates
+  const topExpenses = useMemo(() => {
+    const currentRates = ratesState.rates
 
-    if (!tasas) return []
+    if (!currentRates) return []
 
-    return [...gastos.uniqueExpenses]
-      .map((gasto) => ({
-        id: gasto.id,
-        name: gasto.name,
-        monto: convert(gasto.amount, gasto.currency, baseCurrency, tasas)
+    return [...expensesState.uniqueExpenses]
+      .map((expense) => ({
+        id: expense.id,
+        name: expense.name,
+        amount: convert(expense.amount, expense.currency, baseCurrency, currentRates)
       }))
-      .sort((a, b) => b.monto - a.monto)
+      .sort((a, b) => b.amount - a.amount)
       .slice(0, 3)
-      .map((gasto) => ({
-        id: gasto.id,
-        name: gasto.name,
-        montoFormateado: formatAmount(gasto.monto, baseCurrency)
+      .map((expense) => ({
+        id: expense.id,
+        name: expense.name,
+        formattedAmount: formatAmount(expense.amount, baseCurrency)
       }))
-  }, [gastos.uniqueExpenses, ratesState.rates, baseCurrency])
+  }, [expensesState.uniqueExpenses, ratesState.rates, baseCurrency])
 
-  const refrescarTodo = async () => {
-    await Promise.all([ratesState.refresh(), gastos.reload()])
+  const refreshAll = async () => {
+    await Promise.all([ratesState.refresh(), expensesState.reload()])
   }
 
   return (
     <Screen
       scrollable
-      onRefresh={refrescarTodo}
-      refreshing={ratesState.refreshing || gastos.reloading}
+      onRefresh={refreshAll}
+      refreshing={ratesState.refreshing || expensesState.reloading}
     >
       <View className="gap-6 pt-6">
         <Typography variant="display">Resumen</Typography>
 
         <MonthlySummary
-          summary={gastos.monthlySummary}
+          summary={expensesState.monthlySummary}
           baseCurrency={baseCurrency}
-          loading={!ratesState.rates || gastos.loading}
+          loading={!ratesState.rates || expensesState.loading}
         />
 
-        {categorias.length === 0 && !cargandoDesglose ? (
+        {categories.length === 0 && !breakdownLoading ? (
           <EmptyState
             className="min-h-72"
             icon="chart"
@@ -129,14 +129,14 @@ export default function Charts() {
             <Card className="gap-3">
               <Typography variant="title">Indicadores del mes</Typography>
 
-              {indicadores ? (
+              {indicators ? (
                 <View className="gap-2">
                   <View className="flex-row items-baseline justify-between gap-3">
                     <Typography variant="caption" className="text-faint">
                       Unicos del mes
                     </Typography>
                     <Typography variant="body">
-                      {formatAmount(indicadores.totalUnicos, baseCurrency)}
+                      {formatAmount(indicators.uniqueTotal, baseCurrency)}
                     </Typography>
                   </View>
 
@@ -145,7 +145,7 @@ export default function Charts() {
                       Promedio diario (unicos)
                     </Typography>
                     <Typography variant="body">
-                      {formatAmount(indicadores.promedioDiario, baseCurrency)}
+                      {formatAmount(indicators.dailyAverage, baseCurrency)}
                     </Typography>
                   </View>
 
@@ -153,33 +153,36 @@ export default function Charts() {
                     <Typography variant="caption" className="text-faint">
                       Gastos fijos activos
                     </Typography>
-                    <Typography variant="body">{indicadores.fijosActivos}</Typography>
+                    <Typography variant="body">{indicators.activeFixedCount}</Typography>
                   </View>
                 </View>
               ) : (
-                <Typography variant="caption">Calculando indicadores...</Typography>
+                <Typography variant="caption">Calculando indicators...</Typography>
               )}
             </Card>
 
             <Card className="gap-4">
               <Typography variant="title">Desglose por categoria</Typography>
-              <CategoryBreakdown items={categorias} loading={cargandoDesglose} />
+              <CategoryBreakdown items={categories} loading={breakdownLoading} />
             </Card>
 
             <Card className="gap-3">
               <Typography variant="title">Mayores gastos unicos</Typography>
 
-              {mayoresGastos.length === 0 ? (
+              {topExpenses.length === 0 ? (
                 <Typography variant="caption">Sin gastos unicos registrados</Typography>
               ) : (
                 <View className="gap-2">
-                  {mayoresGastos.map((gasto) => (
-                    <View key={gasto.id} className="flex-row items-baseline justify-between gap-3">
+                  {topExpenses.map((expense) => (
+                    <View
+                      key={expense.id}
+                      className="flex-row items-baseline justify-between gap-3"
+                    >
                       <Typography variant="body" numberOfLines={1}>
-                        {gasto.name}
+                        {expense.name}
                       </Typography>
                       <Typography variant="figure" className="text-[13px]">
-                        {gasto.montoFormateado}
+                        {expense.formattedAmount}
                       </Typography>
                     </View>
                   ))}

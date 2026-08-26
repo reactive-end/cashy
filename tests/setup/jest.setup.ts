@@ -14,17 +14,27 @@ import type { PropsWithChildren } from 'react'
 jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: async () =>
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    (require('../helpers/expoSqliteMock') as typeof import('../helpers/expoSqliteMock'))
-      .estadoSQLite.instancia
+    (require('../helpers/expoSqliteMock') as typeof import('../helpers/expoSqliteMock')).sqliteState
+      .instance
 }))
 
 /** Insets fijos que simulan un dispositivo Android estandar */
-const INSETS_FIJOS = { top: 47, left: 0, right: 0, bottom: 34 }
+const FIXED_INSETS = { top: 47, left: 0, right: 0, bottom: 34 }
+
+/** Componente nominal para que css-interop pueda registrar los wrappers */
+function mockPlainView({ children }: PropsWithChildren) {
+  return children
+}
 
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => INSETS_FIJOS,
-  SafeAreaProvider: ({ children }: PropsWithChildren) => children,
-  SafeAreaView: ({ children }: PropsWithChildren) => children
+  useSafeAreaInsets: () => FIXED_INSETS,
+  SafeAreaProvider: Object.assign(mockPlainView, { displayName: 'SafeAreaProvider' }),
+  SafeAreaView: Object.assign(mockPlainView, { displayName: 'SafeAreaView' }),
+  SafeAreaConsumer: Object.assign(mockPlainView, { displayName: 'SafeAreaConsumer' }),
+  initialWindowMetrics: {
+    frame: { x: 0, y: 0, width: 0, height: 0 },
+    insets: FIXED_INSETS
+  }
 }))
 
 jest.mock('expo-splash-screen', () => ({
@@ -82,20 +92,20 @@ jest.mock('expo-updates', () => ({
 }))
 
 jest.mock('expo-file-system', () => {
-  class ArchivoFalso {
+  class FakeFile {
     static createDownloadTask = jest.fn()
-    static downloadFileAsync = jest.fn(async () => new ArchivoFalso())
+    static downloadFileAsync = jest.fn(async () => new FakeFile())
     contentUri = 'content://archivo-falso'
     uri = 'file:///cache/actualizaciones/cashy.apk'
   }
 
-  class CarpetaFalsa {
+  class FakeDirectory {
     create(): void {}
   }
 
   return {
-    File: ArchivoFalso,
-    Directory: CarpetaFalsa,
+    File: FakeFile,
+    Directory: FakeDirectory,
     Paths: { cache: 'file:///cache', document: 'file:///documentos', bundle: 'file:///bundle' }
   }
 })

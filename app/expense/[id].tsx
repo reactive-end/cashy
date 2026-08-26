@@ -34,28 +34,28 @@ export default function ExpenseDetail() {
 
   const [expense, setExpense] = useState<Expense | null>(null)
   const [loading, setLoading] = useState(true)
-  const [confirmarBorrado, setConfirmarBorrado] = useState(false)
+  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
 
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const gastos = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
 
   // Recarga en cada foco: al volver de la edicion el detalle refleja los cambios.
   useFocusEffect(
     useCallback(() => {
-      let activo = true
+      let active = true
 
       if (typeof id === 'string') {
         getExpense(id).then((encontrado) => {
-          if (!activo) return
+          if (!active) return
           setExpense(encontrado)
           setLoading(false)
         })
       }
 
       return () => {
-        activo = false
+        active = false
       }
     }, [id])
   )
@@ -65,31 +65,31 @@ export default function ExpenseDetail() {
       ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
       : null
 
-  const filas: { etiqueta: string; valor: string }[] = []
+  const detailRows: { label: string; value: string }[] = []
 
   if (expense) {
-    filas.push({
-      etiqueta: 'Tipo',
-      valor: expense.type === 'fixed' ? 'Gasto fijo' : 'Gasto unico'
+    detailRows.push({
+      label: 'Tipo',
+      value: expense.type === 'fixed' ? 'Gasto fijo' : 'Gasto unico'
     })
-    filas.push({
-      etiqueta: 'Categoria',
-      valor: expense.category?.trim() || 'Sin categoria'
+    detailRows.push({
+      label: 'Categoria',
+      value: expense.category?.trim() || 'Sin categoria'
     })
 
     if (expense.type === 'fixed' && expense.recurrence) {
-      filas.push({
-        etiqueta: 'Repeticion',
-        valor: RECURRENCE_LABELS[expense.recurrence]
+      detailRows.push({
+        label: 'Repeticion',
+        value: RECURRENCE_LABELS[expense.recurrence]
       })
     }
 
     if (expense.nextDueDate) {
-      filas.push({ etiqueta: 'Proximo vencimiento', valor: formatDate(expense.nextDueDate) })
+      detailRows.push({ label: 'Proximo vencimiento', value: formatDate(expense.nextDueDate) })
     }
 
     if (expense.note?.trim()) {
-      filas.push({ etiqueta: 'Nota', valor: expense.note.trim() })
+      detailRows.push({ label: 'Nota', value: expense.note.trim() })
     }
   }
 
@@ -142,13 +142,13 @@ export default function ExpenseDetail() {
             </Card>
 
             <Card className="gap-3">
-              {filas.map((fila) => (
-                <View key={fila.etiqueta} className="flex-row items-start justify-between gap-4">
+              {detailRows.map((row) => (
+                <View key={row.label} className="flex-row items-start justify-between gap-4">
                   <Typography variant="caption" className="text-faint">
-                    {fila.etiqueta}
+                    {row.label}
                   </Typography>
                   <Typography variant="body" className="flex-1 text-right">
-                    {fila.valor}
+                    {row.value}
                   </Typography>
                 </View>
               ))}
@@ -168,7 +168,7 @@ export default function ExpenseDetail() {
                 icon="trash"
                 variant="danger"
                 fullWidth
-                onPress={() => setConfirmarBorrado(true)}
+                onPress={() => setDeleteConfirmationVisible(true)}
               />
             </View>
           </>
@@ -179,16 +179,16 @@ export default function ExpenseDetail() {
 
       {expense ? (
         <ConfirmDialog
-          visible={confirmarBorrado}
+          visible={deleteConfirmationVisible}
           title="Eliminar gasto"
           message={`Se eliminara "${expense.name}" de forma permanente.`}
           confirmLabel="Eliminar"
           destructive
           onConfirm={() => {
-            setConfirmarBorrado(false)
-            void gastos.removeExpense(expense.id).then(() => router.back())
+            setDeleteConfirmationVisible(false)
+            void expensesState.removeExpense(expense.id).then(() => router.back())
           }}
-          onCancel={() => setConfirmarBorrado(false)}
+          onCancel={() => setDeleteConfirmationVisible(false)}
         />
       ) : null}
     </View>

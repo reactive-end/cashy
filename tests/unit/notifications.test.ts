@@ -10,30 +10,32 @@ import { Platform } from 'react-native'
 import * as dbExpenses from '@src/db/expenses'
 import * as dbSettings from '@src/db/settings'
 import {
+  cancelAllReminders,
   cancelReminder,
-  cancelarTodosRecordatorios,
+  getBcvNoticeStatus,
+  nextTriggerDate,
   scheduleReminder,
   setupNotifications,
-  sincronizarAvisosBcv,
+  syncBcvNotice,
   syncReminders
 } from '@src/lib/notifications'
 
 import {
-  AHORA,
+  NOW,
   buildFixedExpense,
   buildRates,
   buildSettings,
   buildUniqueExpense,
-  isoEnDias
+  isoDaysFromToday
 } from '../helpers/factories'
 
 /** Simula ejecucion en Android para cubrir el canal de notificaciones */
-function simularAndroid(): void {
+function mockAndroid(): void {
   Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true })
 }
 
 /** Restaura la plataforma simulada por defecto de jest-expo */
-function restaurarPlataforma(): void {
+function restorePlatform(): void {
   Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true })
 }
 
@@ -56,14 +58,14 @@ jest.mock('@src/db/settings', () => ({
 describe('scheduleReminder', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.useFakeTimers({ now: AHORA })
-    simularAndroid()
+    jest.useFakeTimers({ now: NOW })
+    mockAndroid()
     loadSettingsMock.mockResolvedValue(buildSettings())
   })
 
   afterEach(() => {
     jest.useRealTimers()
-    restaurarPlataforma()
+    restorePlatform()
   })
 
   it('agenda con identificador determinista reminder-{id} y deep link al gasto', async () => {
@@ -85,6 +87,14 @@ describe('scheduleReminder', () => {
     expect(disparo.getMonth()).toBe(7)
     expect(disparo.getDate()).toBe(31)
     expect(disparo.getHours()).toBe(9)
+  })
+
+  it('respeta el minuto configurado al agendar el recordatorio', async () => {
+    await scheduleReminder(buildFixedExpense({ nextDueDate: '2026-09-01' }), 9, 45)
+
+    const disparo: Date = scheduleMock.mock.calls[0][0].trigger.date
+    expect(disparo.getHours()).toBe(9)
+    expect(disparo.getMinutes()).toBe(45)
   })
 
   it('clampea la hora al rango 0-23', async () => {
@@ -137,7 +147,7 @@ describe('cancelReminder', () => {
   })
 })
 
-describe('cancelarTodosRecordatorios', () => {
+describe('cancelAllReminders', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -149,7 +159,7 @@ describe('cancelarTodosRecordatorios', () => {
       { identifier: 'reminder-gasto-fijo-2' }
     ])
 
-    await cancelarTodosRecordatorios()
+    await cancelAllReminders()
 
     expect(cancelMock).toHaveBeenCalledTimes(2)
     expect(cancelMock).toHaveBeenCalledWith('reminder-gasto-fijo-1')
@@ -161,14 +171,14 @@ describe('cancelarTodosRecordatorios', () => {
 describe('syncReminders', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.useFakeTimers({ now: AHORA })
-    simularAndroid()
+    jest.useFakeTimers({ now: NOW })
+    mockAndroid()
     loadSettingsMock.mockResolvedValue(buildSettings())
   })
 
   afterEach(() => {
     jest.useRealTimers()
-    restaurarPlataforma()
+    restorePlatform()
   })
 
   it('avanza vencimientos vencidos y actualiza la base', async () => {
@@ -218,14 +228,14 @@ describe('syncReminders', () => {
 
     beforeEach(() => {
       jest.clearAllMocks()
-      jest.useFakeTimers({ now: AHORA })
-      simularAndroid()
+      jest.useFakeTimers({ now: NOW })
+      mockAndroid()
       loadSettingsMock.mockResolvedValue(buildSettings())
     })
 
     afterEach(() => {
       jest.useRealTimers()
-      restaurarPlataforma()
+      restorePlatform()
     })
 
     it('solicita el permiso en el arranque sin agendar avisos por su cuenta', async () => {
@@ -250,7 +260,7 @@ describe('syncReminders', () => {
     })
 
     it('syncReminders omite el agendado sin permiso pero actualiza vencimientos', async () => {
-      const gasto = buildFixedExpense({ id: 'fijo-vencido', nextDueDate: isoEnDias(-10) })
+      const gasto = buildFixedExpense({ id: 'fijo-vencido', nextDueDate: isoDaysFromToday(-10) })
       getExpensesMock.mockResolvedValue([gasto])
       getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
 
@@ -262,51 +272,60 @@ describe('syncReminders', () => {
   })
 })
 
-describe('sincronizarAvisosBcv', () => {
+describe('syncBcvNotice', () => {
   const getPermissionsMock = Notifications.getPermissionsAsync as jest.Mock
 
   beforeEach(() => {
     jest.clearAllMocks()
-    simularAndroid()
+    jest.useFakeTimers({ now: NOW })
+    mockAndroid()
   })
 
   afterEach(() => {
-    restaurarPlataforma()
+    jest.useRealTimers()
+    restorePlatform()
   })
 
-  it('agenda un unico aviso bcv-diario a la hora configurada con repeticion diaria', async () => {
-    await sincronizarAvisosBcv(buildSettings({ bcvHour: 7 }))
+  it('agenda bcv-diario como disparo de fecha concreta hacia la hora configurada', async () => {
+    await syncBcvNotice(buildSettings({ bcvHour: 7, bcvMinute: 30 }))
 
     expect(scheduleMock).toHaveBeenCalledTimes(1)
     const peticion = scheduleMock.mock.calls[0][0]
     expect(peticion.identifier).toBe('bcv-diario')
-    expect(peticion.trigger.hour).toBe(7)
-    expect(peticion.trigger.minute).toBe(0)
-    expect(peticion.trigger.repeats).toBe(true)
-    expect(peticion.trigger.channelId).toBe('reminders')
+
+    const trigger = peticion.trigger
+    expect(trigger.type).toBe('date')
+    expect(trigger.channelId).toBe('reminders')
+    expect(trigger.repeats).toBeUndefined()
+
+    const disparo: Date = trigger.date
+    expect(disparo.getHours()).toBe(7)
+    expect(disparo.getMinutes()).toBe(30)
+    // Siempre apunta a una ocurrencia futura de la hora pedida.
+    expect(disparo.getTime()).toBeGreaterThan(NOW.getTime())
   })
 
   it('incluye las tasas consultadas en el cuerpo del aviso', async () => {
-    await sincronizarAvisosBcv(buildSettings(), buildRates())
+    await syncBcvNotice(buildSettings(), buildRates())
 
     expect(scheduleMock.mock.calls[0][0].content.body).toBe('USD 779,95 · EUR 911,21')
   })
 
   it('usa un texto de respaldo cuando no hay tasas disponibles', async () => {
-    await sincronizarAvisosBcv(buildSettings())
+    await syncBcvNotice(buildSettings())
 
     expect(scheduleMock.mock.calls[0][0].content.body).toContain('Consulta el valor oficial')
   })
 
   it('cancela siempre los identificadores legados de 9 a.m. y 1 p.m.', async () => {
-    await sincronizarAvisosBcv(buildSettings())
+    await syncBcvNotice(buildSettings())
 
     expect(cancelMock).toHaveBeenCalledWith('bcv-9am')
     expect(cancelMock).toHaveBeenCalledWith('bcv-1pm')
   })
 
   it('apagado retira la programacion vigente sin agendar de nuevo', async () => {
-    await sincronizarAvisosBcv(buildSettings({ bcvEnabled: false }))
+    await syncBcvNotice(buildSettings({ bcvEnabled: false }))
 
     expect(cancelMock).toHaveBeenCalledWith('bcv-diario')
     expect(scheduleMock).not.toHaveBeenCalled()
@@ -315,8 +334,82 @@ describe('sincronizarAvisosBcv', () => {
   it('no agenda sin permiso concedido', async () => {
     getPermissionsMock.mockResolvedValueOnce({ granted: false, canAskAgain: false })
 
-    await sincronizarAvisosBcv(buildSettings())
+    await syncBcvNotice(buildSettings())
 
     expect(scheduleMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('nextTriggerDate', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: NOW })
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('devuelve hoy a la hora pedida cuando aun no ocurre', () => {
+    const disparo = nextTriggerDate(19, 0)
+
+    expect(disparo.getHours()).toBe(19)
+    expect(disparo.getMinutes()).toBe(0)
+    expect(disparo.getTime()).toBeGreaterThan(NOW.getTime())
+  })
+
+  it('cae manana cuando la hora ya paso en el dia actual', () => {
+    const disparo = nextTriggerDate(7, 30)
+
+    expect(disparo.getHours()).toBe(7)
+    expect(disparo.getMinutes()).toBe(30)
+    expect(disparo.getTime()).toBeGreaterThan(NOW.getTime())
+  })
+
+  it('acota horas y minutos fuera de rango', () => {
+    const disparo = nextTriggerDate(99, -5)
+
+    expect(disparo.getHours()).toBe(23)
+    expect(disparo.getMinutes()).toBe(0)
+    expect(disparo.getSeconds()).toBe(0)
+    expect(disparo.getMilliseconds()).toBe(0)
+  })
+})
+
+describe('getBcvNoticeStatus', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('reporta agendado con su fecha cuando el aviso existe', async () => {
+    getAllMock.mockResolvedValueOnce([
+      { identifier: 'reminder-gasto-fijo-1' },
+      {
+        identifier: 'bcv-diario',
+        trigger: { type: 'date', date: '2026-08-24T23:00:00.000Z' }
+      }
+    ])
+
+    await expect(getBcvNoticeStatus()).resolves.toEqual({
+      scheduled: true,
+      nextTrigger: new Date('2026-08-24T23:00:00.000Z')
+    })
+  })
+
+  it('reporta no agendado cuando no hay programacion del aviso', async () => {
+    getAllMock.mockResolvedValueOnce([{ identifier: 'reminder-gasto-fijo-1' }])
+
+    await expect(getBcvNoticeStatus()).resolves.toEqual({
+      scheduled: false,
+      nextTrigger: null
+    })
+  })
+
+  it('tolera triggers sin fecha interpretable manteniendo la bandera', async () => {
+    getAllMock.mockResolvedValueOnce([{ identifier: 'bcv-diario', trigger: { type: 'date' } }])
+
+    await expect(getBcvNoticeStatus()).resolves.toEqual({
+      scheduled: true,
+      nextTrigger: null
+    })
   })
 })

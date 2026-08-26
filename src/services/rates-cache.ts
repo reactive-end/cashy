@@ -52,11 +52,11 @@ export async function saveRates(rates: ExchangeRates): Promise<void> {
  * @returns El snapshot persistido o null si no hay datos utiles
  */
 export async function loadRates(): Promise<ExchangeRates | null> {
-  const bruto = await AsyncStorage.getItem(RATES_STORAGE_KEY)
-  if (!bruto) return null
+  const raw = await AsyncStorage.getItem(RATES_STORAGE_KEY)
+  if (!raw) return null
 
   try {
-    const parsed: object = JSON.parse(bruto)
+    const parsed: object = JSON.parse(raw)
     return isExchangeRates(parsed) ? parsed : null
   } catch {
     return null

@@ -4,6 +4,7 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
+import { RATES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { useRates } from '@src/hooks/useRates'
 import * as ratesService from '@src/services/rates'
 
@@ -36,12 +37,13 @@ describe('useRates', () => {
     expect(result.current.error).toBeNull()
   })
 
-  it('expone el mensaje de error cuando la red falla', async () => {
+  it('expone el mensaje amigable cuando la red falla', async () => {
     getExchangeRatesMock.mockRejectedValueOnce(new Error('sin internet'))
 
     const { result } = await renderHook(() => useRates())
 
-    await waitFor(() => expect(result.current.error).toBe('sin internet'))
+    await waitFor(() => expect(result.current.error).toBe(RATES_LOAD_ERROR_MESSAGE))
+    expect(result.current.error).not.toContain('sin internet')
     expect(result.current.rates).toBeNull()
     expect(result.current.loading).toBe(false)
   })

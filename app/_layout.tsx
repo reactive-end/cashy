@@ -11,9 +11,9 @@ import {
   Manrope_500Medium,
   Manrope_600SemiBold,
   Manrope_700Bold,
-  useFonts as usarFuentesManrope
+  useFonts as useManropeFonts
 } from '@expo-google-fonts/manrope'
-import { Stack } from 'expo-router'
+import { Stack, usePathname, router } from 'expo-router'
 import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
@@ -21,11 +21,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
 import { COLORS } from '@src/constants/theme'
+import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
 import { useAppUpdate } from '@src/hooks/useAppUpdate'
 import { useNotificationDeepLink } from '@src/hooks/useNotificationDeepLink'
-import { registrarTareaBackground } from '@src/lib/backgroundTask'
-import { setupNotifications, sincronizarAvisosBcv, syncReminders } from '@src/lib/notifications'
+import { registerBackgroundTask } from '@src/lib/backgroundTask'
+import { subscribe } from '@src/lib/events'
+import { setupNotifications, syncBcvNotice, syncReminders } from '@src/lib/notifications'
 import { getExchangeRates } from '@src/services/rates'
 
 /** Mantiene el splash visible mientras se cargan recursos criticos */
@@ -34,18 +36,24 @@ void preventAutoHideAsync()
 /**
  * Layout raiz del arbol de navegacion.
  * Envuelve toda la aplicacion con area segura y pila de pantallas,
- * registra la tarea en background y observa deep links de notificaciones.
+ * registra la tarea en background, observa deep links de
+ * notificaciones y bloquea la navegacion en el onboarding mientras
+ * el perfil del usuario este incompleto.
+ *
+ * El gate usa registro estatico de TODAS las rutas mas redireccion
+ * centralizada: nunca se montan hijos condicionales ni fragments
+ * dentro de Stack porque expo-router no los tolera.
  * @returns Arbol de navegacion raiz o null mientras cargan las fuentes
  */
 export default function RootLayout() {
-  useNotificationDeepLink()
+  const pathname = usePathname()
 
-  const [listasFuentesFraunces] = useFonts({
+  const [frauncesLoaded] = useFonts({
     Fraunces_500Medium,
     Fraunces_600SemiBold
   })
 
-  const [listasFuentesManrope] = usarFuentesManrope({
+  const [manropeLoaded] = useManropeFonts({
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
@@ -53,44 +61,94 @@ export default function RootLayout() {
   })
 
   const [synced, setSynced] = useState(false)
+  const [profileReady, setProfileReady] = useState<boolean | null>(null)
 
-  const fuentesListas = listasFuentesFraunces && listasFuentesManrope
+  const fontsLoaded = frauncesLoaded && manropeLoaded
 
   useEffect(() => {
-    if (!fuentesListas) return
+    if (!fontsLoaded) return
 
     void hideAsync()
-  }, [fuentesListas])
+  }, [fontsLoaded])
 
   useEffect(() => {
-    let activo = true
+    let active = true
 
-    async function prepararRecordatorios(): Promise<void> {
+    async function setupReminders(): Promise<void> {
       try {
         await setupNotifications()
-        const ajustes = await loadSettings()
-        const tasas = await getExchangeRates().catch(() => undefined)
+        const settings = await loadSettings()
+        const rates = await getExchangeRates().catch(() => undefined)
 
-        await sincronizarAvisosBcv(ajustes, tasas)
-        await syncReminders(ajustes)
-        await registrarTareaBackground()
+        await syncBcvNotice(settings, rates)
+        await syncReminders(settings)
+        await registerBackgroundTask()
       } finally {
-        if (activo) setSynced(true)
+        if (active) setSynced(true)
       }
     }
 
-    void prepararRecordatorios()
+    void setupReminders().catch(() => {
+      // Fallo silencioso: los avisos se reintentan en la proxima apertura.
+    })
 
     return () => {
-      activo = false
+      active = false
     }
   }, [])
 
-  const alEstarListo = useCallback(() => fuentesListas && synced, [fuentesListas, synced])
+  // Gate del onboarding: sin perfil completo la app abre siempre en
+  // el wizard; al guardar, el evento habilita el arbol principal.
+  useEffect(() => {
+    let active = true
 
-  const actualizacion = useAppUpdate()
+    isProfileComplete()
+      .then((complete) => {
+        if (active) setProfileReady(complete)
+      })
+      .catch(() => {
+        // Base ilegible: se trata como sin perfil y el wizard reintenta.
+        if (active) setProfileReady(false)
+      })
 
-  if (!alEstarListo()) {
+    const unsubscribe = subscribe('profile-changed', () => setProfileReady(true))
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
+
+  const needsOnboarding = profileReady === false
+
+  // Redireccion centralizada del gate: mantiene el navegador sobre la
+  // ruta correcta sin alterar la topologia del Stack ni usar key dinamico.
+  useEffect(() => {
+    if (!fontsLoaded || !synced || profileReady === null) return
+
+    if (needsOnboarding && pathname !== '/onboarding') {
+      router.replace('/onboarding')
+
+      return
+    }
+
+    if (!needsOnboarding && pathname === '/onboarding') {
+      router.replace('/(tabs)')
+    }
+  }, [fontsLoaded, synced, profileReady, needsOnboarding, pathname])
+
+  const isReady = useCallback(
+    () => fontsLoaded && synced && profileReady !== null,
+    [fontsLoaded, synced, profileReady]
+  )
+
+  const deepLinkEnabled = profileReady === true
+
+  useNotificationDeepLink(deepLinkEnabled)
+
+  const appUpdate = useAppUpdate()
+
+  if (!isReady()) {
     return null
   }
 
@@ -98,29 +156,32 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <Stack
+        initialRouteName={needsOnboarding ? 'onboarding' : '(tabs)'}
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.paper } }}
       >
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="new-expense" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="expense/[id]" />
         <Stack.Screen name="edit-expense/[id]" />
       </Stack>
 
       <ConfirmDialog
-        visible={actualizacion.disponible !== null}
+        visible={appUpdate.available !== null}
         title="Nueva version"
         message={
-          actualizacion.descargando
-            ? `Descargando version ${actualizacion.disponible?.version ?? ''}... ${Math.round(
-                actualizacion.progreso * 100
+          appUpdate.downloading
+            ? `Descargando version ${appUpdate.available?.version ?? ''}... ${Math.round(
+                appUpdate.progress * 100
               )}%`
-            : `La version ${actualizacion.disponible?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
+            : `La version ${appUpdate.available?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
         }
         confirmLabel="Actualizar"
         cancelLabel="Cancelar"
-        onConfirm={() => void actualizacion.confirmar()}
+        onConfirm={() => void appUpdate.confirm()}
         onCancel={() => {
-          if (!actualizacion.descargando) void actualizacion.descartar()
+          if (!appUpdate.downloading) void appUpdate.dismiss()
         }}
       />
     </SafeAreaProvider>

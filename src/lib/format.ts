@@ -68,9 +68,44 @@ export function formatDate(isoDate: string): string {
  * @returns Cadena tipo "7:00 a.m." o "1:00 p.m."
  */
 export function formatHour12(hour: number): string {
+  return formatTime12(hour, 0)
+}
+
+/**
+ * Formatea hora y minuto (24 horas de entrada) en formato 12 horas
+ * con sufijo a.m./p.m. y minutos siempre visibles.
+ * @param hour Hora en formato 24 horas
+ * @param minute Minuto de la hora (0-59)
+ * @returns Cadena tipo "7:05 a.m." o "1:30 p.m."
+ */
+export function formatTime12(hour: number, minute: number): string {
   const periodo = hour < 12 ? 'a.m.' : 'p.m.'
   const hora12 = hour % 12 === 0 ? 12 : hour % 12
-  return `${hora12}:00 ${periodo}`
+  const minutoTexto = String(Math.min(59, Math.max(0, Math.floor(minute)))).padStart(2, '0')
+  return `${hora12}:${minutoTexto} ${periodo}`
+}
+
+/**
+ * Describe cuando ocurrira el proximo disparo de una notificacion.
+ * @param trigger Instante programado del aviso
+ * @param ahora Instante de referencia para comparar el dia
+ * @returns Cadena tipo "hoy a las 7:00 p.m." o "manana a las 9:00 a.m."
+ */
+export function nextNoticeLabel(trigger: Date, ahora = new Date()): string {
+  const hora = formatTime12(trigger.getHours(), trigger.getMinutes())
+
+  const inicioHoy = new Date(ahora)
+  inicioHoy.setHours(0, 0, 0, 0)
+
+  const inicioDisparo = new Date(trigger)
+  inicioDisparo.setHours(0, 0, 0, 0)
+
+  const dias = Math.round((inicioDisparo.getTime() - inicioHoy.getTime()) / 86400000)
+
+  if (dias <= 0) return `hoy a las ${hora}`
+  if (dias === 1) return `mañana a las ${hora}`
+
+  return `en ${dias} dias a las ${hora}`
 }
 
 /**

@@ -8,7 +8,7 @@ import * as dolarapi from '@src/services/dolarapi'
 import { getExchangeRates } from '@src/services/rates'
 import * as cache from '@src/services/rates-cache'
 
-import { AHORA, buildRates } from '../helpers/factories'
+import { NOW, buildRates } from '../helpers/factories'
 
 const loadRatesMock = cache.loadRates as jest.Mock
 const saveRatesMock = cache.saveRates as jest.Mock
@@ -29,7 +29,7 @@ jest.mock('@src/services/criptoya')
 describe('getExchangeRates', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.useFakeTimers({ now: AHORA })
+    jest.useFakeTimers({ now: NOW })
   })
 
   afterEach(() => {
@@ -58,14 +58,14 @@ describe('getExchangeRates', () => {
       bcvUsd: 780,
       bcvEur: 912,
       usdtSellP2p: 912.01,
-      fetchedAt: AHORA.toISOString()
+      fetchedAt: NOW.toISOString()
     })
     expect(saveRatesMock).toHaveBeenCalledWith(resultado)
   })
 
   it('renueva cuando el cache supera las seis horas de validez', async () => {
     const viejo = buildRates({
-      fetchedAt: new Date(AHORA.getTime() - 7 * 60 * 60 * 1000).toISOString()
+      fetchedAt: new Date(NOW.getTime() - 7 * 60 * 60 * 1000).toISOString()
     })
     loadRatesMock.mockResolvedValueOnce(viejo)
     fetchBCVMock.mockResolvedValueOnce({ bcvUsd: 781, bcvEur: 913 })

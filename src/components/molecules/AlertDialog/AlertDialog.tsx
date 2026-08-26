@@ -15,11 +15,11 @@ import { COLORS } from '@src/constants/theme'
 import type { AlertDialogProps, AlertDialogTone } from './AlertDialog.d'
 
 /** Configuracion visual por tono */
-const CONFIG_POR_TONO: Readonly<
-  Record<AlertDialogTone, { icono: 'check' | 'alert'; color: string }>
+const CONFIG_BY_TONE: Readonly<
+  Record<AlertDialogTone, { icon: 'check' | 'alert'; color: string }>
 > = {
-  success: { icono: 'check', color: COLORS.accent },
-  danger: { icono: 'alert', color: COLORS.danger }
+  success: { icon: 'check', color: COLORS.accent },
+  danger: { icon: 'alert', color: COLORS.danger }
 }
 
 /**
@@ -34,13 +34,13 @@ export function AlertDialog({
   tone = 'success',
   onClose
 }: AlertDialogProps) {
-  const config = CONFIG_POR_TONO[tone]
+  const config = CONFIG_BY_TONE[tone]
 
   return (
     <ModalBackdrop visible={visible} onRequestClose={onClose}>
       <View className="items-center gap-3">
         <View className="size-12 items-center justify-center rounded-full bg-paper border border-line">
-          <Icon name={config.icono} size={24} color={config.color} />
+          <Icon name={config.icon} size={24} color={config.color} />
         </View>
 
         {title ? <Typography variant="title">{title}</Typography> : null}

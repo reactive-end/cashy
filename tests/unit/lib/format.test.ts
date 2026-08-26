@@ -10,10 +10,12 @@ import {
   formatAmount,
   formatDate,
   formatHour12,
-  formatNumber
+  formatNumber,
+  formatTime12,
+  nextNoticeLabel
 } from '@src/lib/format'
 
-import { AHORA } from '../../helpers/factories'
+import { NOW } from '../../helpers/factories'
 
 describe('currencySymbol', () => {
   it('mapea cada moneda a su simbolo regional', () => {
@@ -61,7 +63,7 @@ describe('dueLabel', () => {
 
 describe('ageLabel', () => {
   beforeEach(() => {
-    jest.useFakeTimers({ now: AHORA })
+    jest.useFakeTimers({ now: NOW })
   })
 
   afterEach(() => {
@@ -90,5 +92,48 @@ describe('formatHour12', () => {
     [23, '11:00 p.m.']
   ])('convierte la hora %i a "%s"', (hora, esperado) => {
     expect(formatHour12(hora)).toBe(esperado)
+  })
+})
+
+describe('formatTime12', () => {
+  it.each([
+    [19, 5, '7:05 p.m.'],
+    [13, 30, '1:30 p.m.'],
+    [0, 0, '12:00 a.m.'],
+    [23, 59, '11:59 p.m.']
+  ])('convierte %i:%i a "%s"', (hora, minuto, esperado) => {
+    expect(formatTime12(hora, minuto)).toBe(esperado)
+  })
+})
+
+describe('nextNoticeLabel', () => {
+  it('describe un disparo del mismo dia como "hoy"', () => {
+    const disparo = new Date(NOW)
+    disparo.setHours(19, 0, 0, 0)
+
+    expect(nextNoticeLabel(disparo, NOW)).toBe(`hoy a las ${formatHour12(19)}`)
+  })
+
+  it('describe un disparo del dia siguiente como "manana"', () => {
+    const disparo = new Date(NOW)
+    disparo.setDate(disparo.getDate() + 1)
+    disparo.setHours(9, 15, 0, 0)
+
+    expect(nextNoticeLabel(disparo, NOW)).toBe(`mañana a las ${formatTime12(9, 15)}`)
+  })
+
+  it('cuenta los dias para disparos mas lejanos', () => {
+    const disparo = new Date(NOW)
+    disparo.setDate(disparo.getDate() + 3)
+    disparo.setHours(21, 45, 0, 0)
+
+    expect(nextNoticeLabel(disparo, NOW)).toBe(`en 3 dias a las ${formatTime12(21, 45)}`)
+  })
+
+  it('trata un disparo de ayer como "hoy" en el limite inferior', () => {
+    const disparo = new Date(NOW)
+    disparo.setDate(disparo.getDate() - 1)
+
+    expect(nextNoticeLabel(disparo, NOW)).toContain('hoy a las')
   })
 })

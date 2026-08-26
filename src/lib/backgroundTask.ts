@@ -9,16 +9,16 @@ import * as BackgroundTask from 'expo-background-task'
 import * as TaskManager from 'expo-task-manager'
 
 import { loadSettings } from '@src/db/settings'
-import { notificationsAvailable, sincronizarAvisosBcv, syncReminders } from '@src/lib/notifications'
+import { notificationsAvailable, syncBcvNotice, syncReminders } from '@src/lib/notifications'
 import { getExchangeRates } from '@src/services/rates'
 import { loadRates } from '@src/services/rates-cache'
 import type { ExchangeRates } from '@src/types/domain'
 
 /** Nombre con el que WorkManager identifica la tarea de sincronizacion */
-export const NOMBRE_TAREA_SINCRONIZACION = 'cashy-background-sync'
+export const SYNC_TASK_NAME = 'cashy-background-sync'
 
 /** Intervalo minimo deseado entre ejecuciones, en minutos (4 horas) */
-const INTERVALO_MINIMO_MINUTOS = 240
+const MINIMUM_INTERVAL_MINUTES = 240
 
 /**
  * Orquesta una pasada completa de sincronizacion en background:
@@ -26,27 +26,28 @@ const INTERVALO_MINIMO_MINUTOS = 240
  * cache local y reagenda ambos tipos de aviso segun su estado.
  * Exportada para poder probarse sin depender del disparo del sistema.
  */
-export async function ejecutarSincronizacion(): Promise<void> {
-  const ajustes = await loadSettings()
+export async function runSynchronization(): Promise<void> {
+  const settings = await loadSettings()
 
-  let tasas: ExchangeRates | null = null
+  let rates: ExchangeRates | null = null
   try {
-    tasas = await getExchangeRates(true)
+    rates = await getExchangeRates(true)
   } catch {
     try {
-      tasas = (await loadRates()) ?? null
+      rates = (await loadRates()) ?? null
     } catch {
-      tasas = null
+      rates = null
     }
   }
 
-  await sincronizarAvisosBcv(ajustes, tasas ?? undefined)
-  await syncReminders(ajustes)
+  await syncBcvNotice(settings, rates ?? undefined)
+  await syncReminders(settings)
 }
 
-TaskManager.defineTask(NOMBRE_TAREA_SINCRONIZACION, async () => {
+TaskManager.defineTask(SYNC_TASK_NAME, async () => {
   try {
-    await ejecutarSincronizacion()
+    await runSynchronization()
+
     return BackgroundTask.BackgroundTaskResult.Success
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed
@@ -59,13 +60,13 @@ TaskManager.defineTask(NOMBRE_TAREA_SINCRONIZACION, async () => {
  * estan disponibles. El registro persiste tras reiniciar el
  * dispositivo; WorkManager decide el momento exacto de ejecucion.
  */
-export async function registrarTareaBackground(): Promise<void> {
+export async function registerBackgroundTask(): Promise<void> {
   if (!notificationsAvailable()) return
 
-  const yaRegistrada = await TaskManager.isTaskRegisteredAsync(NOMBRE_TAREA_SINCRONIZACION)
-  if (yaRegistrada) return
+  const alreadyRegistered = await TaskManager.isTaskRegisteredAsync(SYNC_TASK_NAME)
+  if (alreadyRegistered) return
 
-  await BackgroundTask.registerTaskAsync(NOMBRE_TAREA_SINCRONIZACION, {
-    minimumInterval: INTERVALO_MINIMO_MINUTOS
+  await BackgroundTask.registerTaskAsync(SYNC_TASK_NAME, {
+    minimumInterval: MINIMUM_INTERVAL_MINUTES
   })
 }

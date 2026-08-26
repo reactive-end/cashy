@@ -6,10 +6,10 @@
 
 import { COLORS } from '@src/constants/theme'
 
-import { AA_TEXTO_NORMAL, contrastRatio } from '../helpers/contrast'
+import { AA_NORMAL_TEXT_RATIO, contrastRatio } from '../helpers/contrast'
 
 /** Umbral exigido al proyecto para todo texto */
-const UMBRAL = AA_TEXTO_NORMAL
+const UMBRAL = AA_NORMAL_TEXT_RATIO
 
 describe('contraste WCAG AA de la paleta', () => {
   it.each([

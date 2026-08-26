@@ -33,6 +33,8 @@ export type IconName =
   | 'filter'
   | 'calculator'
   | 'clock'
+  | 'wallet'
+  | 'user'
 
 /** Propiedades del atomo Icon */
 export interface IconProps {

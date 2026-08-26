@@ -32,21 +32,21 @@ export default function EditExpense() {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency = settings?.baseCurrency ?? 'USD'
-  const gastos = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
 
   useEffect(() => {
-    let activo = true
+    let active = true
 
     if (typeof id === 'string') {
       getExpense(id).then((encontrado) => {
-        if (!activo) return
+        if (!active) return
         setExpense(encontrado)
         setLoading(false)
       })
     }
 
     return () => {
-      activo = false
+      active = false
     }
   }, [id])
 
@@ -75,12 +75,12 @@ export default function EditExpense() {
         ) : (
           <ExpenseForm
             initialExpense={expense}
-            onSave={async (entrada) => {
-              await gastos.editExpense(expense.id, entrada)
+            onSave={async (input) => {
+              await expensesState.editExpense(expense.id, input)
               router.back()
             }}
             onDelete={async () => {
-              await gastos.removeExpense(expense.id)
+              await expensesState.removeExpense(expense.id)
               router.back()
             }}
           />

@@ -8,7 +8,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
 import * as settingsRepo from '@src/db/settings'
-import { __reiniciarCacheParaPruebas, useSettings } from '@src/hooks/useSettings'
+import { __resetCacheForTests, useSettings } from '@src/hooks/useSettings'
 import * as notifications from '@src/lib/notifications'
 import * as ratesService from '@src/services/rates'
 
@@ -16,9 +16,9 @@ import { buildRates, buildSettings } from '../../helpers/factories'
 
 const loadSettingsMock = settingsRepo.loadSettings as jest.Mock
 const saveSettingsMock = settingsRepo.saveSettings as jest.Mock
-const sincronizarBcvMock = notifications.sincronizarAvisosBcv as jest.Mock
+const sincronizarBcvMock = notifications.syncBcvNotice as jest.Mock
 const syncRemindersMock = notifications.syncReminders as jest.Mock
-const cancelarTodosMock = notifications.cancelarTodosRecordatorios as jest.Mock
+const cancelarTodosMock = notifications.cancelAllReminders as jest.Mock
 const getExchangeRatesMock = ratesService.getExchangeRates as jest.Mock
 
 jest.mock('@src/db/settings')
@@ -28,7 +28,7 @@ jest.mock('@src/services/rates')
 describe('useSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    __reiniciarCacheParaPruebas()
+    __resetCacheForTests()
     loadSettingsMock.mockResolvedValue(buildSettings())
     saveSettingsMock.mockResolvedValue(undefined)
     getExchangeRatesMock.mockResolvedValue(buildRates())
@@ -61,34 +61,44 @@ describe('useSettings', () => {
     expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ baseCurrency: 'VES' }))
   })
 
-  it('clampea la hora de recordatorio, persiste y reagenda', async () => {
+  it('clampea hora y minuto de recordatorio, persiste y reagenda', async () => {
     const { result } = await renderHook(() => useSettings())
     await waitFor(() => expect(result.current.settings).not.toBeNull())
 
     await act(async () => {
-      await result.current.changeReminderHour(30)
+      await result.current.changeReminderTime(30, 70)
     })
     expect(result.current.settings?.reminderHour).toBe(23)
-    expect(syncRemindersMock).toHaveBeenCalledWith(buildSettings({ reminderHour: 23 }))
+    expect(result.current.settings?.reminderMinute).toBe(59)
+    expect(syncRemindersMock).toHaveBeenCalledWith(
+      buildSettings({ reminderHour: 23, reminderMinute: 59 })
+    )
 
     await act(async () => {
-      await result.current.changeReminderHour(-5)
+      await result.current.changeReminderTime(-5, -1)
     })
     expect(result.current.settings?.reminderHour).toBe(0)
-    expect(syncRemindersMock).toHaveBeenCalledWith(buildSettings({ reminderHour: 0 }))
+    expect(result.current.settings?.reminderMinute).toBe(0)
+    expect(syncRemindersMock).toHaveBeenCalledWith(
+      buildSettings({ reminderHour: 0, reminderMinute: 0 })
+    )
   })
 
-  it('clampea la hora del aviso BCV, persiste y reagenda con las tasas vigentes', async () => {
+  it('clampea hora y minuto del aviso BCV, persiste y reagenda con las tasas vigentes', async () => {
     const { result } = await renderHook(() => useSettings())
     await waitFor(() => expect(result.current.settings).not.toBeNull())
 
     await act(async () => {
-      await result.current.changeBcvHour(30)
+      await result.current.changeBcvTime(19, 30)
     })
 
-    expect(result.current.settings?.bcvHour).toBe(23)
-    expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ bcvHour: 23 }))
-    expect(sincronizarBcvMock).toHaveBeenCalledWith(buildSettings({ bcvHour: 23 }), buildRates())
+    expect(result.current.settings?.bcvHour).toBe(19)
+    expect(result.current.settings?.bcvMinute).toBe(30)
+    expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ bcvHour: 19, bcvMinute: 30 }))
+    expect(sincronizarBcvMock).toHaveBeenCalledWith(
+      buildSettings({ bcvHour: 19, bcvMinute: 30 }),
+      buildRates()
+    )
   })
 
   it('al apagar los recordatorios retira todas las notificaciones agendadas', async () => {

@@ -30,20 +30,20 @@ import type { MoneyInputProps } from './MoneyInput.d'
  * @returns Campo monetario prerellenado con 0.00 y accion limpiar
  */
 export function MoneyInput({ symbol, onCents, testID }: MoneyInputProps) {
-  const [estado, setEstado] = useState<AmountState>(initialAmountState)
+  const [state, setState] = useState<AmountState>(initialAmountState)
 
-  const alCambiarTexto = (entrada: string) => {
-    const siguiente = amountAfterInput(estado, entrada)
+  const handleChangeText = (input: string) => {
+    const next = amountAfterInput(state, input)
 
-    setEstado(siguiente)
-    onCents(siguiente.centavos)
+    setState(next)
+    onCents(next.cents)
   }
 
   const limpiar = () => {
     const base = initialAmountState()
 
-    setEstado(base)
-    onCents(base.centavos)
+    setState(base)
+    onCents(base.cents)
   }
 
   return (
@@ -54,15 +54,15 @@ export function MoneyInput({ symbol, onCents, testID }: MoneyInputProps) {
 
       <TextInput
         className="flex-1 py-1 font-display text-[28px] text-ink"
-        value={estado.texto}
-        onChangeText={alCambiarTexto}
+        value={state.text}
+        onChangeText={handleChangeText}
         keyboardType="number-pad"
         autoCorrect={false}
         spellCheck={false}
         testID={testID}
       />
 
-      {estado.centavos > 0 ? (
+      {state.cents > 0 ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Limpiar monto"

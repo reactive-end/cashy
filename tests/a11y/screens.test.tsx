@@ -10,7 +10,7 @@ import { getExpenses } from '@src/db/expenses'
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
-import Expenses from '../../app/(tabs)/expenses'
+import Finances from '../../app/(tabs)/finances'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
 import { wait } from '../helpers/wait'
@@ -59,7 +59,7 @@ describe('accesibilidad de pantallas', () => {
   })
 
   it('Gastos mantiene su encabezado y segmentos rotulados', async () => {
-    const { getByRole, getByLabelText } = await render(<Expenses />)
+    const { getByRole, getByLabelText } = await render(<Finances />)
 
     await waitFor(() => expect(getByRole('header')).toBeTruthy())
     expect(getByLabelText('Fijos')).toBeTruthy()

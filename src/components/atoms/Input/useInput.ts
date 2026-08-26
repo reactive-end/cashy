@@ -28,11 +28,11 @@ export function useInput(hasError: boolean, disabled: boolean): InputVisualState
   const onFocus = useCallback(() => setFocused(true), [])
   const onBlur = useCallback(() => setFocused(false), [])
 
-  let borde = 'border-line'
-  if (hasError) borde = 'border-danger'
-  else if (focused && !disabled) borde = 'border-accent'
+  let borderClass = 'border-line'
+  if (hasError) borderClass = 'border-danger'
+  else if (focused && !disabled) borderClass = 'border-accent'
 
-  const containerClasses = `flex-row items-center gap-2 rounded-xl border bg-card px-3.5 ${borde} ${
+  const containerClasses = `flex-row items-center gap-2 rounded-xl border bg-card px-3.5 ${borderClass} ${
     disabled ? 'opacity-50' : ''
   }`
 

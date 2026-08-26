@@ -1,40 +1,40 @@
 /**
- * Utilidades de captura de montos monetarios.
- * Los importes se escriben "desde los centavos": cada digito tecleado
- * empuja la cifra (0.01 -> 0.10 -> 1.00 -> 10.00), evitando errores
- * de separador decimal en teclados regionales.
+ * Money input helpers implementing the cents-first capture pattern:
+ * cada digito tecleado empuja la cifra desde los decimales
+ * (1 -> 0.01 -> 10.00), con modo fraccionario al pulsar separador.
  */
 
 /** Limite superior de centavos aceptado (~99.999.999,99) */
-const CENTAVOS_MAXIMOS = 9_999_999_999
+export const MAX_CENTS = 9999999999
 
 /**
  * Reduce texto libre a su componente de digitos y lo interpreta como centavos.
- * @param text Entrada cruda del usuario (puede incluir simbolos, comas, puntos)
- * @returns Centavos enteros derivados solo de los digitos presentes
+ * @param text Texto capturado del campo
+ * @returns Centavos enteros no negativos
  */
 export function centsFromText(text: string): number {
-  const digitos = text.replace(/\D/g, '')
-  if (!digitos) return 0
-  return Math.min(CENTAVOS_MAXIMOS, parseInt(digitos, 10))
+  const digits = text.replace(/\D/g, '')
+
+  return digits ? parseInt(digits, 10) : 0
 }
 
 /**
  * Formatea centavos como cadena decimal con punto y dos decimales.
  * @param cents Centavos enteros (negativos se tratan como cero)
- * @returns Texto tipo "10.00" listo para mostrar en el campo
+ * @returns Texto tipo "12.34"
  */
 export function textFromCents(cents: number): string {
-  const seguros = Math.max(0, Math.trunc(cents))
-  const enteros = Math.floor(seguros / 100)
-  const decimales = String(seguros % 100).padStart(2, '0')
-  return `${enteros}.${decimales}`
+  const safeCents = Math.max(0, Math.trunc(cents))
+  const intPart = Math.floor(safeCents / 100)
+  const decimalText = String(safeCents % 100).padStart(2, '0')
+
+  return `${intPart}.${decimalText}`
 }
 
 /**
  * Convierte centavos al monto decimal que espera el dominio.
  * @param cents Centavos enteros
- * @returns Monto redondeado a dos decimales
+ * @returns Monto decimal positivo
  */
 export function amountFromCents(cents: number): number {
   return Math.round(Math.max(0, Math.trunc(cents))) / 100
@@ -47,13 +47,13 @@ export function amountFromCents(cents: number): number {
  */
 export interface AmountState {
   /** Modo activo de captura */
-  modo: 'integer' | 'fraction'
+  mode: 'integer' | 'fraction'
   /** Valor canonico en centavos */
-  centavos: number
+  cents: number
   /** Buffer de decimales visibles en modo fraction (0 a 2 digitos) */
-  decimales: string
+  decimals: string
   /** Texto exacto mostrado en el campo; coincide con el nativo */
-  texto: string
+  text: string
 }
 
 /**
@@ -61,27 +61,27 @@ export interface AmountState {
  * @returns Estado base para iniciar la captura
  */
 export function initialAmountState(): AmountState {
-  return { modo: 'integer', centavos: 0, decimales: '00', texto: '0.00' }
+  return { mode: 'integer', cents: 0, decimals: '00', text: '0.00' }
 }
 
 /** Aplica el techo de centavos aceptados */
-function techo(centavos: number): number {
-  return Math.min(CENTAVOS_MAXIMOS, Math.max(0, centavos))
+function capCents(cents: number): number {
+  return Math.min(MAX_CENTS, Math.max(0, cents))
 }
 
 /** Centavos de la parte entera de un estado dado */
-function centavosEnteros(centavos: number): number {
-  return Math.floor(Math.max(0, centavos) / 100) * 100
+function wholeCents(cents: number): number {
+  return Math.floor(Math.max(0, cents) / 100) * 100
 }
 
 /** Texto visible en modo fraccionario: siempre dos decimales visibles */
-function textoFraccionario(centavos: number, decimales: string): string {
-  return `${Math.floor(Math.max(0, centavos) / 100)}.${decimales.padEnd(2, '0')}`
+function fractionText(cents: number, decimals: string): string {
+  return `${Math.floor(Math.max(0, cents) / 100)}.${decimals.padEnd(2, '0')}`
 }
 
 /** Centavos de un buffer parcial de decimales ("3" -> 3, "" -> 0) */
-function centavosDeDecimales(decimales: string): number {
-  return parseInt(decimales.padEnd(2, '0'), 10)
+function centsFromDecimals(decimals: string): number {
+  return parseInt(decimals.padEnd(2, '0'), 10)
 }
 
 /**
@@ -96,73 +96,73 @@ function centavosDeDecimales(decimales: string): number {
  *   al vaciar los decimales.
  * - Cualquier otra edicion (cursor medio, pegado): reconstruccion
  *   tolerante interpretando todos los digitos como centavos.
- * @param prev Estado previo del campo
+ * @param previous Estado previo del campo
  * @param input Texto crudo entregado por onChangeText
  * @returns Nuevo estado consistente
  */
-export function amountAfterInput(prev: AmountState, input: string): AmountState {
-  const anterior = prev.texto
+export function amountAfterInput(previous: AmountState, input: string): AmountState {
+  const previousText = previous.text
 
-  if (input.startsWith(anterior) && input.length > anterior.length) {
-    const tecla = input.slice(anterior.length)
+  if (input.startsWith(previousText) && input.length > previousText.length) {
+    const key = input.slice(previousText.length)
 
-    if (/^[0-9]$/.test(tecla)) {
-      if (prev.modo === 'integer') {
-        const centavos = techo(prev.centavos * 10 + Number(tecla))
+    if (/^[0-9]$/.test(key)) {
+      if (previous.mode === 'integer') {
+        const cents = capCents(previous.cents * 10 + Number(key))
 
-        return { modo: 'integer', centavos, decimales: '00', texto: textFromCents(centavos) }
+        return { mode: 'integer', cents, decimals: '00', text: textFromCents(cents) }
       }
 
-      const decimales = (prev.decimales + tecla).slice(-2)
-      const centavos = techo(centavosEnteros(prev.centavos) + centavosDeDecimales(decimales))
+      const decimals = (previous.decimals + key).slice(-2)
+      const cents = capCents(wholeCents(previous.cents) + centsFromDecimals(decimals))
 
       return {
-        modo: 'fraction',
-        centavos,
-        decimales,
-        texto: textoFraccionario(centavos, decimales)
+        mode: 'fraction',
+        cents,
+        decimals,
+        text: fractionText(cents, decimals)
       }
     }
 
-    if ((tecla === '.' || tecla === ',') && prev.modo === 'integer') {
-      const entero = Math.floor(prev.centavos / 100)
+    if ((key === '.' || key === ',') && previous.mode === 'integer') {
+      const whole = Math.floor(previous.cents / 100)
 
       return {
-        modo: 'fraction',
-        centavos: entero * 100,
-        decimales: '00',
-        texto: textoFraccionario(entero * 100, '00')
+        mode: 'fraction',
+        cents: whole * 100,
+        decimals: '00',
+        text: fractionText(whole * 100, '00')
       }
     }
 
-    return prev
+    return previous
   }
 
-  if (anterior.startsWith(input) && input.length < anterior.length) {
-    if (prev.modo === 'fraction') {
-      const decimales = prev.decimales.slice(0, -1)
+  if (previousText.startsWith(input) && input.length < previousText.length) {
+    if (previous.mode === 'fraction') {
+      const decimals = previous.decimals.slice(0, -1)
 
-      if (decimales.length > 0) {
-        const centavos = techo(centavosEnteros(prev.centavos) + centavosDeDecimales(decimales))
+      if (decimals.length > 0) {
+        const cents = capCents(wholeCents(previous.cents) + centsFromDecimals(decimals))
 
         return {
-          modo: 'fraction',
-          centavos,
-          decimales,
-          texto: textoFraccionario(centavos, decimales)
+          mode: 'fraction',
+          cents,
+          decimals,
+          text: fractionText(cents, decimals)
         }
       }
     }
 
-    const centavos =
-      prev.modo === 'fraction'
-        ? centavosEnteros(prev.centavos)
-        : techo(Math.floor(prev.centavos / 10))
+    const cents =
+      previous.mode === 'fraction'
+        ? wholeCents(previous.cents)
+        : capCents(Math.floor(previous.cents / 10))
 
-    return { modo: 'integer', centavos, decimales: '00', texto: textFromCents(centavos) }
+    return { mode: 'integer', cents, decimals: '00', text: textFromCents(cents) }
   }
 
-  const centavos = centsFromText(input)
+  const cents = centsFromText(input)
 
-  return { modo: 'integer', centavos, decimales: '00', texto: textFromCents(centavos) }
+  return { mode: 'integer', cents, decimals: '00', text: textFromCents(cents) }
 }

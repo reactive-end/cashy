@@ -5,13 +5,13 @@
  */
 
 /** Sentencia capturada con sus parametros */
-export interface SentenciaEjecutada {
+export interface ExecutedStatement {
   sql: string
   params?: (string | number | null)[]
 }
 
 /** Fila generica devuelta por las consultas simuladas */
-export type FilaSimulada = Record<string, string | number | null>
+export type SimulatedRow = Record<string, string | number | null>
 
 /**
  * Base de datos falsa con la superficie usada por los repositorios.
@@ -20,72 +20,85 @@ export type FilaSimulada = Record<string, string | number | null>
  */
 export class FakeDatabase {
   /** Historial completo de sentencias ejecutadas */
-  sentencias: SentenciaEjecutada[] = []
+  statements: ExecutedStatement[] = []
 
-  private colaFilas: FilaSimulada[][] = []
+  private queuedRows: SimulatedRow[][] = []
 
   /**
    * Encola filas que consumiran las siguientes consultas de lectura.
-   * @param filas Filas a servir en orden FIFO
+   * @param rows Filas a servir en orden FIFO
    */
-  encolar(filas: FilaSimulada[]): void {
-    this.colaFilas.push(filas)
+  queue(rows: SimulatedRow[]): void {
+    this.queuedRows.push(rows)
   }
 
   async execAsync(sql: string): Promise<void> {
-    this.registrar(sql)
+    this.record(sql)
   }
 
   async runAsync(sql: string, params?: (string | number | null)[]): Promise<void> {
-    this.registrar(sql, params)
+    this.record(sql, params)
   }
 
   async getFirstAsync<T>(sql: string, params?: (string | number | null)[]): Promise<T | null> {
-    this.registrar(sql, params)
-    const grupo = this.colaFilas.shift()
-    return (grupo?.[0] as T) ?? null
+    this.record(sql, params)
+    const group = this.queuedRows.shift()
+    return (group?.[0] as T) ?? null
   }
 
   async getAllAsync<T>(sql: string, params?: (string | number | null)[]): Promise<T[]> {
-    this.registrar(sql, params)
-    const grupo = this.colaFilas.shift()
-    return (grupo ?? []) as T[]
+    this.record(sql, params)
+    const group = this.queuedRows.shift()
+    return (group ?? []) as T[]
   }
 
   async closeAsync(): Promise<void> {
-    this.instanciaCerrada = true
+    this.instanceClosed = true
+  }
+
+  /**
+   * Ejecuta un bloque dentro de una transaccion simulada,
+   * registrando el BEGIN/COMMIT en el historial de sentencias.
+   * @param block Funcion cuyo cuerpo queda dentro de la transaccion
+   */
+  async withTransactionAsync(block: () => Promise<void>): Promise<void> {
+    this.record('BEGIN TRANSACTION')
+    await block()
+    this.record('COMMIT')
   }
 
   /** Marca dejada al cerrar; util para verificar liberacion */
-  instanciaCerrada = false
+  instanceClosed = false
 
   /**
    * Filtra el historial por un fragmento de SQL.
-   * @param fragmento Texto contenido en el SQL buscado
+   * @param fragment Texto contenido en el SQL buscado
    * @returns Sentencias coincidentes en orden de ejecucion
    */
-  buscar(fragmento: string): SentenciaEjecutada[] {
-    return this.sentencias.filter((s) => s.sql.includes(fragmento))
+  findByFragment(fragment: string): ExecutedStatement[] {
+    return this.statements.filter((s) => s.sql.includes(fragment))
   }
 
-  private registrar(sql: string, params?: (string | number | null)[]): void {
-    this.sentencias.push(params ? { sql, params } : { sql })
+  private record(sql: string, params?: (string | number | null)[]): void {
+    this.statements.push(params ? { sql, params } : { sql })
   }
 }
 
 /** Instancia compartida entregada por openDatabaseAsync */
-export const estadoSQLite: { instancia: FakeDatabase | null } = { instancia: null }
+export const sqliteState: { instance: FakeDatabase | null } = { instance: null }
 
 /**
  * Prepara una nueva base falsa para la prueba actual.
  * Debe llamarse en beforeEach ANTES de encolar filas de datos,
  * porque la primera apertura consume la fila de user_version.
+ * Por defecto reporta el esquema vigente para saltar la migracion;
+ * pasar 3 (o menor) ejercita el bloque de migracion completo.
  * @param userVersion Version PRAGMA que reportara la base
  * @returns La instancia recien creada y registrada
  */
-export function iniciarBaseFalsa(userVersion = 3): FakeDatabase {
-  const base = new FakeDatabase()
-  base.encolar([{ user_version: userVersion }])
-  estadoSQLite.instancia = base
-  return base
+export function initFakeDatabase(userVersion = 5): FakeDatabase {
+  const db = new FakeDatabase()
+  db.queue([{ user_version: userVersion }])
+  sqliteState.instance = db
+  return db
 }

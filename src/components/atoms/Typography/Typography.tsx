@@ -27,10 +27,8 @@ const CLASSES_BY_VARIANT: Readonly<Record<TypographyVariant, string>> = {
  * @returns Texto estilizado segun el sistema de diseno
  */
 export function Typography({ variant = 'body', className, ...rest }: TypographyProps) {
-  const clases = `${CLASSES_BY_VARIANT[variant]} ${className ?? ''}`
-  const esEncabezado = variant === 'display' || variant === 'title'
+  const classes = `${CLASSES_BY_VARIANT[variant]} ${className ?? ''}`
+  const isHeading = variant === 'display' || variant === 'title'
 
-  return (
-    <Text className={clases} accessibilityRole={esEncabezado ? 'header' : undefined} {...rest} />
-  )
+  return <Text className={classes} accessibilityRole={isHeading ? 'header' : undefined} {...rest} />
 }

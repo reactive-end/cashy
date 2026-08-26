@@ -3,11 +3,11 @@
  */
 
 /** Elemento agregado por categoria para el desglose grafico */
-export interface CategoriaGrafica {
+export interface ChartCategory {
   /** Nombre de la categoria o Sin categoria */
-  nombre: string
+  name: string
   /** Monto total ya formateado en moneda base */
-  montoFormateado: string
+  formattedAmount: string
   /** Porcentaje respecto al total general (0 a 100) */
   pct: number
 }
@@ -15,7 +15,7 @@ export interface CategoriaGrafica {
 /** Propiedades del desglose de gastos por categoria */
 export interface CategoryBreakdownProps {
   /** Categorias ordenadas por monto descendente */
-  items: CategoriaGrafica[]
+  items: ChartCategory[]
   /** true mientras las tasas aun no estan disponibles */
   loading?: boolean
 }

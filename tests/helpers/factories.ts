@@ -3,13 +3,13 @@
  * Congelan un instante de referencia para resultados deterministas.
  */
 
-import type { AppSettings, Expense, ExpenseInput, ExchangeRates } from '@src/types/domain'
+import type { AppSettings, Expense, ExpenseInput, ExchangeRates, Income } from '@src/types/domain'
 
 /** Instante congelado de referencia para todas las pruebas (UTC absoluto) */
-export const AHORA = new Date('2026-08-23T10:00:00.000Z')
+export const NOW = new Date('2026-08-23T10:00:00.000Z')
 
 /** ISO del instante congelado */
-export const AHORA_ISO = AHORA.toISOString()
+export const NOW_ISO = NOW.toISOString()
 
 /**
  * Fecha ISO yyyy-mm-dd relativa al dia actual del entorno.
@@ -17,12 +17,12 @@ export const AHORA_ISO = AHORA.toISOString()
  * @param dias Dias a sumar (negativos hacia el pasado)
  * @returns Cadena yyyy-mm-dd
  */
-export function isoEnDias(dias: number): string {
-  const fecha = new Date()
-  fecha.setDate(fecha.getDate() + dias)
-  const mes = String(fecha.getMonth() + 1).padStart(2, '0')
-  const dia = String(fecha.getDate()).padStart(2, '0')
-  return `${fecha.getFullYear()}-${mes}-${dia}`
+export function isoDaysFromToday(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
 }
 
 /** Snapshot tipico de tasas alineado con los fixtures de red */
@@ -31,7 +31,7 @@ export function buildRates(overrides: Partial<ExchangeRates> = {}): ExchangeRate
     bcvUsd: 779.95,
     bcvEur: 911.21,
     usdtSellP2p: 912.01,
-    fetchedAt: AHORA_ISO,
+    fetchedAt: NOW_ISO,
     ...overrides
   }
 }
@@ -49,8 +49,8 @@ export function buildFixedExpense(overrides: Partial<Expense> = {}): Expense {
     recurrence: 'monthly',
     nextDueDate: '2026-09-01',
     active: true,
-    createdAt: AHORA_ISO,
-    updatedAt: AHORA_ISO,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
     ...overrides
   }
 }
@@ -68,8 +68,8 @@ export function buildUniqueExpense(overrides: Partial<Expense> = {}): Expense {
     recurrence: undefined,
     nextDueDate: undefined,
     active: true,
-    createdAt: AHORA_ISO,
-    updatedAt: AHORA_ISO,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
     ...overrides
   }
 }
@@ -94,9 +94,25 @@ export function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings
   return {
     baseCurrency: 'USD',
     reminderHour: 9,
+    reminderMinute: 0,
     bcvHour: 9,
+    bcvMinute: 0,
     remindersEnabled: true,
     bcvEnabled: true,
+    ...overrides
+  }
+}
+
+/** Ingreso tipico del usuario para pruebas */
+export function buildIncome(overrides: Partial<Income> = {}): Income {
+  return {
+    id: 'ingreso-1',
+    name: 'Salario',
+    amount: 500,
+    currency: 'USD',
+    paydayDay: 5,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
     ...overrides
   }
 }

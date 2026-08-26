@@ -10,12 +10,12 @@
  * @param version Cadena tipo "1.2.3" o "v1.2"
  * @returns Segmentos numericos de la version
  */
-function segmentos(version: string): number[] {
-  const limpia = version.trim().replace(/^v/i, '')
+function parseSegments(version: string): number[] {
+  const cleaned = version.trim().replace(/^v/i, '')
 
-  return limpia.split('.').map((parte) => {
-    const numero = Number.parseInt(parte, 10)
-    return Number.isFinite(numero) ? numero : 0
+  return cleaned.split('.').map((part) => {
+    const number = Number.parseInt(part, 10)
+    return Number.isFinite(number) ? number : 0
   })
 }
 
@@ -25,14 +25,14 @@ function segmentos(version: string): number[] {
  * @param candidata Version candidata, por ejemplo "v1.2.0"
  * @returns -1 si candidata es mayor, 1 si actual es mayor, 0 si equivalentes
  */
-export function compararVersiones(actual: string, candidata: string): number {
-  const partesActual = segmentos(actual)
-  const partesCandidata = segmentos(candidata)
-  const largo = Math.max(partesActual.length, partesCandidata.length)
+export function compareVersions(current: string, candidate: string): number {
+  const currentParts = parseSegments(current)
+  const candidateParts = parseSegments(candidate)
+  const maxSegments = Math.max(currentParts.length, candidateParts.length)
 
-  for (let indice = 0; indice < largo; indice += 1) {
-    const a = partesActual[indice] ?? 0
-    const b = partesCandidata[indice] ?? 0
+  for (let index = 0; index < maxSegments; index += 1) {
+    const a = currentParts[index] ?? 0
+    const b = candidateParts[index] ?? 0
 
     if (a !== b) return a < b ? -1 : 1
   }
@@ -46,6 +46,6 @@ export function compararVersiones(actual: string, candidata: string): number {
  * @param candidata Version candidata con o sin prefijo "v"
  * @returns true solo cuando candidata estrictamente mayor
  */
-export function esVersionMasNueva(actual: string, candidata: string): boolean {
-  return compararVersiones(actual, candidata) < 0
+export function isNewerVersion(current: string, candidate: string): boolean {
+  return compareVersions(current, candidate) < 0
 }

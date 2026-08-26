@@ -10,7 +10,7 @@ import { getExpenses } from '@src/db/expenses'
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
-import Expenses from '../../app/(tabs)/expenses'
+import Finances from '../../app/(tabs)/finances'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -52,7 +52,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('abre el panel desde el boton junto al titulo y filtra por categoria', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
@@ -73,7 +73,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('ordena por nombre al elegir el criterio Nombre A-Z', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
@@ -95,7 +95,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('limpia los filtros con el boton Limpiar', async () => {
-    const pantalla = await render(<Expenses />)
+    const pantalla = await render(<Finances />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))

@@ -17,18 +17,18 @@ jest.mock('expo-updates', () => ({
 }))
 
 jest.mock('@src/services/appUpdate', () => ({
-  consultarUltimoRelease: jest.fn(),
-  hayActualizacionDisponible: jest.fn(),
-  descargarApk: jest.fn(),
-  instalarApk: jest.fn()
+  fetchLatestRelease: jest.fn(),
+  isUpdateAvailable: jest.fn(),
+  downloadApk: jest.fn(),
+  installApk: jest.fn()
 }))
 
-const consultarMock = appUpdate.consultarUltimoRelease as jest.Mock
-const disponibleMock = appUpdate.hayActualizacionDisponible as jest.Mock
-const descargarMock = appUpdate.descargarApk as jest.Mock
-const instalarMock = appUpdate.instalarApk as jest.Mock
+const consultarMock = appUpdate.fetchLatestRelease as jest.Mock
+const disponibleMock = appUpdate.isUpdateAvailable as jest.Mock
+const descargarMock = appUpdate.downloadApk as jest.Mock
+const instalarMock = appUpdate.installApk as jest.Mock
 
-const RELEASE = { version: '1.2.0', urlApk: 'https://github.com/cashy.apk', notas: 'Mejoras' }
+const RELEASE = { version: '1.2.0', apkUrl: 'https://github.com/cashy.apk', notes: 'Mejoras' }
 
 describe('useAppUpdate', () => {
   beforeEach(async () => {
@@ -53,7 +53,7 @@ describe('useAppUpdate', () => {
   it('expone el release nuevo cuando hay version mayor no descartada', async () => {
     const { result } = await renderHook(() => useAppUpdate())
 
-    await waitFor(() => expect(result.current.disponible).toEqual(RELEASE))
+    await waitFor(() => expect(result.current.available).toEqual(RELEASE))
   })
 
   it('no muestra el aviso cuando la version fue descartada antes', async () => {
@@ -62,7 +62,7 @@ describe('useAppUpdate', () => {
     const { result } = await renderHook(() => useAppUpdate())
 
     await waitFor(() => expect(consultarMock).toHaveBeenCalled())
-    expect(result.current.disponible).toBeNull()
+    expect(result.current.available).toBeNull()
   })
 
   it('no muestra el aviso cuando no hay version mas nueva', async () => {
@@ -71,46 +71,46 @@ describe('useAppUpdate', () => {
     const { result } = await renderHook(() => useAppUpdate())
 
     await waitFor(() => expect(consultarMock).toHaveBeenCalled())
-    expect(result.current.disponible).toBeNull()
+    expect(result.current.available).toBeNull()
   })
 
   it('confirmar descarga el APK e inicia el instalador', async () => {
     const { result } = await renderHook(() => useAppUpdate())
-    await waitFor(() => expect(result.current.disponible).toEqual(RELEASE))
+    await waitFor(() => expect(result.current.available).toEqual(RELEASE))
 
     await act(async () => {
-      await result.current.confirmar()
+      await result.current.confirm()
     })
 
-    expect(descargarMock).toHaveBeenCalledWith(RELEASE.urlApk, expect.any(Function))
+    expect(descargarMock).toHaveBeenCalledWith(RELEASE.apkUrl, expect.any(Function))
     expect(instalarMock).toHaveBeenCalledTimes(1)
-    expect(result.current.descargando).toBe(false)
+    expect(result.current.downloading).toBe(false)
   })
 
   it('confirmar con descarga fallida no lanza el instalador', async () => {
     descargarMock.mockRejectedValue(new Error('sin conexion'))
 
     const { result } = await renderHook(() => useAppUpdate())
-    await waitFor(() => expect(result.current.disponible).toEqual(RELEASE))
+    await waitFor(() => expect(result.current.available).toEqual(RELEASE))
 
     await act(async () => {
-      await result.current.confirmar()
+      await result.current.confirm()
     })
 
     expect(instalarMock).not.toHaveBeenCalled()
-    expect(result.current.descargando).toBe(false)
-    expect(result.current.disponible).toEqual(RELEASE)
+    expect(result.current.downloading).toBe(false)
+    expect(result.current.available).toEqual(RELEASE)
   })
 
   it('descartar persiste la version y cierra el aviso', async () => {
     const { result } = await renderHook(() => useAppUpdate())
-    await waitFor(() => expect(result.current.disponible).toEqual(RELEASE))
+    await waitFor(() => expect(result.current.available).toEqual(RELEASE))
 
     await act(async () => {
-      await result.current.descartar()
+      await result.current.dismiss()
     })
 
     expect(await AsyncStorage.getItem('cashy.update-descartada')).toBe(RELEASE.version)
-    expect(result.current.disponible).toBeNull()
+    expect(result.current.available).toBeNull()
   })
 })

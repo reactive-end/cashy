@@ -45,7 +45,7 @@ const CLASSES_BY_SIZE: Readonly<Record<ButtonSize, string>> = {
 }
 
 /** Subconjunto de ButtonProps que consume el hook */
-type OpcionesUseButton = Pick<
+type UseButtonOptions = Pick<
   ButtonProps,
   'variant' | 'size' | 'disabled' | 'loading' | 'fullWidth' | 'onPress'
 >
@@ -62,13 +62,13 @@ export function useButton({
   loading = false,
   fullWidth = false,
   onPress
-}: OpcionesUseButton): {
+}: UseButtonOptions): {
   containerClasses: string
   textClasses: string
   iconColor: string
   handlePress: (event: GestureResponderEvent) => void
 } {
-  const inactivo = disabled || loading
+  const inactive = disabled || loading
 
   const containerClasses = [
     BASE_CLASSES,
@@ -76,7 +76,7 @@ export function useButton({
     CLASSES_BY_SIZE[size],
     TEXT_COLOR[variant],
     fullWidth ? 'w-full' : 'self-start',
-    inactivo ? 'opacity-50' : ''
+    inactive ? 'opacity-50' : ''
   ]
     .filter(Boolean)
     .join(' ')
@@ -85,9 +85,9 @@ export function useButton({
 
   const handlePress = useCallback(
     (event: GestureResponderEvent) => {
-      if (!inactivo) onPress?.(event)
+      if (!inactive) onPress?.(event)
     },
-    [inactivo, onPress]
+    [inactive, onPress]
   )
 
   return { containerClasses, textClasses, iconColor: ICON_HEX_COLOR[variant], handlePress }

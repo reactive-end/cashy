@@ -16,7 +16,7 @@ const USDT_VES_URL = 'https://criptoya.com/api/USDT/VES/1'
  * Mercados P2P considerados para la tasa de venta.
  * Se excluyen venues sin liquidez real en VES (ejemplo coinex).
  */
-const MERCADOS_PRINCIPALES: readonly string[] = [
+const MAIN_MARKETS: readonly string[] = [
   'binancep2p',
   'bybitp2p',
   'okexp2p',
@@ -26,7 +26,7 @@ const MERCADOS_PRINCIPALES: readonly string[] = [
 ]
 
 /** Cotizacion de un mercado P2P individual */
-interface CotizacionMercado {
+interface MarketQuote {
   /** Mejor precio de venta publicitado (no usamos el tope) */
   ask: number
   /** Mejor puja de compra: lo que recibe quien vende */
@@ -34,7 +34,7 @@ interface CotizacionMercado {
 }
 
 /** Forma esperada de la respuesta de CriptoYa para USDT/VES */
-type RespuestaCriptoYa = Record<string, Partial<CotizacionMercado>>
+type CriptoYaResponse = Record<string, Partial<MarketQuote>>
 
 /**
  * Comprueba que un valor responde a la forma de una cotizacion valida.
@@ -42,7 +42,7 @@ type RespuestaCriptoYa = Record<string, Partial<CotizacionMercado>>
  * @param value Valor sin tipo recibido de la API
  * @returns true si el valor contiene ask y bid numericos positivos
  */
-function esCotizacionValida<T>(value: T): value is T & CotizacionMercado {
+function isValidQuote<T>(value: T): value is T & MarketQuote {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -60,11 +60,11 @@ function esCotizacionValida<T>(value: T): value is T & CotizacionMercado {
  * @param value Valor sin tipo recibido de la API
  * @returns true si el valor contiene al menos el mercado binancep2p valido
  */
-function esRespuestaCriptoYa<T>(value: T): value is T & RespuestaCriptoYa {
+function isCriptoYaResponse<T>(value: T): value is T & CriptoYaResponse {
   if (typeof value !== 'object' || value === null || !('binancep2p' in value)) return false
 
-  const mercadoBase = (value as RespuestaCriptoYa).binancep2p
-  return typeof mercadoBase === 'object' && mercadoBase !== null
+  const baseMarket = (value as CriptoYaResponse).binancep2p
+  return typeof baseMarket === 'object' && baseMarket !== null
 }
 
 /**
@@ -75,13 +75,13 @@ function esRespuestaCriptoYa<T>(value: T): value is T & RespuestaCriptoYa {
  * @throws Error si el endpoint falla o ningun mercado ofrece puja valida
  */
 export async function fetchUsdtSellRate(): Promise<number> {
-  const respuesta = await fetchJson(USDT_VES_URL, esRespuestaCriptoYa)
+  const response = await fetchJson(USDT_VES_URL, isCriptoYaResponse)
 
-  const pujas = MERCADOS_PRINCIPALES.map((mercado) => respuesta[mercado]).filter(esCotizacionValida)
+  const bids = MAIN_MARKETS.map((market) => response[market]).filter(isValidQuote)
 
-  if (pujas.length === 0) {
+  if (bids.length === 0) {
     throw new Error('Ningun mercado P2P devolvio una puja de compra valida')
   }
 
-  return Math.min(...pujas.map((cotizacion) => cotizacion.bid))
+  return Math.min(...bids.map((quote) => quote.bid))
 }

@@ -8,11 +8,7 @@ import * as BackgroundTask from 'expo-background-task'
 import * as TaskManager from 'expo-task-manager'
 
 import * as dbSettings from '@src/db/settings'
-import {
-  NOMBRE_TAREA_SINCRONIZACION,
-  ejecutarSincronizacion,
-  registrarTareaBackground
-} from '@src/lib/backgroundTask'
+import { SYNC_TASK_NAME, registerBackgroundTask, runSynchronization } from '@src/lib/backgroundTask'
 import * as notifications from '@src/lib/notifications'
 import * as ratesService from '@src/services/rates'
 import * as ratesCache from '@src/services/rates-cache'
@@ -22,7 +18,7 @@ import { buildRates, buildSettings } from '../../helpers/factories'
 const loadSettingsMock = dbSettings.loadSettings as jest.Mock
 const getExchangeRatesMock = ratesService.getExchangeRates as jest.Mock
 const loadRatesMock = ratesCache.loadRates as jest.Mock
-const sincronizarBcvMock = notifications.sincronizarAvisosBcv as jest.Mock
+const sincronizarBcvMock = notifications.syncBcvNotice as jest.Mock
 const syncRemindersMock = notifications.syncReminders as jest.Mock
 const notificationsAvailableMock = notifications.notificationsAvailable as jest.Mock
 const isTaskRegisteredMock = TaskManager.isTaskRegisteredAsync as jest.Mock
@@ -40,7 +36,7 @@ const ejecutorDefinido = (TaskManager.defineTask as jest.Mock).mock.calls[0]?.[1
 /** Argumentos de la llamada de registro capturada antes de cualquier limpieza */
 const llamadaDefineTask = (TaskManager.defineTask as jest.Mock).mock.calls[0]
 
-describe('ejecutarSincronizacion', () => {
+describe('runSynchronization', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     loadSettingsMock.mockResolvedValue(buildSettings())
@@ -51,7 +47,7 @@ describe('ejecutarSincronizacion', () => {
   it('consulta tasas frescas a la red y orquesta ambos avisos', async () => {
     getExchangeRatesMock.mockResolvedValueOnce(buildRates())
 
-    await ejecutarSincronizacion()
+    await runSynchronization()
 
     expect(getExchangeRatesMock).toHaveBeenCalledWith(true)
     expect(sincronizarBcvMock).toHaveBeenCalledWith(buildSettings(), buildRates())
@@ -62,7 +58,7 @@ describe('ejecutarSincronizacion', () => {
     getExchangeRatesMock.mockRejectedValueOnce(new Error('sin red'))
     loadRatesMock.mockResolvedValueOnce(buildRates({ bcvUsd: 1 }))
 
-    await ejecutarSincronizacion()
+    await runSynchronization()
 
     expect(sincronizarBcvMock).toHaveBeenCalledWith(buildSettings(), buildRates({ bcvUsd: 1 }))
   })
@@ -71,7 +67,7 @@ describe('ejecutarSincronizacion', () => {
     getExchangeRatesMock.mockRejectedValueOnce(new Error('sin red'))
     loadRatesMock.mockRejectedValueOnce(new Error('cache vacio'))
 
-    await ejecutarSincronizacion()
+    await runSynchronization()
 
     expect(sincronizarBcvMock).toHaveBeenCalledWith(buildSettings(), undefined)
     expect(syncRemindersMock).toHaveBeenCalledWith(buildSettings())
@@ -87,7 +83,7 @@ describe('registro de la tarea', () => {
   })
 
   it('queda definida en TaskManager bajo su nombre al cargar el modulo', () => {
-    expect(llamadaDefineTask?.[0]).toBe(NOMBRE_TAREA_SINCRONIZACION)
+    expect(llamadaDefineTask?.[0]).toBe(SYNC_TASK_NAME)
     expect(typeof llamadaDefineTask?.[1]).toBe('function')
   })
 
@@ -95,9 +91,9 @@ describe('registro de la tarea', () => {
     notificationsAvailableMock.mockReturnValue(true)
     isTaskRegisteredMock.mockResolvedValueOnce(false)
 
-    await registrarTareaBackground()
+    await registerBackgroundTask()
 
-    expect(registerTaskMock).toHaveBeenCalledWith(NOMBRE_TAREA_SINCRONIZACION, {
+    expect(registerTaskMock).toHaveBeenCalledWith(SYNC_TASK_NAME, {
       minimumInterval: 240
     })
   })
@@ -106,7 +102,7 @@ describe('registro de la tarea', () => {
     notificationsAvailableMock.mockReturnValue(true)
     isTaskRegisteredMock.mockResolvedValueOnce(true)
 
-    await registrarTareaBackground()
+    await registerBackgroundTask()
 
     expect(registerTaskMock).not.toHaveBeenCalled()
   })
@@ -114,7 +110,7 @@ describe('registro de la tarea', () => {
   it('no se registra dentro de Expo Go', async () => {
     notificationsAvailableMock.mockReturnValue(false)
 
-    await registrarTareaBackground()
+    await registerBackgroundTask()
 
     expect(isTaskRegisteredMock).not.toHaveBeenCalled()
     expect(registerTaskMock).not.toHaveBeenCalled()

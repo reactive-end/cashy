@@ -22,8 +22,8 @@ import type { RatesGridProps } from './RatesGrid.d'
  * @param valor Numero proveniente del snapshot
  * @returns true cuando la tasa puede mostrarse con seguridad
  */
-function esTasaUtil(valor: number): boolean {
-  return Number.isFinite(valor) && valor > 0
+function isUsableRate(value: number): boolean {
+  return Number.isFinite(value) && value > 0
 }
 
 /**
@@ -34,12 +34,12 @@ function esTasaUtil(valor: number): boolean {
 export function RatesGrid({ ratesState }: RatesGridProps) {
   const { rates, error, refresh, refreshing } = ratesState
 
-  const dolarListo = esTasaUtil(rates?.bcvUsd ?? Number.NaN)
-  const euroListo = esTasaUtil(rates?.bcvEur ?? Number.NaN)
-  const usdtListo = esTasaUtil(rates?.usdtSellP2p ?? Number.NaN)
-  const algunaLista = dolarListo || euroListo || usdtListo
+  const dollarReady = isUsableRate(rates?.bcvUsd ?? Number.NaN)
+  const euroReady = isUsableRate(rates?.bcvEur ?? Number.NaN)
+  const usdtReady = isUsableRate(rates?.usdtSellP2p ?? Number.NaN)
+  const anyReady = dollarReady || euroReady || usdtReady
 
-  const manejarRefresh = () => {
+  const handleRefresh = () => {
     if (refreshing) return
     void refresh()
   }
@@ -50,12 +50,12 @@ export function RatesGrid({ ratesState }: RatesGridProps) {
         <Typography variant="label">Tasas de hoy</Typography>
 
         <View className="flex-row items-center gap-2">
-          {algunaLista && rates ? (
+          {anyReady && rates ? (
             <Typography variant="caption">{ageLabel(rates.fetchedAt)}</Typography>
           ) : null}
 
           <Pressable
-            onPress={manejarRefresh}
+            onPress={handleRefresh}
             disabled={refreshing}
             className={`active:opacity-60 ${refreshing ? 'opacity-50' : ''}`}
             accessibilityRole="button"
@@ -92,25 +92,25 @@ export function RatesGrid({ ratesState }: RatesGridProps) {
             <RateCard
               className="flex-1 min-w-0"
               title="Dolar BCV"
-              value={dolarListo && rates ? `Bs. ${formatNumber(rates.bcvUsd)}` : ''}
+              value={dollarReady && rates ? `Bs. ${formatNumber(rates.bcvUsd)}` : ''}
               icon="dollar"
-              loading={!dolarListo}
+              loading={!dollarReady}
             />
             <RateCard
               className="flex-1 min-w-0"
               title="Euro BCV"
-              value={euroListo && rates ? `Bs. ${formatNumber(rates.bcvEur)}` : ''}
+              value={euroReady && rates ? `Bs. ${formatNumber(rates.bcvEur)}` : ''}
               icon="euro"
-              loading={!euroListo}
+              loading={!euroReady}
             />
           </View>
 
           <RateCard
             className="w-full min-w-0"
             title="USDT · Venta P2P"
-            value={usdtListo && rates ? `Bs. ${formatNumber(rates.usdtSellP2p)}` : ''}
+            value={usdtReady && rates ? `Bs. ${formatNumber(rates.usdtSellP2p)}` : ''}
             icon="usdt"
-            loading={!usdtListo}
+            loading={!usdtReady}
           />
         </>
       )}

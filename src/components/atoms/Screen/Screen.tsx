@@ -26,13 +26,13 @@ export function Screen({
   overlay
 }: ScreenProps) {
   const insets = useSafeAreaInsets()
-  const clasesContenido = `${noPadding ? '' : 'px-5'} ${className ?? ''}`
-  const estiloInferior = {
+  const contentClasses = `${noPadding ? '' : 'px-5'} ${className ?? ''}`
+  const bottomInsetStyle = {
     paddingTop: insets.top,
     paddingBottom: Math.max(insets.bottom, 16)
   }
 
-  const controlRefresco = onRefresh ? (
+  const refreshControlNode = onRefresh ? (
     <RefreshControl
       refreshing={refreshing}
       onRefresh={onRefresh}
@@ -47,11 +47,11 @@ export function Screen({
       <View className="flex-1 bg-paper">
         <ScrollView
           className="flex-1"
-          contentContainerClassName={`grow ${clasesContenido}`}
-          contentContainerStyle={estiloInferior}
+          contentContainerClassName={`grow ${contentClasses}`}
+          contentContainerStyle={bottomInsetStyle}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          refreshControl={controlRefresco}
+          refreshControl={refreshControlNode}
         >
           {children}
         </ScrollView>
@@ -63,7 +63,7 @@ export function Screen({
 
   return (
     <View className="flex-1 bg-paper">
-      <View className={`flex-1 ${clasesContenido}`} style={estiloInferior}>
+      <View className={`flex-1 ${contentClasses}`} style={bottomInsetStyle}>
         {children}
       </View>
 

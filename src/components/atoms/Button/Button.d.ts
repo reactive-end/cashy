@@ -39,4 +39,6 @@ export interface ButtonProps {
   loading?: boolean
   /** Estira el boton a todo el ancho disponible */
   fullWidth?: boolean
+  /** Identificador de prueba para automatizacion */
+  testID?: string
 }

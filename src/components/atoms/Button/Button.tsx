@@ -31,7 +31,8 @@ export function Button({
   icon,
   disabled = false,
   loading = false,
-  fullWidth = false
+  fullWidth = false,
+  testID
 }: ButtonProps) {
   const { containerClasses, textClasses, iconColor, handlePress } = useButton({
     variant,
@@ -49,6 +50,7 @@ export function Button({
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={label}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator size="small" color={iconColor} />

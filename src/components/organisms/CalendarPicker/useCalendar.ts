@@ -45,7 +45,7 @@ export interface UseCalendarResult {
 const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
 
 /** Formateador reutilizable para la etiqueta del mes visible */
-const FORMATO_MES_VISIBLE = new Intl.DateTimeFormat('es-VE', {
+const VISIBLE_MONTH_FORMAT = new Intl.DateTimeFormat('es-VE', {
   month: 'long',
   year: 'numeric'
 })
@@ -65,24 +65,24 @@ function mondayOffset(date: Date): number {
  * @returns Estado de vista, grilla calculada y acciones de navegacion
  */
 export function useCalendar(initialISO?: string): UseCalendarResult {
-  const inicial = initialISO ? fromISODate(initialISO) : new Date()
+  const initialDate = initialISO ? fromISODate(initialISO) : new Date()
   // Contador total de meses desde el anio cero: anio*12 + indiceMes.
-  const [totalMesesVista, setTotalMesesVista] = useState(
-    inicial.getFullYear() * 12 + inicial.getMonth()
+  const [viewedMonthsTotal, setViewedMonthsTotal] = useState(
+    initialDate.getFullYear() * 12 + initialDate.getMonth()
   )
   const [selectedISO, setSelectedISO] = useState<string | null>(initialISO ?? null)
 
-  const viewYear = Math.floor(totalMesesVista / 12)
-  const viewMonth = totalMesesVista % 12
+  const viewYear = Math.floor(viewedMonthsTotal / 12)
+  const viewMonth = viewedMonthsTotal % 12
 
   const monthLabel = useMemo(
-    () => FORMATO_MES_VISIBLE.format(new Date(viewYear, viewMonth, 1)),
+    () => VISIBLE_MONTH_FORMAT.format(new Date(viewYear, viewMonth, 1)),
     [viewYear, viewMonth]
   )
 
   const gridDays = useMemo<CalendarDay[]>(() => {
-    const primerDia = new Date(viewYear, viewMonth, 1)
-    const offset = mondayOffset(primerDia)
+    const firstDayOfMonth = new Date(viewYear, viewMonth, 1)
+    const offset = mondayOffset(firstDayOfMonth)
     const total = daysInMonth(viewYear, viewMonth)
     const celdas: CalendarDay[] = []
 
@@ -105,9 +105,9 @@ export function useCalendar(initialISO?: string): UseCalendarResult {
     return celdas
   }, [viewYear, viewMonth])
 
-  const goToPreviousMonth = () => setTotalMesesVista((total) => total - 1)
+  const goToPreviousMonth = () => setViewedMonthsTotal((total) => total - 1)
 
-  const goToNextMonth = () => setTotalMesesVista((total) => total + 1)
+  const goToNextMonth = () => setViewedMonthsTotal((total) => total + 1)
 
   const selectDay = (isoDate: string) => setSelectedISO(isoDate)
 

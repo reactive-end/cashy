@@ -14,19 +14,19 @@ import { Input } from '@src/components/atoms/Input'
 import { Switch } from '@src/components/atoms/Switch'
 import { Typography } from '@src/components/atoms/Typography'
 
-import { AHORA } from '../helpers/factories'
+import { NOW } from '../helpers/factories'
 
 beforeAll(() => {
-  jest.useFakeTimers({ now: AHORA })
+  jest.useFakeTimers({ now: NOW })
 })
 
 afterAll(() => {
   jest.useRealTimers()
 })
 
-async function snapshotar(elemento: ReactElement): Promise<string> {
-  const pantalla = await render(elemento)
-  return JSON.stringify(pantalla.toJSON())
+async function renderSnapshot(element: ReactElement): Promise<string> {
+  const screen = await render(element)
+  return JSON.stringify(screen.toJSON())
 }
 
 describe('instantaneas de atomos', () => {
@@ -53,7 +53,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -67,7 +67,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -76,7 +76,7 @@ describe('instantaneas de atomos', () => {
     const arboles = [<Card key="1" />, <Card key="2" noPadding />, <Card key="3" highlighted />]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -96,7 +96,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -111,7 +111,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -123,7 +123,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })
@@ -135,7 +135,7 @@ describe('instantaneas de atomos', () => {
     ]
     const instantaneas: string[] = []
     for (const arbol of arboles) {
-      instantaneas.push(await snapshotar(arbol))
+      instantaneas.push(await renderSnapshot(arbol))
     }
     expect(instantaneas).toMatchSnapshot()
   })

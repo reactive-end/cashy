@@ -5,7 +5,7 @@
  */
 
 /** Respuesta valida del endpoint oficial de dolarapi */
-export const DOLAR_OFICIAL_VALIDO = {
+export const VALID_OFFICIAL_DOLLAR = {
   moneda: 'USD',
   fuente: 'oficial',
   nombre: 'Dólar',
@@ -16,7 +16,7 @@ export const DOLAR_OFICIAL_VALIDO = {
 }
 
 /** Respuesta valida del endpoint oficial de euro en dolarapi */
-export const EURO_OFICIAL_VALIDO = {
+export const VALID_OFFICIAL_EURO = {
   moneda: 'EUR',
   fuente: 'oficial',
   nombre: 'Euro',
@@ -27,18 +27,18 @@ export const EURO_OFICIAL_VALIDO = {
 }
 
 /** Tasa con promedio invalido para fallar el guard */
-export const DOLAR_PROMEDIO_INVALIDO = {
-  ...DOLAR_OFICIAL_VALIDO,
+export const INVALID_DOLLAR_AVERAGE = {
+  ...VALID_OFFICIAL_DOLLAR,
   promedio: -5
 }
 
 /** Objeto sin el campo promedio para fallar el guard */
-export const DOLAR_SIN_CAMPOS = {
+export const DOLLAR_MISSING_FIELDS = {
   moneda: 'USD'
 }
 
 /** Respuesta completa valida de CriptoYa con varios mercados P2P */
-export const CRIPTOYA_USDT_VALIDO = {
+export const VALID_CRIPTOYA_USDT = {
   binancep2p: { ask: 919.91, totalAsk: 919.91, bid: 919, totalBid: 919, time: 1787499141 },
   bybitp2p: { ask: 918, totalAsk: 918, bid: 919, totalBid: 919, time: 1787499138 },
   okexp2p: { ask: 923, totalAsk: 923, bid: 916, totalBid: 916, time: 1787499148 },
@@ -48,11 +48,11 @@ export const CRIPTOYA_USDT_VALIDO = {
 }
 
 /** Respuesta sin mercado binancep2p para fallar el guard */
-export const CRIPTOYA_SIN_BINANCE = {
+export const CRIPTOYA_MISSING_BINANCE = {
   bybitp2p: { ask: 918, totalAsk: 918, bid: 919, totalBid: 919, time: 1787499138 }
 }
 
 /** Mercado binancep2p con ask no numerico para fallar el guard anidado */
-export const CRIPTOYA_BINANCE_CORRUPTO = {
+export const CORRUPT_CRIPTOYA_BINANCE = {
   binancep2p: { ask: 'caro', bid: 919 }
 }

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { deleteExpense, getExpenses, insertExpense, updateExpense } from '@src/db/expenses'
 import { convert } from '@src/lib/conversions'
-import { getErrorMessage } from '@src/lib/errors'
+import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { emit, subscribe } from '@src/lib/events'
 import { generateId } from '@src/lib/ids'
 import {
@@ -91,12 +91,14 @@ function toBase(
  * @param rates Snapshot de tasas actual (null mientras carga)
  * @param baseCurrency Moneda elegida por el usuario para resumenes
  * @param reminderHour Hora configurada para notificaciones
+ * @param reminderMinute Minuto configurado para notificaciones
  * @returns Estado reactivo completo del dominio de gastos
  */
 export function useExpenses(
   rates: ExchangeRates | null,
   baseCurrency: BaseCurrency,
-  reminderHour: number
+  reminderHour: number,
+  reminderMinute = 0
 ): UseExpensesResult {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -106,41 +108,42 @@ export function useExpenses(
   const reload = useCallback(async () => {
     setReloading(true)
     try {
-      const lista = await getExpenses()
-      setExpenses(lista)
+      const fetched = await getExpenses()
+      setExpenses(fetched)
       setError(null)
-    } catch (e) {
-      setError(getErrorMessage(e))
+    } catch {
+      // Mensaje amigable fijo: nunca se filtran textos tecnicos de la base.
+      setError(EXPENSES_LOAD_ERROR_MESSAGE)
     } finally {
       setReloading(false)
     }
   }, [])
 
   useEffect(() => {
-    let activo = true
+    let active = true
 
     getExpenses()
-      .then((lista) => {
-        if (!activo) return
-        setExpenses(lista)
+      .then((fetched) => {
+        if (!active) return
+        setExpenses(fetched)
         setError(null)
       })
-      .catch((e) => {
-        if (activo) setError(getErrorMessage(e))
+      .catch(() => {
+        if (active) setError(EXPENSES_LOAD_ERROR_MESSAGE)
       })
       .finally(() => {
-        if (activo) setLoading(false)
+        if (active) setLoading(false)
       })
 
     // Sincronizacion entre instancias: mutaciones desde el modal u otras
     // pantallas emiten 'expenses-changed' y esta instancia recarga sola.
-    const desuscribir = subscribe('expenses-changed', () => {
-      if (activo) void reload()
+    const unsubscribe = subscribe('expenses-changed', () => {
+      if (active) void reload()
     })
 
     return () => {
-      activo = false
-      desuscribir()
+      active = false
+      unsubscribe()
     }
   }, [reload])
 
@@ -154,30 +157,30 @@ export function useExpenses(
   const monthlySummary = useMemo<MonthlySummary | null>(() => {
     if (!rates) return null
 
-    const ahora = new Date()
-    const mesActual = ahora.getMonth()
-    const anioActual = ahora.getFullYear()
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
 
-    const totalFixed = fixedExpenses.reduce((suma, expense) => {
+    const totalFixed = fixedExpenses.reduce((sum, expense) => {
       const factor = MONTHLY_FACTOR[expense.recurrence ?? 'monthly'] ?? 1
-      return suma + toBase(expense.amount, expense.currency, rates, baseCurrency) * factor
+      return sum + toBase(expense.amount, expense.currency, rates, baseCurrency) * factor
     }, 0)
 
-    const unicosDelMes = uniqueExpenses.filter((expense) => {
-      const fecha = new Date(expense.createdAt)
-      return fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual
+    const uniqueThisMonth = uniqueExpenses.filter((expense) => {
+      const createdDate = new Date(expense.createdAt)
+      return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
     })
 
-    const totalUnique = unicosDelMes.reduce(
-      (suma, expense) => suma + toBase(expense.amount, expense.currency, rates, baseCurrency),
+    const totalUnique = uniqueThisMonth.reduce(
+      (sum, expense) => sum + toBase(expense.amount, expense.currency, rates, baseCurrency),
       0
     )
 
-    return { totalFixed, totalUnique, uniqueCount: unicosDelMes.length }
+    return { totalFixed, totalUnique, uniqueCount: uniqueThisMonth.length }
   }, [fixedExpenses, uniqueExpenses, rates, baseCurrency])
 
   const upcomingPayments = useMemo<UpcomingPayment[]>(() => {
-    const proximos: UpcomingPayment[] = []
+    const upcoming: UpcomingPayment[] = []
 
     for (const expense of fixedExpenses) {
       if (!expense.nextDueDate) continue
@@ -186,43 +189,43 @@ export function useExpenses(
 
       if (daysRemaining < 0 || daysRemaining > UPCOMING_HORIZON_DAYS) continue
 
-      proximos.push({ expense, daysRemaining })
+      upcoming.push({ expense, daysRemaining })
     }
 
-    return proximos.sort((a, b) => a.daysRemaining - b.daysRemaining)
+    return upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining)
   }, [fixedExpenses])
 
   const createExpense = useCallback(
     async (input: ExpenseInput): Promise<Expense> => {
-      const creado = await insertExpense(input, generateId())
+      const created = await insertExpense(input, generateId())
 
-      if (creado.type === 'fixed') {
+      if (created.type === 'fixed') {
         const permiso = await requestNotificationPermission()
-        if (permiso) await scheduleReminder(creado, reminderHour)
+        if (permiso) await scheduleReminder(created, reminderHour, reminderMinute)
       }
 
       await reload()
       emit('expenses-changed')
-      return creado
+      return created
     },
-    [reminderHour, reload]
+    [reminderHour, reminderMinute, reload]
   )
 
   const editExpense = useCallback(
     async (id: string, changes: Partial<ExpenseInput>): Promise<Expense> => {
-      const editado = await updateExpense(id, changes)
+      const edited = await updateExpense(id, changes)
 
-      if (editado.type === 'fixed' && editado.active) {
-        await scheduleReminder(editado, reminderHour)
+      if (edited.type === 'fixed' && edited.active) {
+        await scheduleReminder(edited, reminderHour, reminderMinute)
       } else {
-        await cancelReminder(editado.id)
+        await cancelReminder(edited.id)
       }
 
       await reload()
       emit('expenses-changed')
-      return editado
+      return edited
     },
-    [reminderHour, reload]
+    [reminderHour, reminderMinute, reload]
   )
 
   const removeExpense = useCallback(
@@ -239,16 +242,16 @@ export function useExpenses(
     async (expense: Expense): Promise<void> => {
       if (expense.type !== 'fixed' || !expense.recurrence || !expense.nextDueDate) return
 
-      const siguienteVencimiento = toISODate(
+      const nextDueISO = toISODate(
         advanceDueDate(fromISODate(expense.nextDueDate), expense.recurrence)
       )
 
-      const editado = await updateExpense(expense.id, { nextDueDate: siguienteVencimiento })
-      await scheduleReminder(editado, reminderHour)
+      const edited = await updateExpense(expense.id, { nextDueDate: nextDueISO })
+      await scheduleReminder(edited, reminderHour, reminderMinute)
       await reload()
       emit('expenses-changed')
     },
-    [reminderHour, reload]
+    [reminderHour, reminderMinute, reload]
   )
 
   return {

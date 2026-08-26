@@ -31,6 +31,8 @@ import {
   SlidersHorizontal,
   Calculator,
   Clock,
+  UserRound,
+  Wallet,
   type LucideIcon
 } from 'lucide-react-native'
 import { memo } from 'react'
@@ -64,7 +66,9 @@ const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = {
   chart: ChartColumn,
   filter: SlidersHorizontal,
   calculator: Calculator,
-  clock: Clock
+  clock: Clock,
+  user: UserRound,
+  wallet: Wallet
 }
 
 /**
@@ -73,8 +77,8 @@ const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = {
  * @returns Icono vectorial listo para usar en cualquier superficie
  */
 function IconBase({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) {
-  const Icono = ICON_REGISTRY[name]
-  return <Icono size={size} color={color} strokeWidth={strokeWidth} />
+  const IconComponent = ICON_REGISTRY[name]
+  return <IconComponent size={size} color={color} strokeWidth={strokeWidth} />
 }
 
 /**

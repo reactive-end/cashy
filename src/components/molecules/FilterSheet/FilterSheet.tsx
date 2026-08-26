@@ -13,22 +13,22 @@ import { Typography } from '@src/components/atoms/Typography'
 import { ModalBackdrop } from '@src/components/molecules/ModalBackdrop'
 import type { Currency } from '@src/types/domain'
 
-import type { FilterSheetProps, OrdenGastos } from './FilterSheet.d'
+import type { ExpenseSortOrder, FilterSheetProps } from './FilterSheet.d'
 
 /** Etiquetas visibles de cada criterio de ordenacion */
-const ETIQUETAS_ORDEN: Record<OrdenGastos, string> = {
-  recientes: 'Mas recientes',
-  montoDesc: 'Mayor monto',
-  montoAsc: 'Menor monto',
-  nombre: 'Nombre A-Z'
+const SORT_LABELS: Record<ExpenseSortOrder, string> = {
+  recent: 'Mas recientes',
+  amountDesc: 'Mayor monto',
+  amountAsc: 'Menor monto',
+  name: 'Nombre A-Z'
 }
 
 /** Ordenes disponibles en el panel */
-const ORDENES = Object.keys(ETIQUETAS_ORDEN) as OrdenGastos[]
+const SORT_OPTIONS = Object.keys(SORT_LABELS) as ExpenseSortOrder[]
 
 interface ChipProps {
-  etiqueta: string
-  seleccionado: boolean
+  label: string
+  selected: boolean
   onPress: () => void
 }
 
@@ -37,19 +37,19 @@ interface ChipProps {
  * @param props Etiqueta, estado y callback de pulsado
  * @returns Pastilla de filtro
  */
-function Chip({ etiqueta, seleccionado, onPress }: ChipProps) {
+function Chip({ label, selected, onPress }: ChipProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={etiqueta}
-      accessibilityState={{ selected: seleccionado }}
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       className={`rounded-full border px-3.5 py-2 active:opacity-60 ${
-        seleccionado ? 'border-accent bg-accent' : 'border-line bg-card'
+        selected ? 'border-accent bg-accent' : 'border-line bg-card'
       }`}
       onPress={onPress}
     >
-      <Typography variant="caption" className={seleccionado ? 'text-white' : ''}>
-        {etiqueta}
+      <Typography variant="caption" className={selected ? 'text-white' : ''}>
+        {label}
       </Typography>
     </Pressable>
   )
@@ -61,48 +61,48 @@ function Chip({ etiqueta, seleccionado, onPress }: ChipProps) {
  * @param props Catalogos, valores actuales y callbacks de aplicar/cerrar
  * @returns Secciones de chips y acciones del panel
  */
-function FilterSheetContenido({
-  categorias,
-  monedas,
-  filtros,
-  orden,
-  onAplicar,
+function FilterSheetContent({
+  categories,
+  currencies,
+  filters,
+  sortOrder,
+  onApply,
   onClose
 }: FilterSheetProps) {
-  const [pendienteCategorias, setPendienteCategorias] = useState<string[]>(filtros.categorias)
-  const [pendienteMonedas, setPendienteMonedas] = useState<Currency[]>(filtros.monedas)
-  const [pendienteOrden, setPendienteOrden] = useState<OrdenGastos>(orden)
+  const [draftCategories, setDraftCategories] = useState<string[]>(filters.categories)
+  const [draftCurrencies, setDraftCurrencies] = useState<Currency[]>(filters.currencies)
+  const [draftSortOrder, setDraftSortOrder] = useState<ExpenseSortOrder>(sortOrder)
 
-  const alternarCategoria = (categoria: string) => {
-    setPendienteCategorias((actuales) =>
-      actuales.includes(categoria)
-        ? actuales.filter((valor) => valor !== categoria)
-        : [...actuales, categoria]
+  const toggleCategory = (category: string) => {
+    setDraftCategories((current) =>
+      current.includes(category)
+        ? current.filter((value) => value !== category)
+        : [...current, category]
     )
   }
 
-  const alternarMoneda = (moneda: Currency) => {
-    setPendienteMonedas((actuales) =>
-      actuales.includes(moneda)
-        ? actuales.filter((valor) => valor !== moneda)
-        : [...actuales, moneda]
+  const toggleCurrency = (currency: Currency) => {
+    setDraftCurrencies((current) =>
+      current.includes(currency)
+        ? current.filter((value) => value !== currency)
+        : [...current, currency]
     )
   }
 
-  const limpiarTodo = () => {
-    setPendienteCategorias([])
-    setPendienteMonedas([])
-    setPendienteOrden('recientes')
+  const clearAll = () => {
+    setDraftCategories([])
+    setDraftCurrencies([])
+    setDraftSortOrder('recent')
   }
 
-  const confirmar = () => {
-    onAplicar({ categorias: pendienteCategorias, monedas: pendienteMonedas }, pendienteOrden)
+  const confirm = () => {
+    onApply({ categories: draftCategories, currencies: draftCurrencies }, draftSortOrder)
     onClose()
   }
 
   // Sets de busqueda: evitan .includes dentro del render de cada chip.
-  const categoriasSeleccionadas = new Set(pendienteCategorias)
-  const monedasSeleccionadas = new Set(pendienteMonedas)
+  const selectedCategories = new Set(draftCategories)
+  const selectedCurrencies = new Set(draftCurrencies)
 
   return (
     <>
@@ -115,15 +115,15 @@ function FilterSheetContenido({
               Categoria
             </Typography>
             <View className="flex-row flex-wrap gap-2">
-              {categorias.length === 0 ? (
+              {categories.length === 0 ? (
                 <Typography variant="caption">Sin categorias registradas</Typography>
               ) : (
-                categorias.map((categoria) => (
+                categories.map((category) => (
                   <Chip
-                    key={categoria}
-                    etiqueta={categoria}
-                    seleccionado={categoriasSeleccionadas.has(categoria)}
-                    onPress={() => alternarCategoria(categoria)}
+                    key={category}
+                    label={category}
+                    selected={selectedCategories.has(category)}
+                    onPress={() => toggleCategory(category)}
                   />
                 ))
               )}
@@ -135,12 +135,12 @@ function FilterSheetContenido({
               Moneda
             </Typography>
             <View className="flex-row flex-wrap gap-2">
-              {monedas.map((moneda) => (
+              {currencies.map((currency) => (
                 <Chip
-                  key={moneda}
-                  etiqueta={moneda}
-                  seleccionado={monedasSeleccionadas.has(moneda)}
-                  onPress={() => alternarMoneda(moneda)}
+                  key={currency}
+                  label={currency}
+                  selected={selectedCurrencies.has(currency)}
+                  onPress={() => toggleCurrency(currency)}
                 />
               ))}
             </View>
@@ -151,12 +151,12 @@ function FilterSheetContenido({
               Ordenar por
             </Typography>
             <View className="flex-row flex-wrap gap-2">
-              {ORDENES.map((criterio) => (
+              {SORT_OPTIONS.map((order) => (
                 <Chip
-                  key={criterio}
-                  etiqueta={ETIQUETAS_ORDEN[criterio]}
-                  seleccionado={pendienteOrden === criterio}
-                  onPress={() => setPendienteOrden(criterio)}
+                  key={order}
+                  label={SORT_LABELS[order]}
+                  selected={draftSortOrder === order}
+                  onPress={() => setDraftSortOrder(order)}
                 />
               ))}
             </View>
@@ -165,9 +165,9 @@ function FilterSheetContenido({
       </ScrollView>
 
       <View className="mt-5 flex-row items-center gap-3">
-        <Button label="Limpiar" variant="secondary" onPress={limpiarTodo} />
+        <Button label="Limpiar" variant="secondary" onPress={clearAll} />
         <View className="flex-1">
-          <Button label="Aplicar" fullWidth onPress={confirmar} />
+          <Button label="Aplicar" fullWidth onPress={confirm} />
         </View>
       </View>
     </>
@@ -183,7 +183,7 @@ function FilterSheetContenido({
 export function FilterSheet(props: FilterSheetProps) {
   return (
     <ModalBackdrop visible={props.visible} onRequestClose={props.onClose}>
-      {props.visible ? <FilterSheetContenido {...props} /> : null}
+      {props.visible ? <FilterSheetContent {...props} /> : null}
     </ModalBackdrop>
   )
 }

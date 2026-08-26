@@ -13,12 +13,12 @@ import type { CardProps } from './Card.d'
  * @returns Contenedor tipo tarjeta listo para componer contenido
  */
 export function Card({ noPadding = false, highlighted = false, className, ...rest }: CardProps) {
-  const clases = [
+  const classes = [
     'rounded-2xl bg-card border',
     highlighted ? 'border-accent' : 'border-line',
     noPadding ? '' : 'p-4',
     className ?? ''
   ]
 
-  return <View className={clases.filter(Boolean).join(' ')} {...rest} />
+  return <View className={classes.filter(Boolean).join(' ')} {...rest} />
 }
