@@ -1,8 +1,7 @@
 /**
  * Organismo MonthlySummary: tarjeta destacada del inicio que resume
- * cuanto representan los fijos proyectados y lo gastado en unicos,
- * todo convertido a la moneda base del usuario. Mientras las tasas
- * no esten disponibles muestra indicadores de carga, nunca NaN.
+ * el balance neto disponible (ingresos cobrados - gastos), los ingresos
+ * confirmados y los desembolsos, todo en moneda base del usuario.
  */
 
 import { ActivityIndicator, View } from 'react-native'
@@ -15,7 +14,7 @@ import { currencySymbol, formatAmount } from '@src/lib/format'
 
 import type { MonthlySummaryProps } from './MonthlySummary.d'
 
-interface SummaryColumnProps {
+interface SummaryMetricProps {
   title: string
   value: string | null
   footer: string
@@ -25,18 +24,16 @@ interface SummaryColumnProps {
 }
 
 /**
- * Columna individual con etiqueta, valor y pie.
- * @param props Etiqueta superior, monto o carga, texto inferior y alineacion
- * @returns Columna del resumen lista para la tarjeta
+ * Celda metrica individual con etiqueta, valor y pie.
  */
-function SummaryColumn({
+function SummaryMetric({
   title,
   value,
   footer,
   loading,
   highlighted = false,
   alignEnd = false
-}: SummaryColumnProps) {
+}: SummaryMetricProps) {
   const alignment = alignEnd ? 'items-end text-right' : 'items-start'
 
   return (
@@ -52,7 +49,7 @@ function SummaryColumn({
       ) : (
         <Typography
           variant="display"
-          className={`w-full text-[20px] leading-[24px] ${highlighted ? 'text-accent' : ''}`}
+          className={`w-full text-[18px] leading-[22px] ${highlighted ? 'text-accent' : ''}`}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -68,43 +65,69 @@ function SummaryColumn({
 }
 
 /**
- * Renderiza la tarjeta resumen con dos columnas comparativas.
+ * Renderiza la tarjeta resumen con balance disponible e ingresos/gastos.
  * @param props Resumen calculado, moneda base y estado de carga de tasas
- * @returns Tarjeta de totales para la pantalla de inicio
+ * @returns Tarjeta de totales para la pantalla de inicio y resumen
  */
 export function MonthlySummary({ summary, baseCurrency, loading = false }: MonthlySummaryProps) {
   const noData = !loading && !summary
+  const totalSpent = summary ? summary.totalFixed + summary.totalUnique : 0
 
   return (
     <Card highlighted className="gap-4">
-      <View className="flex-row items-center gap-2">
-        <Icon name="savings" size={18} color={COLORS.accent} />
-        <Typography variant="label">Este mes</Typography>
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-2">
+          <Icon name="savings" size={18} color={COLORS.accent} />
+          <Typography variant="label">Balance de este mes</Typography>
+        </View>
+      </View>
+
+      <View className="gap-1 rounded-xl bg-card p-3.5 border border-line">
+        <Typography variant="caption" className="text-faint">
+          Balance disponible
+        </Typography>
+        {loading ? (
+          <View className="h-[32px] items-start justify-center">
+            <ActivityIndicator size="small" color={COLORS.accent} />
+          </View>
+        ) : (
+          <Typography
+            variant="display"
+            className="text-[26px] leading-[30px] text-accent"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {summary
+              ? formatAmount(summary.netBalance, baseCurrency)
+              : `${currencySymbol(baseCurrency)} --`}
+          </Typography>
+        )}
+        <Typography variant="caption" className="text-faint">
+          Ingresos cobrados menos gastos totales
+        </Typography>
       </View>
 
       <View className="flex-row">
-        <SummaryColumn
-          title="Gastos fijos"
+        <SummaryMetric
+          title="Ingresos cobrados"
           value={
             summary
-              ? formatAmount(summary.totalFixed, baseCurrency)
+              ? formatAmount(summary.confirmedIncome, baseCurrency)
               : `${currencySymbol(baseCurrency)} --`
           }
-          footer="proyectados"
+          footer="efectivos"
           loading={loading}
           highlighted
         />
 
         <View className="w-px bg-line" />
 
-        <SummaryColumn
-          title="Gastos unicos"
+        <SummaryMetric
+          title="Gastos del mes"
           value={
-            summary
-              ? formatAmount(summary.totalUnique, baseCurrency)
-              : `${currencySymbol(baseCurrency)} --`
+            summary ? formatAmount(totalSpent, baseCurrency) : `${currencySymbol(baseCurrency)} --`
           }
-          footer={summary ? `${summary.uniqueCount} registrados` : 'sin datos'}
+          footer={summary ? `${summary.uniqueCount} unicos + fijos` : 'sin datos'}
           loading={loading}
           alignEnd
         />

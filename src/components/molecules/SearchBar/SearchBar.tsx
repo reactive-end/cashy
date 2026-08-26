@@ -16,13 +16,20 @@ import type { SearchBarProps } from './SearchBar.d'
  * @param props Valor, cambio de texto y callbacks de buscar/agregar
  * @returns Barra horizontal para encabezados de listas
  */
-export function SearchBar({ value, onChangeText, onSearch, onAdd }: SearchBarProps) {
+export function SearchBar({
+  value,
+  onChangeText,
+  onSearch,
+  onAdd,
+  placeholder = 'Buscar gastos...',
+  addAccessibilityLabel = 'Agregar gasto'
+}: SearchBarProps) {
   return (
     <View className="flex-row items-center gap-2">
       <View className="flex-1 flex-row items-center rounded-xl border border-line bg-card px-3">
         <TextInput
           className="flex-1 py-2.5 font-sans text-[14px] text-ink"
-          placeholder="Buscar gastos..."
+          placeholder={placeholder}
           placeholderTextColor={COLORS.faint}
           value={value}
           onChangeText={onChangeText}
@@ -42,7 +49,7 @@ export function SearchBar({ value, onChangeText, onSearch, onAdd }: SearchBarPro
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Agregar gasto"
+        accessibilityLabel={addAccessibilityLabel}
         className="size-10 items-center justify-center rounded-xl border border-line bg-card active:opacity-60"
         onPress={onAdd}
       >

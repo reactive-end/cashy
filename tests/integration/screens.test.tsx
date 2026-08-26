@@ -11,6 +11,7 @@ import { loadSettings, saveSettings } from '@src/db/settings'
 import { __resetCacheForTests } from '@src/hooks/useSettings'
 import { getExchangeRates } from '@src/services/rates'
 
+import ExpensesScreen from '../../app/expenses'
 import Finances from '../../app/(tabs)/finances'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
@@ -26,12 +27,24 @@ import {
 const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush })
+  useRouter: () => ({ push: mockPush, back: jest.fn() })
 }))
 
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/incomes', () => ({
+  getIncomes: jest.fn(async () => []),
+  insertIncome: jest.fn(),
+  updateIncome: jest.fn(),
+  deleteIncome: jest.fn(async () => undefined)
+}))
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => []),
+  confirmIncomeReceipt: jest.fn(),
+  deleteIncomeReceipt: jest.fn()
+}))
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const getExpensesMock = getExpenses as jest.Mock
@@ -100,7 +113,7 @@ describe('pantalla Gastos', () => {
   })
 
   it('alterna entre fijos y unicos segun el segmento', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     expect(await pantalla.findByText('Alquiler')).toBeTruthy()
@@ -114,9 +127,9 @@ describe('pantalla Gastos', () => {
 
   it('ofrece crear el primer gasto cuando la lista esta vacia', async () => {
     getExpensesMock.mockResolvedValue([])
-    const { getByText } = await render(<Finances />)
+    const { getByText } = await render(<ExpensesScreen />)
 
-    await waitFor(() => expect(getByText(/Sin gastos fijos todavia/)).toBeTruthy())
+    await waitFor(() => expect(getByText('Sin gastos fijos')).toBeTruthy())
 
     fireEvent.press(getByText('Registrar gasto'))
 
@@ -171,7 +184,7 @@ describe('pantalla Gastos con paginacion', () => {
     )
     getExpensesMock.mockResolvedValue([...fijos, ...muchos])
 
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     // Segmento Fijos: solo 2 filas, paginador visible con botones deshabilitados.

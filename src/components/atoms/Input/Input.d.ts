@@ -23,6 +23,10 @@ export interface InputProps {
   errorMessage?: string
   /** Permite varias lineas (notas) */
   multiline?: boolean
+  /** Modo de autocapitalizacion de texto */
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'
+  /** Habilita o deshabilita la autocorreccion del teclado */
+  autoCorrect?: boolean
   /** Deshabilita edicion y atenua el campo */
   disabled?: boolean
   /** Identificador de prueba para automatizacion E2E */

@@ -1,7 +1,7 @@
 /**
  * Pruebas de integracion de la pantalla de edicion de perfil.
  * Verifica precarga, validacion en vivo, guardado de identidad
- * y administracion de ingresos con persistencia inmediata.
+ * y administracion de ingresos con persistencia inmediata en vistas segmentadas.
  */
 
 import { render, userEvent } from '@testing-library/react-native'
@@ -47,13 +47,16 @@ describe('pantalla de edicion de perfil', () => {
     getIncomesMock.mockResolvedValue([buildIncome({ name: 'Salario' })])
   })
 
-  it('precarga identidad e ingresos guardados', async () => {
+  it('precarga identidad e ingresos guardados en sus secciones', async () => {
     const screen = await render(<EditProfile />)
+    const user = userEvent.setup()
 
     expect(await screen.findByTestId('profile-firstName')).toBeTruthy()
     const nameField = screen.getByLabelText('Nombre').props as { value?: string }
     expect(nameField.value).toBe('Carlos')
-    expect(screen.getByText('Salario')).toBeTruthy()
+
+    await user.press(screen.getByText('Ingresos'))
+    expect(await screen.findByText('Salario')).toBeTruthy()
   })
 
   it('valida el correo en vivo y guarda la identidad corregida', async () => {
@@ -80,9 +83,14 @@ describe('pantalla de edicion de perfil', () => {
     expect(await screen.findByText('Datos guardados correctamente')).toBeTruthy()
   })
 
-  it('agrega un ingreso nuevo con persistencia inmediata', async () => {
+  it('agrega un ingreso nuevo con persistencia inmediata desde el modal', async () => {
     const screen = await render(<EditProfile />)
     const user = userEvent.setup()
+
+    await user.press(await screen.findByText('Ingresos'))
+    await screen.findByText('Salario')
+
+    await user.press(screen.getByText('Agregar otro ingreso'))
     await screen.findByTestId('income-name')
 
     await user.type(screen.getByLabelText('Concepto'), 'Freelance')

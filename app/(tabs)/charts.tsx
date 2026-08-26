@@ -133,6 +133,18 @@ export default function Charts() {
                 <View className="gap-2">
                   <View className="flex-row items-baseline justify-between gap-3">
                     <Typography variant="caption" className="text-faint">
+                      Ingresos cobrados (mes)
+                    </Typography>
+                    <Typography variant="body" className="text-accent font-sans-semibold">
+                      {formatAmount(
+                        expensesState.monthlySummary?.confirmedIncome ?? 0,
+                        baseCurrency
+                      )}
+                    </Typography>
+                  </View>
+
+                  <View className="flex-row items-baseline justify-between gap-3">
+                    <Typography variant="caption" className="text-faint">
                       Unicos del mes
                     </Typography>
                     <Typography variant="body">

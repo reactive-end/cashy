@@ -6,11 +6,10 @@
 
 import { fireEvent, render } from '@testing-library/react-native'
 
+import ExpensesScreen from '../../app/expenses'
 import { getExpenses } from '@src/db/expenses'
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
-
-import Finances from '../../app/(tabs)/finances'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -22,12 +21,16 @@ import {
 const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush })
+  useRouter: () => ({ push: mockPush, back: jest.fn() })
 }))
 
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => [])
+}))
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const getExpensesMock = getExpenses as jest.Mock
@@ -54,7 +57,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('filtra por nombre al pulsar el boton Buscar', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByText('Unicos'))
@@ -71,7 +74,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('filtra por categoria ademas del nombre', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByText('Unicos'))
@@ -87,7 +90,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('muestra estado vacio cuando la busqueda no arroja resultados', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.changeText(pantalla.getByPlaceholderText('Buscar gastos...'), 'zeppelin')
@@ -99,7 +102,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('navega a nuevo gasto desde el boton de icono agregar', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Agregar gasto'))
@@ -108,7 +111,7 @@ describe('barra de busqueda en Gastos', () => {
   })
 
   it('mantiene la paginacion visible con una sola pagina y botones deshabilitados', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     expect(await pantalla.findByText(/Página 1 de 1/)).toBeTruthy()

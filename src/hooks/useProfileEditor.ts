@@ -24,7 +24,7 @@ import {
 import type { Income, UserProfile } from '@src/types/domain'
 
 /** Fila vacia para capturar un ingreso nuevo */
-function emptyRow(): IncomeDraft {
+export function emptyRow(): IncomeDraft {
   return { name: '', amountCents: 0, currency: 'USD', paydayDayText: '' }
 }
 

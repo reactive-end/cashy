@@ -1,22 +1,28 @@
 /**
- * Pruebas de integracion de la pestana Finanzas.
- * Cubren el segmento Gastos/Ingresos, el panel de ingresos con su
- * resumen y el flujo completo de alta mediante la hoja modal.
+ * Pruebas de integracion del Hub de Finanzas.
+ * Cubren la visualizacion de las tarjetas de navegacion (Gastos e Ingresos),
+ * las metricas previas y la redireccion a las pantallas dedicadas.
  */
 
-import { render, userEvent, waitFor } from '@testing-library/react-native'
+import { render, userEvent } from '@testing-library/react-native'
 
 import Finances from '../../app/(tabs)/finances'
 import * as expensesRepo from '@src/db/expenses'
+import * as receiptsRepo from '@src/db/incomeReceipts'
 import * as incomesRepo from '@src/db/incomes'
 import * as ratesService from '@src/services/rates'
 import { __resetCacheForTests } from '@src/hooks/useSettings'
-import { buildFixedExpense, buildIncome, buildRates, buildSettings } from '../helpers/factories'
+import { buildFixedExpense, buildIncome, buildRates } from '../helpers/factories'
+
+const mockPush = jest.fn()
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush })
+}))
 
 const getExchangeRatesMock = ratesService.getExchangeRates as jest.Mock
 const getExpensesMock = expensesRepo.getExpenses as jest.Mock
 const getIncomesMock = incomesRepo.getIncomes as jest.Mock
-const insertIncomeMock = incomesRepo.insertIncome as jest.Mock
 
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses', () => ({
@@ -30,6 +36,12 @@ jest.mock('@src/db/incomes', () => ({
   updateIncome: jest.fn(async () => undefined),
   deleteIncome: jest.fn(async () => undefined)
 }))
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => []),
+  confirmIncomeReceipt: jest.fn(async () => undefined),
+  deleteIncomeReceipt: jest.fn(async () => undefined)
+}))
 
 /** Sembrado comun: tasas vigentes, ajustes y datos base */
 function sembrar() {
@@ -37,92 +49,47 @@ function sembrar() {
   __resetCacheForTests()
 }
 
-describe('pestana Finanzas', () => {
+describe('Hub de Finanzas', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     sembrar()
     getIncomesMock.mockReset()
     getIncomesMock.mockResolvedValue([])
+    getExpensesMock.mockReset()
+    getExpensesMock.mockResolvedValue([])
   })
 
-  it('muestra por defecto la seccion Gastos intacta', async () => {
-    getExpensesMock.mockResolvedValue([buildFixedExpense()])
+  it('muestra el encabezado y las tarjetas principales de Gastos e Ingresos', async () => {
+    getExpensesMock.mockResolvedValue([buildFixedExpense({ name: 'Alquiler', amount: 300 })])
+    getIncomesMock.mockResolvedValue([buildIncome({ name: 'Salario', amount: 1000 })])
+
     const pantalla = await render(<Finances />)
 
-    expect(await pantalla.findByText('Mis gastos')).toBeTruthy()
-    expect(pantalla.getByLabelText('Filtrar gastos')).toBeTruthy()
+    expect(await pantalla.findByText('Finanzas')).toBeTruthy()
+    expect(pantalla.getByText('Gastos')).toBeTruthy()
+    expect(pantalla.getByText('Ingresos')).toBeTruthy()
+    expect(pantalla.getByText('Balance de este mes')).toBeTruthy()
+    expect(pantalla.getByLabelText('Ir a Gastos')).toBeTruthy()
+    expect(pantalla.getByLabelText('Ir a Ingresos')).toBeTruthy()
   })
 
-  it('el segmento Ingresos muestra el resumen y las fuentes', async () => {
-    getIncomesMock.mockResolvedValue([
-      buildIncome({ name: 'Salario', amount: 500 }),
-      buildIncome({ id: 'i-2', name: 'Freelance', amount: 300 })
-    ])
-    const pantalla = await render(<Finances />)
-    const usuario = userEvent.setup()
-
-    await usuario.press(await pantalla.findByText('Ingresos'))
-
-    expect(await pantalla.findByText('Ingreso mensual estimado')).toBeTruthy()
-    expect(pantalla.getByText('Salario')).toBeTruthy()
-    expect(pantalla.getByText('Freelance')).toBeTruthy()
-    expect(pantalla.getByText(/2 fuentes/)).toBeTruthy()
-    // Sin gastos visibles en esta vista.
-    expect(pantalla.queryByText('Mis gastos')).toBeNull()
-  })
-
-  it('muestra el estado vacio accionable sin ingresos', async () => {
+  it('navega a la pantalla dedicada de Gastos al tocar su tarjeta', async () => {
     const pantalla = await render(<Finances />)
     const usuario = userEvent.setup()
 
-    await usuario.press(await pantalla.findByText('Ingresos'))
+    const cardGastos = await pantalla.findByLabelText('Ir a Gastos')
+    await usuario.press(cardGastos)
 
-    expect(await pantalla.findByText('Sin ingresos todavia')).toBeTruthy()
-    expect(pantalla.getAllByText('Agregar ingreso').length).toBeGreaterThan(0)
+    expect(mockPush).toHaveBeenCalledWith('/expenses')
   })
 
-  it('agrega un ingreso desde la hoja modal y lo lista al cerrarse', async () => {
-    getIncomesMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValue([buildIncome({ id: 'nuevo-1', name: 'Freelance', amount: 300 })])
-    insertIncomeMock.mockResolvedValue(undefined)
-
+  it('navega a la pantalla dedicada de Ingresos al tocar su tarjeta', async () => {
     const pantalla = await render(<Finances />)
     const usuario = userEvent.setup()
 
-    await usuario.press(await pantalla.findByText('Ingresos'))
+    const cardIngresos = await pantalla.findByLabelText('Ir a Ingresos')
+    await usuario.press(cardIngresos)
 
-    const botonAgregar = await pantalla.findByText('Agregar ingreso')
-    await usuario.press(botonAgregar)
-
-    await pantalla.findByTestId('income-sheet-name')
-    await usuario.type(pantalla.getByLabelText('Concepto'), 'Freelance')
-    await usuario.type(pantalla.getByTestId('income-sheet-amount'), '30000')
-    await usuario.type(pantalla.getByLabelText('Dia de cobro (1-31)'), '20')
-
-    const confirmar = pantalla.getByTestId('income-sheet-confirm')
-    await waitFor(() => expect(confirmar.props.accessibilityState.disabled).toBe(false))
-    await usuario.press(confirmar)
-
-    expect(insertIncomeMock).toHaveBeenCalledWith(
-      { name: 'Freelance', amount: 300, currency: 'USD', paydayDay: 20 },
-      expect.any(String)
-    )
-    expect(await pantalla.findByText('Freelance')).toBeTruthy()
-  })
-
-  it('impide confirmar la hoja con campos invalidos', async () => {
-    const pantalla = await render(<Finances />)
-    const usuario = userEvent.setup()
-
-    await usuario.press(await pantalla.findByText('Ingresos'))
-
-    const botonAgregar = await pantalla.findByText('Agregar ingreso')
-    await usuario.press(botonAgregar)
-    await pantalla.findByTestId('income-sheet-name')
-
-    const confirmar = pantalla.getByTestId('income-sheet-confirm')
-    expect(confirmar.props.accessibilityState.disabled).toBe(true)
-    expect(insertIncomeMock).not.toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith('/incomes')
   })
 })

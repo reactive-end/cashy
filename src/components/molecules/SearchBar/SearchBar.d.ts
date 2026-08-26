@@ -12,4 +12,8 @@ export interface SearchBarProps {
   onSearch: () => void
   /** Abre el flujo de creacion de un registro nuevo */
   onAdd: () => void
+  /** Texto de marcador de posicion en el input */
+  placeholder?: string
+  /** Etiqueta de accesibilidad para el boton de agregar */
+  addAccessibilityLabel?: string
 }

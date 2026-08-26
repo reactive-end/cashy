@@ -7,7 +7,7 @@
 import * as SQLite from 'expo-sqlite'
 
 /** Version actual del esquema; incrementar al cambiar tablas */
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 /** Conexion activa tras la primera apertura */
 let instance: SQLite.SQLiteDatabase | null = null
@@ -26,7 +26,8 @@ const INDEXES_V3 = `
  * v1 (nombres en espanol) se descarta; v2 -> v3 reconstruye la tabla
  * de gastos para ampliar el CHECK de moneda a EUR, preservando datos;
  * v4 incorpora las tablas de perfil e ingresos del onboarding;
- * v5 renombra las columnas de profile al ingles preservando datos.
+ * v5 renombra las columnas de profile al ingles preservando datos;
+ * v6 agrega la tabla de recibos de ingresos confirmados (income_receipts).
  * @param db Conexion abierta de la base de datos
  */
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -144,6 +145,21 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       );
     `)
   }
+
+  // v6: registro de recibos de ingresos confirmados por mes.
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS income_receipts (
+      id TEXT PRIMARY KEY NOT NULL,
+      income_id TEXT NOT NULL,
+      year_month TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL CHECK (currency IN ('VES', 'USD', 'USDT', 'EUR')),
+      confirmed_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_income_receipts_month ON income_receipts (income_id, year_month);
+  `)
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`)
 }

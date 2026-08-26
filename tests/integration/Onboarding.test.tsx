@@ -34,7 +34,7 @@ async function mountWithValidIdentity() {
   await user.type(screen.getByLabelText('Correo'), 'carlos@perez.com')
   await user.press(screen.getByText('Continuar'))
 
-  await screen.findByTestId('income-name')
+  await screen.findByText('Sin fuentes de ingreso')
 
   return { screen, user }
 }
@@ -70,10 +70,15 @@ describe('pantalla de onboarding', () => {
   it('recorre ambos pasos, agrega un ingreso y guarda', async () => {
     const { screen, user } = await mountWithValidIdentity()
 
+    await user.press(screen.getByText('Agregar ingreso'))
+    await screen.findByTestId('income-name')
+
     await user.type(screen.getByLabelText('Concepto'), 'Salario')
     await user.type(screen.getByTestId('income-amount'), '1500')
     await user.type(screen.getByLabelText('Dia de cobro (1-31)'), '5')
-    await user.press(screen.getByText('Agregar ingreso'))
+    await user.press(
+      screen.getAllByText('Agregar ingreso')[1] ?? screen.getByText('Agregar ingreso')
+    )
 
     expect(await screen.findByText(/cobra el dia 5/)).toBeTruthy()
 
@@ -104,9 +109,14 @@ describe('pantalla de onboarding', () => {
   it('el monto invalido impide agregar a la tabla', async () => {
     const { screen, user } = await mountWithValidIdentity()
 
+    await user.press(screen.getByLabelText('Agregar ingreso'))
+    await screen.findByTestId('income-name')
+
     await user.type(screen.getByLabelText('Concepto'), 'Salario')
 
-    expect(screen.getByLabelText('Agregar ingreso').props.accessibilityState.disabled).toBe(true)
+    const actionButtons = screen.getAllByLabelText('Agregar ingreso')
+    const actionButton = actionButtons[actionButtons.length - 1]
+    expect(actionButton.props.accessibilityState.disabled).toBe(true)
     expect(saveProfileMock).not.toHaveBeenCalled()
     expect(replaceIncomesMock).not.toHaveBeenCalled()
   })
@@ -114,21 +124,24 @@ describe('pantalla de onboarding', () => {
   it('edita un ingreso agregado desde la tabla', async () => {
     const { screen, user } = await mountWithValidIdentity()
 
+    await user.press(screen.getByLabelText('Agregar ingreso'))
+    await screen.findByTestId('income-name')
+
     await user.type(screen.getByLabelText('Concepto'), 'Salario')
     await user.type(screen.getByTestId('income-amount'), '1500')
     await user.type(screen.getByLabelText('Dia de cobro (1-31)'), '5')
-    await user.press(screen.getByText('Agregar ingreso'))
+    const actionButtons = screen.getAllByLabelText('Agregar ingreso')
+    await user.press(actionButtons[actionButtons.length - 1])
     await screen.findByText(/cobra el dia 5/)
 
     await user.press(screen.getByLabelText('Editar Salario'))
+    await screen.findByTestId('income-name')
     await userEvent.clear(screen.getByLabelText('Concepto'))
     await user.type(screen.getByLabelText('Concepto'), 'Sueldo base')
     await user.press(screen.getByText('Guardar cambios'))
 
     expect(await screen.findByText('Sueldo base')).toBeTruthy()
     expect(screen.getByText(/cobra el dia 5/)).toBeTruthy()
-    // El editor vuelve al modo agregar tras guardar.
-    expect(screen.getByText('Agregar ingreso')).toBeTruthy()
     expect(replaceIncomesMock).not.toHaveBeenCalled()
   })
 })

@@ -1,12 +1,13 @@
 /**
- * Hook useExpenses: reactive layer over the expenses repository.
- * Exposes per-kind lists, the monthly summary, upcoming payments and
- * CRUD operations that keep notifications in sync.
+ * Hook useExpenses: reactive layer over the expenses and receipts repository.
+ * Exposes per-kind lists, the monthly summary with real net balance,
+ * upcoming payments and CRUD operations that keep notifications in sync.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { deleteExpense, getExpenses, insertExpense, updateExpense } from '@src/db/expenses'
+import { formatYearMonth, getIncomeReceipts } from '@src/db/incomeReceipts'
 import { convert } from '@src/lib/conversions'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { emit, subscribe } from '@src/lib/events'
@@ -23,6 +24,7 @@ import type {
   Expense,
   ExpenseInput,
   ExchangeRates,
+  IncomeReceipt,
   MonthlySummary,
   UpcomingPayment
 } from '@src/types/domain'
@@ -50,7 +52,7 @@ export interface UseExpensesResult {
   fixedExpenses: Expense[]
   /** Gastos unicos registrados */
   uniqueExpenses: Expense[]
-  /** Resumen agregado del mes en moneda base; null sin tasas disponibles */
+  /** Resumen agregado del mes en moneda base con balance neto; null sin tasas */
   monthlySummary: MonthlySummary | null
   /** Pagos fijos dentro del horizonte de siete dias */
   upcomingPayments: UpcomingPayment[]
@@ -101,15 +103,22 @@ export function useExpenses(
   reminderMinute = 0
 ): UseExpensesResult {
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [receipts, setReceipts] = useState<IncomeReceipt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloading, setReloading] = useState(false)
 
+  const currentYearMonth = formatYearMonth()
+
   const reload = useCallback(async () => {
     setReloading(true)
     try {
-      const fetched = await getExpenses()
-      setExpenses(fetched)
+      const [fetchedExpenses, fetchedReceipts] = await Promise.all([
+        getExpenses(),
+        getIncomeReceipts(currentYearMonth)
+      ])
+      setExpenses(fetchedExpenses)
+      setReceipts(fetchedReceipts)
       setError(null)
     } catch {
       // Mensaje amigable fijo: nunca se filtran textos tecnicos de la base.
@@ -117,15 +126,16 @@ export function useExpenses(
     } finally {
       setReloading(false)
     }
-  }, [])
+  }, [currentYearMonth])
 
   useEffect(() => {
     let active = true
 
-    getExpenses()
-      .then((fetched) => {
+    Promise.all([getExpenses(), getIncomeReceipts(currentYearMonth)])
+      .then(([fetchedExpenses, fetchedReceipts]) => {
         if (!active) return
-        setExpenses(fetched)
+        setExpenses(fetchedExpenses)
+        setReceipts(fetchedReceipts)
         setError(null)
       })
       .catch(() => {
@@ -135,17 +145,19 @@ export function useExpenses(
         if (active) setLoading(false)
       })
 
-    // Sincronizacion entre instancias: mutaciones desde el modal u otras
-    // pantallas emiten 'expenses-changed' y esta instancia recarga sola.
-    const unsubscribe = subscribe('expenses-changed', () => {
+    const unsubscribeExpenses = subscribe('expenses-changed', () => {
+      if (active) void reload()
+    })
+    const unsubscribeReceipts = subscribe('income-receipts-changed', () => {
       if (active) void reload()
     })
 
     return () => {
       active = false
-      unsubscribe()
+      unsubscribeExpenses()
+      unsubscribeReceipts()
     }
-  }, [reload])
+  }, [reload, currentYearMonth])
 
   const fixedExpenses = useMemo(
     () => expenses.filter((g) => g.type === 'fixed' && g.active),
@@ -176,8 +188,21 @@ export function useExpenses(
       0
     )
 
-    return { totalFixed, totalUnique, uniqueCount: uniqueThisMonth.length }
-  }, [fixedExpenses, uniqueExpenses, rates, baseCurrency])
+    const confirmedIncome = receipts.reduce(
+      (sum, receipt) => sum + toBase(receipt.amount, receipt.currency, rates, baseCurrency),
+      0
+    )
+
+    const netBalance = confirmedIncome - (totalFixed + totalUnique)
+
+    return {
+      totalFixed,
+      totalUnique,
+      uniqueCount: uniqueThisMonth.length,
+      confirmedIncome,
+      netBalance
+    }
+  }, [fixedExpenses, uniqueExpenses, receipts, rates, baseCurrency])
 
   const upcomingPayments = useMemo<UpcomingPayment[]>(() => {
     const upcoming: UpcomingPayment[] = []

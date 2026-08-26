@@ -6,11 +6,10 @@
 
 import { fireEvent, render } from '@testing-library/react-native'
 
+import ExpensesScreen from '../../app/expenses'
 import { getExpenses } from '@src/db/expenses'
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
-
-import Finances from '../../app/(tabs)/finances'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -22,12 +21,16 @@ import {
 const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush })
+  useRouter: () => ({ push: mockPush, back: jest.fn() })
 }))
 
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => [])
+}))
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const getExpensesMock = getExpenses as jest.Mock
@@ -52,7 +55,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('abre el panel desde el boton junto al titulo y filtra por categoria', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
@@ -73,7 +76,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('ordena por nombre al elegir el criterio Nombre A-Z', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))
@@ -95,7 +98,7 @@ describe('panel de filtros en Gastos', () => {
   })
 
   it('limpia los filtros con el boton Limpiar', async () => {
-    const pantalla = await render(<Finances />)
+    const pantalla = await render(<ExpensesScreen />)
     await wait(250)
 
     fireEvent.press(pantalla.getByLabelText('Unicos'))

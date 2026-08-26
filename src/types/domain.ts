@@ -118,6 +118,10 @@ export interface MonthlySummary {
   totalUnique: number
   /** Amount of unique expenses registered this month */
   uniqueCount: number
+  /** Total confirmed income received in the current month in base currency */
+  confirmedIncome: number
+  /** Real available net balance: confirmedIncome - (totalFixed + totalUnique) */
+  netBalance: number
 }
 
 /** Fixed expense with a close due date, used in upcoming payments lists */
@@ -158,4 +162,16 @@ export interface IncomeInput {
   amount: number
   currency: Currency
   paydayDay: number
+}
+
+/** Confirmed receipt of an income source for a specific month */
+export interface IncomeReceipt {
+  id: string
+  incomeId: string
+  yearMonth: string
+  amount: number
+  currency: Currency
+  confirmedAt: string
+  createdAt: string
+  updatedAt: string
 }

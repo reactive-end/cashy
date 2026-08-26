@@ -17,7 +17,7 @@ describe('migracion de esquema', () => {
     base = initFakeDatabase(4)
   })
 
-  it('v4 a v5 recrea perfil con columnas en ingles, crea ingresos y sella la version 5', async () => {
+  it('v4 a v6 recrea perfil con columnas en ingles, crea ingresos, recibos y sella la version 6', async () => {
     // La consulta de existencia de expenses devuelve vacio (no hay tabla previa);
     // la de profile devuelve la tabla antigua para ejercitar el renombre.
     base.queue([])
@@ -28,7 +28,8 @@ describe('migracion de esquema', () => {
     expect(base.findByFragment('CREATE TABLE profile_nueva')).toHaveLength(1)
     expect(base.findByFragment('ALTER TABLE profile_nueva RENAME TO profile')).toHaveLength(1)
     expect(base.findByFragment('CREATE TABLE IF NOT EXISTS incomes')).toHaveLength(1)
-    expect(base.findByFragment('PRAGMA user_version = 5')).toHaveLength(1)
+    expect(base.findByFragment('CREATE TABLE IF NOT EXISTS income_receipts')).toHaveLength(1)
+    expect(base.findByFragment('PRAGMA user_version = 6')).toHaveLength(1)
   })
 
   it('no reejecuta la migracion cuando la base ya esta en la version vigente', async () => {
@@ -38,6 +39,7 @@ describe('migracion de esquema', () => {
     await loadSettings()
 
     expect(currentBase.findByFragment('CREATE TABLE IF NOT EXISTS incomes')).toHaveLength(0)
-    expect(currentBase.findByFragment('PRAGMA user_version = 5')).toHaveLength(0)
+    expect(currentBase.findByFragment('CREATE TABLE IF NOT EXISTS income_receipts')).toHaveLength(0)
+    expect(currentBase.findByFragment('PRAGMA user_version = 6')).toHaveLength(0)
   })
 })

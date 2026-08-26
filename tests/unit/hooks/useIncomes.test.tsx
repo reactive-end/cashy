@@ -1,10 +1,12 @@
 /**
  * Pruebas unitarias del hook useIncomes.
- * Cubren carga, sincronizacion por eventos, CRUD y resumen mensual.
+ * Cubren carga, sincronizacion por eventos, CRUD, resumen mensual
+ * y confirmacion de recibos de cobro.
  */
 
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
+import * as incomeReceiptsRepo from '@src/db/incomeReceipts'
 import * as incomesRepo from '@src/db/incomes'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { subscribe } from '@src/lib/events'
@@ -16,6 +18,9 @@ const getIncomesMock = incomesRepo.getIncomes as jest.Mock
 const insertIncomeMock = incomesRepo.insertIncome as jest.Mock
 const updateIncomeMock = incomesRepo.updateIncome as jest.Mock
 const deleteIncomeMock = incomesRepo.deleteIncome as jest.Mock
+const getIncomeReceiptsMock = incomeReceiptsRepo.getIncomeReceipts as jest.Mock
+const confirmIncomeReceiptMock = incomeReceiptsRepo.confirmIncomeReceipt as jest.Mock
+const deleteIncomeReceiptMock = incomeReceiptsRepo.deleteIncomeReceipt as jest.Mock
 
 jest.mock('@src/db/incomes', () => ({
   getIncomes: jest.fn(async () => []),
@@ -24,13 +29,30 @@ jest.mock('@src/db/incomes', () => ({
   deleteIncome: jest.fn(async () => undefined)
 }))
 
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => []),
+  confirmIncomeReceipt: jest.fn(async (income, yearMonth, id) => ({
+    id,
+    incomeId: income.id,
+    yearMonth,
+    amount: income.amount,
+    currency: income.currency,
+    confirmedAt: '2026-08-26T00:00:00.000Z',
+    createdAt: '2026-08-26T00:00:00.000Z',
+    updatedAt: '2026-08-26T00:00:00.000Z'
+  })),
+  deleteIncomeReceipt: jest.fn(async () => undefined)
+}))
+
 describe('useIncomes', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     getIncomesMock.mockResolvedValue([])
+    getIncomeReceiptsMock.mockResolvedValue([])
   })
 
-  it('carga el listado al montar y expone loading', async () => {
+  it('carga el listado y recibos al montar y expone loading', async () => {
     getIncomesMock.mockResolvedValue([buildIncome()])
 
     const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
@@ -50,16 +72,11 @@ describe('useIncomes', () => {
     expect(result.current.error).toBe(EXPENSES_LOAD_ERROR_MESSAGE)
   })
 
-  it('recarga sola cuando otra pantalla emite incomes-changed', async () => {
+  it('recarga sola cuando otra pantalla emite incomes-changed o income-receipts-changed', async () => {
     const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     getIncomesMock.mockResolvedValue([buildIncome(), buildIncome({ id: 'ingreso-2' })])
-
-    const eventos: string[] = []
-    // La emision proviene del propio hook tras sus mutaciones; aqui se
-    // simula la de otra instancia para validar la suscripcion.
-    void eventos
 
     await act(async () => {
       const { emit } = require('@src/lib/events')
@@ -69,17 +86,70 @@ describe('useIncomes', () => {
     await waitFor(() => expect(result.current.incomes).toHaveLength(2))
   })
 
-  it('calcula el total mensual convertido a la moneda base', async () => {
+  it('calcula el total mensual y el total confirmado convertidos a la moneda base', async () => {
     getIncomesMock.mockResolvedValue([
-      buildIncome({ amount: 100, currency: 'USD' }),
-      buildIncome({ id: 'i-2', amount: 4000, currency: 'VES' })
+      buildIncome({ id: 'i-1', amount: 100, currency: 'USD', paydayDay: 5 }),
+      buildIncome({ id: 'i-2', amount: 4000, currency: 'VES', paydayDay: 20 })
+    ])
+    getIncomeReceiptsMock.mockResolvedValue([
+      {
+        id: 'r-1',
+        incomeId: 'i-1',
+        yearMonth: '2026-08',
+        amount: 100,
+        currency: 'USD',
+        confirmedAt: '2026-08-05T00:00:00.000Z',
+        createdAt: '2026-08-05T00:00:00.000Z',
+        updatedAt: '2026-08-05T00:00:00.000Z'
+      }
     ])
 
     const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
     await waitFor(() => expect(result.current.incomes).toHaveLength(2))
 
-    // buildRates trae bcvUsd 779.95 -> 4000 VES equivalen a ~5.13 USD.
+    // Total estimado: 100 + 4000/779.95 ~ 105.13 USD
     expect(result.current.monthlyTotal).toBeCloseTo(105.13, 1)
+    // Total confirmado: 100 USD
+    expect(result.current.confirmedTotal).toBe(100)
+    expect(result.current.isConfirmedThisMonth('i-1')).toBe(true)
+    expect(result.current.isConfirmedThisMonth('i-2')).toBe(false)
+  })
+
+  it('confirma el cobro de un ingreso y emite el evento', async () => {
+    const income = buildIncome({ id: 'i-1', amount: 200, currency: 'USD' })
+    getIncomesMock.mockResolvedValue([income])
+
+    const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const eventos: string[] = []
+    const desuscribir = subscribe('income-receipts-changed', () => eventos.push('recibo'))
+
+    await act(async () => {
+      await result.current.confirmReceipt(income)
+    })
+
+    desuscribir()
+
+    expect(confirmIncomeReceiptMock).toHaveBeenCalledWith(income, '2026-08', expect.any(String))
+    expect(eventos).toEqual(['recibo'])
+  })
+
+  it('rerevierte o elimina la confirmacion de un ingreso y emite el evento', async () => {
+    const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const eventos: string[] = []
+    const desuscribir = subscribe('income-receipts-changed', () => eventos.push('eliminado'))
+
+    await act(async () => {
+      await result.current.unconfirmReceipt('i-1')
+    })
+
+    desuscribir()
+
+    expect(deleteIncomeReceiptMock).toHaveBeenCalledWith('i-1', '2026-08')
+    expect(eventos).toEqual(['eliminado'])
   })
 
   it('devuelve resumen null sin tasas disponibles', async () => {
@@ -89,6 +159,7 @@ describe('useIncomes', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     expect(result.current.monthlyTotal).toBeNull()
+    expect(result.current.confirmedTotal).toBeNull()
   })
 
   it('crear persiste con id nuevo y emite el evento', async () => {

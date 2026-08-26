@@ -77,6 +77,7 @@ export function useAppUpdate(): UseAppUpdateResult {
     try {
       const file = await downloadApk(available.apkUrl, setProgress)
       await installApk(file)
+      setAvailable(null)
     } catch {
       // Fallo silencioso: el aviso queda disponible para reintentar.
     } finally {

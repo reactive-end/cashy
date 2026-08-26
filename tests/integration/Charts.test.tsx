@@ -26,6 +26,10 @@ jest.mock('expo-router', () => ({
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => [])
+}))
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const getExpensesMock = getExpenses as jest.Mock
@@ -36,9 +40,27 @@ function sembrarConDatos() {
   getExchangeRatesMock.mockResolvedValue(buildRates())
   loadSettingsMock.mockResolvedValue(buildSettings())
   const datos = [
-    buildFixedExpense({ id: 'f-1', name: 'Alquiler', category: 'Hogar', amount: 300 }),
-    buildFixedExpense({ id: 'f-2', name: 'Internet', category: 'Hogar', amount: 50 }),
-    buildUniqueExpense({ id: 'u-1', name: 'Taxi', category: 'Transporte', amount: 10 })
+    buildFixedExpense({
+      id: 'f-1',
+      name: 'Alquiler',
+      category: 'Hogar',
+      amount: 300,
+      currency: 'USD'
+    }),
+    buildFixedExpense({
+      id: 'f-2',
+      name: 'Internet',
+      category: 'Hogar',
+      amount: 50,
+      currency: 'USD'
+    }),
+    buildUniqueExpense({
+      id: 'u-1',
+      name: 'Taxi',
+      category: 'Transporte',
+      amount: 10,
+      currency: 'USD'
+    })
   ]
   getExpensesMock.mockImplementation(async () => datos)
 }
@@ -83,7 +105,7 @@ describe('pantalla de graficas', () => {
     const pantalla = await render(<Charts />)
     await wait(250)
 
-    expect(await pantalla.findByText('$ 350,00')).toBeTruthy()
+    expect(await pantalla.findByText('$ 360,00')).toBeTruthy()
     expect(pantalla.queryByText('Sin datos para graficar')).toBeNull()
   })
 

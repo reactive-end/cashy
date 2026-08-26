@@ -16,6 +16,10 @@ export interface ConfirmDialogProps {
   cancelLabel?: string
   /** Usa el tono peligroso en el boton de confirmacion */
   destructive?: boolean
+  /** Deshabilita el boton de confirmacion */
+  confirmDisabled?: boolean
+  /** Deshabilita el boton de cancelacion */
+  cancelDisabled?: boolean
   /** Accion al confirmar */
   onConfirm: () => void
   /** Accion al cancelar o cerrar el dialogo */

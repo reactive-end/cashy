@@ -26,12 +26,17 @@ export function Input({
   prefix,
   errorMessage,
   multiline = false,
+  autoCapitalize,
+  autoCorrect,
   disabled = false
 }: InputProps) {
   const { containerClasses, prefixClasses, onFocus, onBlur } = useInput(
     Boolean(errorMessage),
     disabled
   )
+
+  const effectiveAutoCapitalize = autoCapitalize ?? (email ? 'none' : undefined)
+  const effectiveAutoCorrect = autoCorrect ?? (email ? false : undefined)
 
   return (
     <View className="gap-1.5">
@@ -56,6 +61,8 @@ export function Input({
           multiline={multiline}
           testID={testID}
           keyboardType={numeric ? 'decimal-pad' : email ? 'email-address' : 'default'}
+          autoCapitalize={effectiveAutoCapitalize}
+          autoCorrect={effectiveAutoCorrect}
           accessibilityLabel={label}
         />
       </View>

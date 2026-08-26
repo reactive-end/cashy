@@ -8,6 +8,7 @@ import type { ReactElement } from 'react'
 import { Button } from '@src/components/atoms/Button'
 import { EmptyState } from '@src/components/molecules/EmptyState'
 import { ExpenseItem } from '@src/components/molecules/ExpenseItem'
+import { IncomeItem } from '@src/components/molecules/IncomeItem'
 import { RateCard } from '@src/components/molecules/RateCard'
 import { SectionHeader } from '@src/components/molecules/SectionHeader'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
@@ -44,6 +45,31 @@ describe('instantaneas de moleculas', () => {
         name="Licuadora"
         formattedAmount="$ 320,53"
         formattedOriginalAmount="Bs. 250.000,00"
+      />
+    ]
+    const instantaneas: string[] = []
+    for (const arbol of arboles) instantaneas.push(await snapshotar(arbol))
+    expect(instantaneas).toMatchSnapshot()
+  })
+
+  it('IncomeItem muestra variantes confirmada y pendiente', async () => {
+    const arboles = [
+      <IncomeItem
+        key="1"
+        name="Salario"
+        paydayDay={15}
+        formattedAmount="$ 800,00"
+        isConfirmed
+        onPress={jest.fn()}
+      />,
+      <IncomeItem
+        key="2"
+        name="Freelance"
+        paydayDay={20}
+        formattedAmount="$ 300,00"
+        formattedOriginalAmount="Bs. 233.985,00"
+        isConfirmed={false}
+        onPress={jest.fn()}
       />
     ]
     const instantaneas: string[] = []

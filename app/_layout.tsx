@@ -161,10 +161,13 @@ export default function RootLayout() {
       >
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="expenses" />
+        <Stack.Screen name="incomes" />
         <Stack.Screen name="new-expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="expense/[id]" />
         <Stack.Screen name="edit-expense/[id]" />
+        <Stack.Screen name="income/[id]" />
       </Stack>
 
       <ConfirmDialog
@@ -177,8 +180,10 @@ export default function RootLayout() {
               )}%`
             : `La version ${appUpdate.available?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
         }
-        confirmLabel="Actualizar"
+        confirmLabel={appUpdate.downloading ? 'Descargando...' : 'Actualizar'}
         cancelLabel="Cancelar"
+        confirmDisabled={appUpdate.downloading}
+        cancelDisabled={appUpdate.downloading}
         onConfirm={() => void appUpdate.confirm()}
         onCancel={() => {
           if (!appUpdate.downloading) void appUpdate.dismiss()

@@ -34,6 +34,10 @@ jest.mock('expo-router', () => {
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => [])
+}))
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const getExpenseMock = getExpense as jest.Mock

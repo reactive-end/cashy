@@ -15,21 +15,28 @@ describe('MonthlySummary', () => {
       <MonthlySummary summary={null} baseCurrency="USD" />
     )
 
-    expect(getAllByText('$ --')).toHaveLength(2)
+    expect(getAllByText('$ --')).toHaveLength(3)
     expect(getByText('sin datos')).toBeTruthy()
   })
 
-  it('expresa los totales en la moneda base con conteo de unicos', async () => {
+  it('expresa el balance disponible y los totales en la moneda base', async () => {
     const { getByText } = await render(
       <MonthlySummary
-        summary={{ totalFixed: 1301, totalUnique: 320.53, uniqueCount: 4 }}
+        summary={{
+          totalFixed: 1301,
+          totalUnique: 320.53,
+          uniqueCount: 4,
+          confirmedIncome: 2000,
+          netBalance: 378.47
+        }}
         baseCurrency="USD"
       />
     )
 
-    expect(getByText('$ 1.301,00')).toBeTruthy()
-    expect(getByText('$ 320,53')).toBeTruthy()
-    expect(getByText('4 registrados')).toBeTruthy()
+    expect(getByText('$ 378,47')).toBeTruthy()
+    expect(getByText('$ 2.000,00')).toBeTruthy()
+    expect(getByText('$ 1.621,53')).toBeTruthy()
+    expect(getByText('4 unicos + fijos')).toBeTruthy()
   })
 })
 

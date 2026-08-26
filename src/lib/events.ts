@@ -6,12 +6,14 @@
  */
 
 /** Eventos disponibles en la aplicacion */
-export type AppEvent = 'expenses-changed' | 'incomes-changed' | 'profile-changed'
+export type AppEvent =
+  'expenses-changed' | 'incomes-changed' | 'income-receipts-changed' | 'profile-changed'
 
 /** Registro de oyentes por evento */
 const listeners: Record<AppEvent, Set<() => void>> = {
   'expenses-changed': new Set(),
   'incomes-changed': new Set(),
+  'income-receipts-changed': new Set(),
   'profile-changed': new Set()
 }
 

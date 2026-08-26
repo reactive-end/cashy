@@ -52,7 +52,13 @@ describe('instantaneas de organismos', () => {
     const a = await renderSnapshot(<MonthlySummary summary={null} baseCurrency="USD" />)
     const b = await renderSnapshot(
       <MonthlySummary
-        summary={{ totalFixed: 1301, totalUnique: 320.53, uniqueCount: 4 }}
+        summary={{
+          totalFixed: 1301,
+          totalUnique: 320.53,
+          uniqueCount: 4,
+          confirmedIncome: 2000,
+          netBalance: 378.47
+        }}
         baseCurrency="USD"
       />
     )

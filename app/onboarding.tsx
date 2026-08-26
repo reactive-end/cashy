@@ -15,11 +15,12 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { AlertDialog } from '@src/components/molecules/AlertDialog'
+import { EmptyState } from '@src/components/molecules/EmptyState'
+import { IncomeFormSheet } from '@src/components/molecules/IncomeFormSheet'
 import { ProfileFields } from '@src/components/molecules/ProfileFields'
-import { IncomeEditor } from '@src/components/organisms/IncomeEditor'
 import { IncomesTable } from '@src/components/organisms/IncomesTable'
 import { COLORS } from '@src/constants/theme'
-import { TOTAL_STEPS, useOnboarding } from '@src/hooks/useOnboarding'
+import { emptyRow, TOTAL_STEPS, useOnboarding } from '@src/hooks/useOnboarding'
 
 /** Titulos descriptivos por paso del wizard */
 const STEP_TITLES = ['Cuentanos quien eres', 'Tus ingresos mensuales'] as const
@@ -40,15 +41,16 @@ const STEP_ICONS = ['user', 'savings'] as const
  */
 function ProgressPills({ current, total }: { current: number; total: number }) {
   return (
-    <View className="flex-row items-center gap-2">
-      {Array.from({ length: total }, (_, index) => (
-        <View
-          key={index}
-          className={`h-1.5 rounded-full ${index <= current ? 'bg-accent' : 'bg-line'}`}
-          style={{ width: index === current ? 28 : 16 }}
-        />
-      ))}
-      <Typography variant="caption" className="ml-1 text-faint">
+    <View className="w-full gap-1.5">
+      <View className="w-full flex-row items-center gap-2">
+        {Array.from({ length: total }, (_, index) => (
+          <View
+            key={index}
+            className={`h-1.5 flex-1 rounded-full ${index <= current ? 'bg-accent' : 'bg-line'}`}
+          />
+        ))}
+      </View>
+      <Typography variant="caption" className="text-faint">
         Paso {current + 1} de {total}
       </Typography>
     </View>
@@ -64,8 +66,25 @@ function ProgressPills({ current, total }: { current: number; total: number }) {
 export default function Onboarding() {
   const wizard = useOnboarding()
   const [saveFailed, setSaveFailed] = useState(false)
+  const [incomeSheetVisible, setIncomeSheetVisible] = useState(false)
 
   const onIdentityStep = wizard.step === 0
+
+  function openCreateIncome(): void {
+    wizard.changeRow(emptyRow())
+    setIncomeSheetVisible(true)
+  }
+
+  function openEditIncome(id: string): void {
+    wizard.editIncome(id)
+    setIncomeSheetVisible(true)
+  }
+
+  function handleConfirmIncome(): void {
+    if (wizard.confirmRow()) {
+      setIncomeSheetVisible(false)
+    }
+  }
 
   async function finish(): Promise<void> {
     const saved = await wizard.finish()
@@ -106,71 +125,79 @@ export default function Onboarding() {
               <View className="size-12 items-center justify-center rounded-full bg-accent-soft">
                 <Icon name={STEP_ICONS[1]} size={22} color={COLORS.accent} />
               </View>
-              {isRowReady(wizard.row) ? (
+              {wizard.draftIncomes.length > 0 ? (
                 <View className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5">
                   <Icon name="check" size={14} color={COLORS.accent} />
                   <Typography variant="caption" className="font-sans-semibold text-accent">
-                    Listo para agregar
+                    {wizard.draftIncomes.length === 1
+                      ? '1 fuente registrada'
+                      : `${wizard.draftIncomes.length} fuentes registradas`}
                   </Typography>
                 </View>
               ) : null}
             </View>
 
-            <IncomeEditor
-              values={wizard.row}
-              onChange={wizard.changeRow}
-              actionLabel={wizard.editingId ? 'Guardar cambios' : 'Agregar ingreso'}
-              onConfirm={() => void wizard.confirmRow()}
-              testIDBase="income"
-            />
-
-            {wizard.draftIncomes.length > 0 ? (
-              <View className="gap-2">
-                <Typography variant="caption" className="text-faint">
-                  {wizard.draftIncomes.length === 1
-                    ? '1 fuente registrada para este mes'
-                    : `${wizard.draftIncomes.length} fuentes registradas para este mes`}
-                </Typography>
+            {wizard.draftIncomes.length === 0 ? (
+              <EmptyState
+                icon="savings"
+                title="Sin fuentes de ingreso"
+                message="Agrega cada ingreso mensual para proyectar tu flujo de dinero."
+                action={<Button label="Agregar ingreso" icon="add" onPress={openCreateIncome} />}
+              />
+            ) : (
+              <View className="gap-3">
                 <IncomesTable
                   incomes={wizard.draftIncomes}
-                  onEdit={wizard.editIncome}
+                  onEdit={openEditIncome}
                   onRemove={wizard.removeIncome}
                   testIDBase="incomes-table"
                 />
+                <Button
+                  label="Agregar otro ingreso"
+                  variant="secondary"
+                  icon="add"
+                  fullWidth
+                  onPress={openCreateIncome}
+                />
               </View>
-            ) : null}
+            )}
           </Card>
         )}
 
-        <View className="mt-auto flex-row gap-3">
+        <View className="mt-auto gap-2.5">
           {onIdentityStep ? (
-            <View className="flex-[2]">
-              <Button
-                label="Continuar"
-                variant="primary"
-                fullWidth
-                disabled={!wizard.isProfileValid}
-                onPress={wizard.advanceStep}
-              />
-            </View>
+            <Button
+              label="Continuar"
+              variant="primary"
+              fullWidth
+              disabled={!wizard.isProfileValid}
+              onPress={wizard.advanceStep}
+            />
           ) : (
             <>
-              <View className="flex-1">
-                <Button label="Volver" variant="ghost" fullWidth onPress={wizard.goBackStep} />
-              </View>
-              <View className="flex-[2]">
-                <Button
-                  label="Terminar"
-                  variant="primary"
-                  fullWidth
-                  loading={wizard.saving}
-                  onPress={() => void finish()}
-                />
-              </View>
+              <Button label="Volver" variant="ghost" fullWidth onPress={wizard.goBackStep} />
+              <Button
+                label="Terminar"
+                variant="primary"
+                fullWidth
+                loading={wizard.saving}
+                onPress={() => void finish()}
+              />
             </>
           )}
         </View>
       </View>
+
+      <IncomeFormSheet
+        visible={incomeSheetVisible}
+        values={wizard.row}
+        onChange={wizard.changeRow}
+        actionLabel={wizard.editingId ? 'Guardar cambios' : 'Agregar ingreso'}
+        onConfirm={handleConfirmIncome}
+        onClose={() => setIncomeSheetVisible(false)}
+        title={wizard.editingId ? 'Editar ingreso' : 'Nuevo ingreso'}
+        testIDBase="income"
+      />
 
       <AlertDialog
         visible={saveFailed}
@@ -181,21 +208,4 @@ export default function Onboarding() {
       />
     </Screen>
   )
-}
-
-/** Forma estructural minima que necesita la validacion de fila */
-interface RowLike {
-  name: string
-  amountCents: number
-  currency: string
-  paydayDayText: string
-}
-
-/**
- * Indica si la fila capturada esta lista para agregarse.
- * @param row Fila vigente del editor
- * @returns true cuando concepto, monto y dia son validos
- */
-function isRowReady(row: RowLike): boolean {
-  return row.name.trim().length >= 3 && row.amountCents > 0 && /^\d{1,2}$/.test(row.paydayDayText)
 }

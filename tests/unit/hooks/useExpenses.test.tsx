@@ -6,6 +6,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
 import * as expensesRepo from '@src/db/expenses'
+import * as receiptsRepo from '@src/db/incomeReceipts'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { useExpenses } from '@src/hooks/useExpenses'
 import * as notificaciones from '@src/lib/notifications'
@@ -17,11 +18,16 @@ const getExpensesMock = expensesRepo.getExpenses as jest.Mock
 const insertExpenseMock = expensesRepo.insertExpense as jest.Mock
 const updateExpenseMock = expensesRepo.updateExpense as jest.Mock
 const deleteExpenseMock = expensesRepo.deleteExpense as jest.Mock
+const getIncomeReceiptsMock = receiptsRepo.getIncomeReceipts as jest.Mock
 const scheduleMock = notificaciones.scheduleReminder as jest.Mock
 const cancelMock = notificaciones.cancelReminder as jest.Mock
 const permisoMock = notificaciones.requestNotificationPermission as jest.Mock
 
 jest.mock('@src/db/expenses')
+jest.mock('@src/db/incomeReceipts', () => ({
+  formatYearMonth: jest.fn(() => '2026-08'),
+  getIncomeReceipts: jest.fn(async () => [])
+}))
 jest.mock('@src/lib/notifications')
 
 /** Fecha ISO relativa a hoy para pruebas independientes del calendario */
@@ -104,6 +110,26 @@ describe('useExpenses', () => {
 
       expect(result.current.monthlySummary?.totalUnique).toBe(50)
       expect(result.current.monthlySummary?.uniqueCount).toBe(1)
+    })
+
+    it('calcula el balance neto disponible incorporando ingresos confirmados', async () => {
+      getIncomeReceiptsMock.mockResolvedValueOnce([
+        {
+          id: 'r-1',
+          incomeId: 'i-1',
+          yearMonth: '2026-08',
+          amount: 2000,
+          currency: 'USD',
+          confirmedAt: '2026-08-05T00:00:00.000Z',
+          createdAt: '2026-08-05T00:00:00.000Z',
+          updatedAt: '2026-08-05T00:00:00.000Z'
+        }
+      ])
+      const { result } = await montarConSemilla()
+
+      expect(result.current.monthlySummary?.confirmedIncome).toBe(2000)
+      // Balance = 2000 - (1301 + 50) = 649
+      expect(result.current.monthlySummary?.netBalance).toBeCloseTo(649, 1)
     })
 
     it('filtra proximos pagos al horizonte de siete dias y ordena por cercania', async () => {

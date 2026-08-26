@@ -24,11 +24,19 @@ export function ConfirmDialog({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   destructive = false,
+  confirmDisabled = false,
+  cancelDisabled = false,
   onConfirm,
   onCancel
 }: ConfirmDialogProps) {
+  const handleRequestClose = (): void => {
+    if (!cancelDisabled) {
+      onCancel()
+    }
+  }
+
   return (
-    <ModalBackdrop visible={visible} onRequestClose={onCancel}>
+    <ModalBackdrop visible={visible} onRequestClose={handleRequestClose}>
       <View className="gap-3">
         <Typography variant="title">{title}</Typography>
         <Typography variant="body" className="text-muted">
@@ -36,10 +44,16 @@ export function ConfirmDialog({
         </Typography>
 
         <View className="mt-2 flex-row justify-end gap-2">
-          <Button label={cancelLabel} variant="ghost" onPress={onCancel} />
+          <Button
+            label={cancelLabel}
+            variant="ghost"
+            disabled={cancelDisabled}
+            onPress={onCancel}
+          />
           <Button
             label={confirmLabel}
             variant={destructive ? 'danger' : 'primary'}
+            disabled={confirmDisabled}
             onPress={onConfirm}
           />
         </View>

@@ -10,8 +10,12 @@ import type { BaseCurrency, Income } from '@src/types/domain'
 export interface IncomesPanelProps {
   /** Listado vigente de ingresos del usuario */
   incomes: readonly Income[]
-  /** Total mensual convertido a moneda base; null sin tasas */
+  /** Total mensual estimado convertido a moneda base; null sin tasas */
   monthlyTotal: number | null
+  /** Total efectivamente cobrado en el mes en moneda base; null sin tasas */
+  confirmedTotal?: number | null
+  /** Ingresos pendientes de confirmacion de cobro */
+  pendingConfirmations?: readonly Income[]
   /** Moneda base en que se expresa el resumen */
   baseCurrency: BaseCurrency
   /** true durante la primera lectura de datos */
@@ -22,4 +26,6 @@ export interface IncomesPanelProps {
   onEdit: (income: Income) => void
   /** Accion al pulsar eliminar sobre una fila */
   onRemove: (id: string) => void
+  /** Accion para confirmar el cobro de un ingreso pendiente */
+  onConfirmReceipt?: (income: Income) => void
 }
