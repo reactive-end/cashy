@@ -18,6 +18,7 @@ import { convert } from '@src/lib/conversions'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { emit, subscribe } from '@src/lib/events'
 import { generateId } from '@src/lib/ids'
+import { daysInMonth } from '@src/lib/recurrences'
 import type {
   BaseCurrency,
   ExchangeRates,
@@ -141,13 +142,15 @@ export function useIncomes(
   )
 
   const pendingConfirmations = useMemo(() => {
-    const currentDay = new Date().getDate()
-    return incomes.filter(
-      (income) =>
-        income.type !== 'unique' &&
-        income.paydayDay <= currentDay &&
-        !confirmedIncomeIds.has(income.id)
-    )
+    const now = new Date()
+    const currentDay = now.getDate()
+    const daysInCurrentMonth = daysInMonth(now.getFullYear(), now.getMonth())
+
+    return incomes.filter((income) => {
+      if (income.type === 'unique') return false
+      const effectivePayday = Math.min(income.paydayDay, daysInCurrentMonth)
+      return effectivePayday <= currentDay && !confirmedIncomeIds.has(income.id)
+    })
   }, [incomes, confirmedIncomeIds])
 
   const monthlyTotal = useMemo<number | null>(() => {

@@ -3,6 +3,7 @@
  * Persists and queries monthly payday confirmations (ingresos efectivamente cobrados).
  */
 
+import { daysInMonth } from '@src/lib/recurrences'
 import type { BaseCurrency, Currency, Income, IncomeReceipt } from '@src/types/domain'
 
 import { openDatabase } from './base'
@@ -162,8 +163,15 @@ export async function getPendingIncomeConfirmations(
   ])
 
   const confirmedIncomeIds = new Set(confirmedReceipts.map((receipt) => receipt.incomeId))
+  const [yearPart, monthPart] = yearMonth.split('-')
+  const year = Number(yearPart)
+  const month = Number(monthPart) - 1
+  const daysInGivenMonth =
+    Number.isFinite(year) && Number.isFinite(month) ? daysInMonth(year, month) : 31
 
-  return allIncomes.filter(
-    (income) => income.paydayDay <= currentDay && !confirmedIncomeIds.has(income.id)
-  )
+  return allIncomes.filter((income) => {
+    if (income.type === 'unique') return false
+    const effectivePayday = Math.min(income.paydayDay, daysInGivenMonth)
+    return effectivePayday <= currentDay && !confirmedIncomeIds.has(income.id)
+  })
 }

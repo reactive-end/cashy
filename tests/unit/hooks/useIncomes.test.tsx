@@ -241,4 +241,22 @@ describe('useIncomes', () => {
     expect(deleteIncomeMock).toHaveBeenCalledWith('ingreso-9')
     expect(recibidos).toEqual(['emitido'])
   })
+
+  it('calcula pendingConfirmations acotando el dia 31 al largo del mes y excluyendo unicos', async () => {
+    jest.useFakeTimers({ now: new Date('2026-04-30T12:00:00.000Z') })
+
+    getIncomesMock.mockResolvedValue([
+      buildIncome({ id: 'inc-31', amount: 500, paydayDay: 31, type: 'fixed' }),
+      buildIncome({ id: 'inc-unico', amount: 300, paydayDay: 15, type: 'unique' })
+    ])
+    getIncomeReceiptsMock.mockResolvedValue([])
+
+    const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.pendingConfirmations).toHaveLength(1)
+    expect(result.current.pendingConfirmations[0].id).toBe('inc-31')
+
+    jest.useRealTimers()
+  })
 })

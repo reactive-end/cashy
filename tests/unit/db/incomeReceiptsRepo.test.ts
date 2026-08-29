@@ -144,4 +144,36 @@ describe('repositorio de recibos de ingresos', () => {
     expect(pending).toHaveLength(1)
     expect(pending[0].id).toBe('ingreso-2')
   })
+
+  it('acota cobro del dia 31 al ultimo dia en meses de 30 dias o febrero', async () => {
+    const incomeDia31 = {
+      id: 'ingreso-fin-mes',
+      name: 'Honorarios',
+      amount: 1000,
+      currency: 'USD',
+      payday_day: 31,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z'
+    }
+
+    // En abril (30 dias), en el dia 29 aun no vence
+    base.queue([incomeDia31])
+    base.queue([])
+    const pendienteDia29 = await getPendingIncomeConfirmations('2026-04', 29)
+    expect(pendienteDia29).toHaveLength(0)
+
+    // En abril (30 dias), en el dia 30 ya debe vencer
+    base.queue([incomeDia31])
+    base.queue([])
+    const pendienteDia30 = await getPendingIncomeConfirmations('2026-04', 30)
+    expect(pendienteDia30).toHaveLength(1)
+    expect(pendienteDia30[0].id).toBe('ingreso-fin-mes')
+
+    // En febrero (28 dias en 2026), en el dia 28 ya debe vencer
+    base.queue([incomeDia31])
+    base.queue([])
+    const pendienteFeb28 = await getPendingIncomeConfirmations('2026-02', 28)
+    expect(pendienteFeb28).toHaveLength(1)
+    expect(pendienteFeb28[0].id).toBe('ingreso-fin-mes')
+  })
 })
