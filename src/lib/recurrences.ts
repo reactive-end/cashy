@@ -54,6 +54,45 @@ export function advanceDueDate(date: Date, recurrence: Recurrence): Date {
 }
 
 /**
+ * Retrocede una fecha segun la recurrencia indicada (operacion inversa a advanceDueDate).
+ * Para mensual y anual acota el dia al largo real del mes destino.
+ * @param date Fecha base del vencimiento actual
+ * @param recurrence Cadencia a retroceder
+ * @returns Nueva fecha correspondiente al vencimiento anterior
+ */
+export function revertDueDate(date: Date, recurrence: Recurrence): Date {
+  const anterior = new Date(date)
+
+  switch (recurrence) {
+    case 'weekly':
+      anterior.setDate(anterior.getDate() - 7)
+      break
+    case 'biweekly':
+      anterior.setDate(anterior.getDate() - 15)
+      break
+    case 'monthly': {
+      const diaOriginal = anterior.getDate()
+      anterior.setDate(1)
+      anterior.setMonth(anterior.getMonth() - 1)
+      anterior.setDate(
+        Math.min(diaOriginal, daysInMonth(anterior.getFullYear(), anterior.getMonth()))
+      )
+      break
+    }
+    case 'yearly': {
+      const diaOriginal = anterior.getDate()
+      const mesOriginal = anterior.getMonth()
+      const anioDestino = anterior.getFullYear() - 1
+      const maximoDia =
+        mesOriginal === 1 ? daysInMonth(anioDestino, 1) : daysInMonth(anioDestino, mesOriginal)
+      return new Date(anioDestino, mesOriginal, Math.min(diaOriginal, maximoDia))
+    }
+  }
+
+  return anterior
+}
+
+/**
  * Compara dos fechas ignorando la hora.
  * @param a Primera fecha
  * @param b Segunda fecha

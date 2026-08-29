@@ -4,7 +4,14 @@
  * and the Expense domain objects (camelCase).
  */
 
-import type { Currency, Expense, ExpenseInput, ExpenseType, Recurrence } from '@src/types/domain'
+import type {
+  BaseCurrency,
+  Currency,
+  Expense,
+  ExpenseInput,
+  ExpenseType,
+  Recurrence
+} from '@src/types/domain'
 
 import { openDatabase } from './base'
 
@@ -14,6 +21,8 @@ interface ExpenseRow {
   name: string
   amount: number
   currency: string
+  base_amount: number | null
+  base_currency: string | null
   type: string
   category: string | null
   note: string | null
@@ -26,7 +35,7 @@ interface ExpenseRow {
 
 /** Columnas leidas en cada consulta de listado */
 const COLUMNS =
-  'id, name, amount, currency, type, category, note, recurrence, next_due_date, active, created_at, updated_at'
+  'id, name, amount, currency, base_amount, base_currency, type, category, note, recurrence, next_due_date, active, created_at, updated_at'
 
 /**
  * Convierte una fila cruda al objeto de dominio.
@@ -39,6 +48,8 @@ function mapRowToExpense(row: ExpenseRow): Expense {
     name: row.name,
     amount: row.amount,
     currency: row.currency as Currency,
+    baseAmount: row.base_amount ?? undefined,
+    baseCurrency: (row.base_currency as BaseCurrency | null) ?? undefined,
     type: row.type as ExpenseType,
     category: row.category ?? undefined,
     note: row.note ?? undefined,
@@ -60,6 +71,125 @@ export async function getExpenses(): Promise<Expense[]> {
     `SELECT ${COLUMNS} FROM expenses ORDER BY created_at DESC`
   )
   return rows.map(mapRowToExpense)
+}
+
+/**
+ * Parametros de filtrado, busqueda y ordenamiento para consultas paginadas nativas.
+ */
+export interface ExpenseQueryParams {
+  /** Tipo de gasto a filtrar: fijo o unico */
+  type?: ExpenseType
+  /** Categoria unica o listado de categorias */
+  category?: string
+  categories?: readonly string[]
+  /** Moneda unica o listado de monedas */
+  currency?: Currency
+  currencies?: readonly Currency[]
+  /** Termino de busqueda por nombre o categoria */
+  search?: string
+  /** Cantidad maxima de filas a devolver */
+  limit?: number
+  /** Desplazamiento para paginacion */
+  offset?: number
+  /** Criterio de ordenacion */
+  sort?: 'recent' | 'oldest' | 'amountDesc' | 'amountAsc' | 'nameAsc' | 'nameDesc'
+}
+
+/** Resultado paginado con las filas y el total absoluto coincidente */
+export interface PaginatedExpensesResult {
+  expenses: Expense[]
+  totalCount: number
+}
+
+/**
+ * Ejecuta una consulta nativa en SQLite con filtros WHERE, ordenamiento y paginacion.
+ * @param params Criterios de filtrado y limites
+ * @returns Gastos de la pagina y total global de coincidencias
+ */
+export async function queryExpensesPaginated(
+  params: ExpenseQueryParams = {}
+): Promise<PaginatedExpensesResult> {
+  const db = await openDatabase()
+  const clauses: string[] = ['1=1']
+  const sqlParams: (string | number)[] = []
+
+  if (params.type) {
+    clauses.push('type = ?')
+    sqlParams.push(params.type)
+  }
+
+  if (params.category) {
+    clauses.push('category = ?')
+    sqlParams.push(params.category)
+  } else if (params.categories && params.categories.length > 0) {
+    const placeholders = params.categories.map(() => '?').join(', ')
+    clauses.push(`category IN (${placeholders})`)
+    sqlParams.push(...params.categories)
+  }
+
+  if (params.currency) {
+    clauses.push('currency = ?')
+    sqlParams.push(params.currency)
+  } else if (params.currencies && params.currencies.length > 0) {
+    const placeholders = params.currencies.map(() => '?').join(', ')
+    clauses.push(`currency IN (${placeholders})`)
+    sqlParams.push(...params.currencies)
+  }
+
+  if (params.search && params.search.trim()) {
+    const term = `%${params.search.trim().toLowerCase()}%`
+    clauses.push("(LOWER(name) LIKE ? OR LOWER(COALESCE(category, '')) LIKE ?)")
+    sqlParams.push(term, term)
+  }
+
+  const whereClause = clauses.join(' AND ')
+
+  let orderBy = 'created_at DESC'
+  switch (params.sort) {
+    case 'oldest':
+      orderBy = 'created_at ASC'
+      break
+    case 'amountDesc':
+      orderBy = 'amount DESC'
+      break
+    case 'amountAsc':
+      orderBy = 'amount ASC'
+      break
+    case 'nameAsc':
+      orderBy = 'name ASC'
+      break
+    case 'nameDesc':
+      orderBy = 'name DESC'
+      break
+    case 'recent':
+    default:
+      orderBy = 'created_at DESC'
+      break
+  }
+
+  const countRow = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM expenses WHERE ${whereClause}`,
+    sqlParams
+  )
+  const totalCount = countRow?.count ?? 0
+
+  let querySql = `SELECT ${COLUMNS} FROM expenses WHERE ${whereClause} ORDER BY ${orderBy}`
+  const queryParams = [...sqlParams]
+
+  if (params.limit !== undefined) {
+    querySql += ' LIMIT ?'
+    queryParams.push(params.limit)
+    if (params.offset !== undefined) {
+      querySql += ' OFFSET ?'
+      queryParams.push(params.offset)
+    }
+  }
+
+  const rows = await db.getAllAsync<ExpenseRow>(querySql, queryParams)
+  return {
+    expenses: rows.map(mapRowToExpense),
+    totalCount
+  }
 }
 
 /**
@@ -87,14 +217,16 @@ export async function insertExpense(input: ExpenseInput, id: string): Promise<Ex
 
   await db.runAsync(
     `INSERT INTO expenses (
-       id, name, amount, currency, type, category, note,
+       id, name, amount, currency, base_amount, base_currency, type, category, note,
        recurrence, next_due_date, active, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       input.name,
       input.amount,
       input.currency,
+      input.baseAmount ?? null,
+      input.baseCurrency ?? null,
       input.type,
       input.category ?? null,
       input.note ?? null,
@@ -129,13 +261,16 @@ export async function updateExpense(id: string, changes: Partial<ExpenseInput>):
 
   await db.runAsync(
     `UPDATE expenses SET
-       name = ?, amount = ?, currency = ?, type = ?, category = ?, note = ?,
-       recurrence = ?, next_due_date = ?, active = ?, updated_at = ?
+       name = ?, amount = ?, currency = ?, base_amount = ?, base_currency = ?,
+       type = ?, category = ?, note = ?, recurrence = ?, next_due_date = ?,
+       active = ?, updated_at = ?
      WHERE id = ?`,
     [
       combinado.name,
       combinado.amount,
       combinado.currency,
+      combinado.baseAmount ?? null,
+      combinado.baseCurrency ?? null,
       combinado.type,
       combinado.category ?? null,
       combinado.note ?? null,

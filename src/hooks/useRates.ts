@@ -22,6 +22,8 @@ export interface UseRatesResult {
   error: string | null
   /** Resultado del ultimo refresco manual: true/false; null si aun no ocurre */
   lastRefreshOk: boolean | null
+  /** true cuando las tasas provienen de un respaldo previo ante caida de red */
+  isStale: boolean
   /** Fuerza una consulta a la red ignorando el cache */
   refresh: () => Promise<void>
 }
@@ -79,5 +81,7 @@ export function useRates(): UseRatesResult {
     }
   }, [])
 
-  return { rates, loading, refreshing, error, lastRefreshOk, refresh }
+  const isStale = Boolean(rates?.isStale)
+
+  return { rates, loading, refreshing, error, lastRefreshOk, isStale, refresh }
 }

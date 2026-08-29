@@ -25,7 +25,14 @@ import type { Income, UserProfile } from '@src/types/domain'
 
 /** Fila vacia para capturar un ingreso nuevo */
 export function emptyRow(): IncomeDraft {
-  return { name: '', amountCents: 0, currency: 'USD', paydayDayText: '' }
+  return {
+    name: '',
+    amountCents: 0,
+    currency: 'USD',
+    paydayDayText: '',
+    type: 'fixed',
+    recurrence: 'monthly'
+  }
 }
 
 /** Estado y acciones expuestos por el hook de edicion de perfil */
@@ -150,11 +157,16 @@ export function useProfileEditor(): UseProfileEditorResult {
   const confirmRow = useCallback(async (): Promise<boolean> => {
     if (!isValidIncomeRow(row)) return false
 
+    const isUnique = row.type === 'unique'
     const content = {
       name: row.name.trim(),
       amount: row.amountCents / 100,
       currency: row.currency,
-      paydayDay: parseDayFromText(row.paydayDayText) as number
+      paydayDay: isUnique
+        ? (parseDayFromText(row.paydayDayText) ?? new Date().getDate())
+        : (parseDayFromText(row.paydayDayText) as number),
+      type: row.type ?? 'fixed',
+      recurrence: isUnique ? undefined : (row.recurrence ?? 'monthly')
     }
 
     if (editingId) {

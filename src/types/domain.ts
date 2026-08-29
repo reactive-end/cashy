@@ -58,6 +58,8 @@ export interface ExchangeRates {
   usdtSellP2p: number
   /** ISO timestamp when this snapshot was fetched */
   fetchedAt: string
+  /** Indica si la tasa proviene de una captura anterior rescatada ante fallo de red */
+  isStale?: boolean
 }
 
 /** Expense as stored in the local database */
@@ -66,6 +68,8 @@ export interface Expense {
   name: string
   amount: number
   currency: Currency
+  baseAmount?: number
+  baseCurrency?: BaseCurrency
   type: ExpenseType
   category?: string
   note?: string
@@ -83,6 +87,8 @@ export interface ExpenseInput {
   name: string
   amount: number
   currency: Currency
+  baseAmount?: number
+  baseCurrency?: BaseCurrency
   type: ExpenseType
   category?: string
   note?: string
@@ -108,6 +114,8 @@ export interface AppSettings {
   remindersEnabled: boolean
   /** Master switch for the daily BCV rate notification */
   bcvEnabled: boolean
+  /** Bloqueo biometrico al abrir la aplicacion o tras inactividad */
+  biometricsEnabled?: boolean
 }
 
 /** Aggregated summary of the current month, expressed in base currency */
@@ -141,15 +149,21 @@ export interface UserProfile {
   email: string
 }
 
-/** Income source entered by the user with its monthly payday */
+/** Income source entered by the user with its monthly payday or punctual income */
 export interface Income {
   id: string
   /** Concepto del ingreso, por ejemplo Salario o Ingresos pasivos */
   name: string
-  /** Monto mensual en decimales del dominio */
+  /** Monto en decimales del dominio */
   amount: number
   /** Moneda en que se percibe el ingreso */
   currency: Currency
+  baseAmount?: number
+  baseCurrency?: BaseCurrency
+  /** Tipo de ingreso: fixed (recurrente) o unique (puntual) */
+  type: ExpenseType
+  /** Cadencia del ingreso si es fijo */
+  recurrence?: Recurrence
   /** Dia del mes en que se cobra (1-31; se recorta en meses cortos) */
   paydayDay: number
   createdAt: string
@@ -161,7 +175,11 @@ export interface IncomeInput {
   name: string
   amount: number
   currency: Currency
-  paydayDay: number
+  baseAmount?: number
+  baseCurrency?: BaseCurrency
+  type?: ExpenseType
+  recurrence?: Recurrence
+  paydayDay?: number
 }
 
 /** Confirmed receipt of an income source for a specific month */
@@ -171,7 +189,23 @@ export interface IncomeReceipt {
   yearMonth: string
   amount: number
   currency: Currency
+  baseAmount?: number
+  baseCurrency?: BaseCurrency
   confirmedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** Confirmed payment receipt of a fixed expense for a specific month */
+export interface ExpenseReceipt {
+  id: string
+  expenseId: string
+  yearMonth: string
+  amount: number
+  currency: Currency
+  baseAmount: number
+  baseCurrency: BaseCurrency
+  paidAt: string
   createdAt: string
   updatedAt: string
 }

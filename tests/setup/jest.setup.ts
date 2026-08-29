@@ -93,10 +93,23 @@ jest.mock('expo-updates', () => ({
 
 jest.mock('expo-file-system', () => {
   class FakeFile {
-    static createDownloadTask = jest.fn()
+    static createDownloadTask = jest.fn(
+      (
+        _url: string,
+        _folder: unknown,
+        options?: { onProgress?: (p: { bytesWritten: number; totalBytes: number }) => void }
+      ) => ({
+        downloadAsync: jest.fn(async () => {
+          if (options?.onProgress) options.onProgress({ bytesWritten: 100, totalBytes: 100 })
+          return new FakeFile()
+        })
+      })
+    )
     static downloadFileAsync = jest.fn(async () => new FakeFile())
     contentUri = 'content://archivo-falso'
     uri = 'file:///cache/actualizaciones/cashy.apk'
+    arrayBuffer = jest.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer)
+    delete = jest.fn()
   }
 
   class FakeDirectory {
@@ -109,3 +122,35 @@ jest.mock('expo-file-system', () => {
     Paths: { cache: 'file:///cache', document: 'file:///documentos', bundle: 'file:///bundle' }
   }
 })
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn(async () => true),
+  getStringAsync: jest.fn(async () => ''),
+  hasStringAsync: jest.fn(async () => true)
+}))
+
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: {
+    SHA1: 'SHA-1',
+    SHA256: 'SHA-256',
+    SHA384: 'SHA-384',
+    SHA512: 'SHA-512',
+    MD5: 'MD5'
+  },
+  digest: jest.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer),
+  digestStringAsync: jest.fn(async () => 'fake-hash'),
+  getRandomBytes: jest.fn((count: number) => new Uint8Array(count)),
+  randomUUID: jest.fn(() => 'fake-uuid')
+}))
+
+jest.mock('expo-local-authentication', () => ({
+  hasHardwareAsync: jest.fn(async () => true),
+  isEnrolledAsync: jest.fn(async () => true),
+  supportedAuthenticationTypesAsync: jest.fn(async () => [1, 2]),
+  authenticateAsync: jest.fn(async () => ({ success: true })),
+  AuthenticationType: {
+    FINGERPRINT: 1,
+    FACIAL_RECOGNITION: 2,
+    IRIS: 3
+  }
+}))

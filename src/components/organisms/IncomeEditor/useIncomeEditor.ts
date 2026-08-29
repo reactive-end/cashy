@@ -28,11 +28,11 @@ interface UseIncomeRowErrorsOptions {
  * @returns Errores por campo, bandera de validez y datos parseados
  */
 export function useIncomeRowValidation({ values }: UseIncomeRowErrorsOptions) {
+  const isUnique = values.type === 'unique'
   const nameError = validateField(incomeSchema.shape.name, values.name)
-  const dayError = validateField(
-    incomeSchema.shape.paydayDay,
-    parseDayFromText(values.paydayDayText) ?? -1
-  )
+  const dayError = isUnique
+    ? null
+    : validateField(incomeSchema.shape.paydayDay, parseDayFromText(values.paydayDayText) ?? -1)
   const amountError = values.amountCents > 0 ? null : 'El monto debe ser mayor a cero'
 
   const errors: IncomeRowErrors = useMemo(
@@ -40,9 +40,9 @@ export function useIncomeRowValidation({ values }: UseIncomeRowErrorsOptions) {
       // El mensaje aparece desde el primer caracter tecleado.
       name: values.name.length > 0 ? nameError : null,
       amount: amountError,
-      paydayDay: values.paydayDayText.length > 0 ? dayError : null
+      paydayDay: !isUnique && values.paydayDayText.length > 0 ? dayError : null
     }),
-    [nameError, dayError, amountError, values.name.length, values.paydayDayText.length]
+    [nameError, dayError, amountError, values.name.length, values.paydayDayText.length, isUnique]
   )
 
   const isRowValid = nameError === null && dayError === null && amountError === null
@@ -50,6 +50,6 @@ export function useIncomeRowValidation({ values }: UseIncomeRowErrorsOptions) {
   return {
     errors,
     isRowValid,
-    parsedDay: parseDayFromText(values.paydayDayText)
+    parsedDay: isUnique ? new Date().getDate() : parseDayFromText(values.paydayDayText)
   }
 }

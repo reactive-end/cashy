@@ -35,6 +35,12 @@ export type IconName =
   | 'clock'
   | 'wallet'
   | 'user'
+  | 'copy'
+  | 'eye'
+  | 'eyeOff'
+  | 'lock'
+  | 'shield'
+  | 'shoppingBag'
 
 /** Propiedades del atomo Icon */
 export interface IconProps {

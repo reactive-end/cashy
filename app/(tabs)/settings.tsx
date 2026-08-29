@@ -20,6 +20,7 @@ import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
 import { TimePicker } from '@src/components/organisms/TimePicker'
 import { getProfile } from '@src/db/profile'
 import { useSettings } from '@src/hooks/useSettings'
+import { authenticateWithBiometrics, isBiometricsAvailable } from '@src/lib/biometrics'
 import { subscribe } from '@src/lib/events'
 import { nextNoticeLabel } from '@src/lib/format'
 import {
@@ -60,14 +61,37 @@ export default function Settings() {
     changeReminderTime,
     changeBcvTime,
     setRemindersEnabled,
-    setBcvEnabled
+    setBcvEnabled,
+    setBiometricsEnabled
   } = useSettings()
 
   const [permissionGranted, setPermissionGranted] = useState(false)
   const [bcvStatus, setBcvStatus] = useState<BcvNoticeStatus | null>(null)
   const [profileName, setProfileName] = useState<string | null>(null)
+  const [biometricsSupported, setBiometricsSupported] = useState(false)
   const [checking, setChecking] = useState(false)
   const [notice, setNotice] = useState<{ tone: AlertDialogTone; message: string } | null>(null)
+
+  useEffect(() => {
+    void isBiometricsAvailable().then(setBiometricsSupported)
+  }, [])
+
+  /** Activa o desactiva la proteccion biometrica previa autenticacion */
+  async function handleToggleBiometrics(enabled: boolean): Promise<void> {
+    const ok = await authenticateWithBiometrics(
+      enabled
+        ? 'Confirma tu identidad para activar el bloqueo biometrico'
+        : 'Confirma tu identidad para desactivar el bloqueo biometrico'
+    )
+    if (ok) {
+      await setBiometricsEnabled(enabled)
+    } else {
+      setNotice({
+        tone: 'danger',
+        message: 'No se pudo verificar la identidad.'
+      })
+    }
+  }
 
   /** Busca una actualizacion de JS via EAS Update y la deja lista */
   async function checkForUpdates(): Promise<void> {
@@ -146,6 +170,7 @@ export default function Settings() {
 
   const remindersActive = settings?.remindersEnabled ?? true
   const bcvActive = settings?.bcvEnabled ?? true
+  const biometricsActive = settings?.biometricsEnabled ?? false
 
   return (
     <Screen scrollable>
@@ -178,6 +203,30 @@ export default function Settings() {
             fullWidth
             onPress={() => router.push('/edit-profile')}
           />
+        </Card>
+
+        <Card className="gap-3">
+          <Typography variant="label">Seguridad y privacidad</Typography>
+          <Typography variant="caption">
+            Protege tus datos financieros requiriendo autenticacion biometrica.
+          </Typography>
+
+          <View className="flex-row items-center justify-between pt-1">
+            <View className="flex-1 pr-3">
+              <Typography variant="body">Bloqueo biometrico</Typography>
+              <Typography variant="caption">
+                {biometricsSupported
+                  ? 'Exige autenticacion al abrir la app o tras 60 segundos de inactividad.'
+                  : 'Tu dispositivo no cuenta con biometria configurada.'}
+              </Typography>
+            </View>
+            <Switch
+              value={biometricsActive}
+              disabled={!biometricsSupported}
+              onValueChange={(enabled) => void handleToggleBiometrics(enabled)}
+              accessibilityLabel="Activar bloqueo biometrico"
+            />
+          </View>
         </Card>
 
         {!notificationsAvailable() ? (

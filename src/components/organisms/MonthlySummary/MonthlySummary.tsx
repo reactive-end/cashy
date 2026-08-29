@@ -72,6 +72,17 @@ function SummaryMetric({
 export function MonthlySummary({ summary, baseCurrency, loading = false }: MonthlySummaryProps) {
   const noData = !loading && !summary
   const totalSpent = summary ? summary.totalFixed + summary.totalUnique : 0
+  const symbol = currencySymbol(baseCurrency)
+
+  const netBalanceDisplay = summary
+    ? formatAmount(summary.netBalance, baseCurrency)
+    : `${symbol} --`
+
+  const confirmedIncomeDisplay = summary
+    ? formatAmount(summary.confirmedIncome, baseCurrency)
+    : `${symbol} --`
+
+  const totalSpentDisplay = summary ? formatAmount(totalSpent, baseCurrency) : `${symbol} --`
 
   return (
     <Card highlighted className="gap-4">
@@ -97,9 +108,7 @@ export function MonthlySummary({ summary, baseCurrency, loading = false }: Month
             numberOfLines={1}
             adjustsFontSizeToFit
           >
-            {summary
-              ? formatAmount(summary.netBalance, baseCurrency)
-              : `${currencySymbol(baseCurrency)} --`}
+            {netBalanceDisplay}
           </Typography>
         )}
         <Typography variant="caption" className="text-faint">
@@ -110,11 +119,7 @@ export function MonthlySummary({ summary, baseCurrency, loading = false }: Month
       <View className="flex-row">
         <SummaryMetric
           title="Ingresos cobrados"
-          value={
-            summary
-              ? formatAmount(summary.confirmedIncome, baseCurrency)
-              : `${currencySymbol(baseCurrency)} --`
-          }
+          value={confirmedIncomeDisplay}
           footer="efectivos"
           loading={loading}
           highlighted
@@ -124,9 +129,7 @@ export function MonthlySummary({ summary, baseCurrency, loading = false }: Month
 
         <SummaryMetric
           title="Gastos del mes"
-          value={
-            summary ? formatAmount(totalSpent, baseCurrency) : `${currencySymbol(baseCurrency)} --`
-          }
+          value={totalSpentDisplay}
           footer={summary ? `${summary.uniqueCount} unicos + fijos` : 'sin datos'}
           loading={loading}
           alignEnd

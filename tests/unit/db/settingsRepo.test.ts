@@ -23,7 +23,8 @@ describe('repositorio de ajustes', () => {
       bcvHour: 9,
       bcvMinute: 0,
       remindersEnabled: true,
-      bcvEnabled: true
+      bcvEnabled: true,
+      biometricsEnabled: false
     })
   })
 
@@ -39,7 +40,8 @@ describe('repositorio de ajustes', () => {
       bcvHour: 8,
       bcvMinute: 15,
       remindersEnabled: false,
-      bcvEnabled: false
+      bcvEnabled: false,
+      biometricsEnabled: false
     } as const
 
     await saveSettings(guardados)
@@ -61,7 +63,8 @@ describe('repositorio de ajustes', () => {
       bcvHour: 9,
       bcvMinute: 0,
       remindersEnabled: true,
-      bcvEnabled: true
+      bcvEnabled: true,
+      biometricsEnabled: false
     })
   })
 

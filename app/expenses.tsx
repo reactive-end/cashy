@@ -147,7 +147,7 @@ export default function ExpensesScreen() {
         if (remaining <= 0) {
           badge = { text: 'vence hoy', tone: 'danger' }
         } else if (remaining <= 3) {
-          badge = { text: `${remaining}d`, tone: 'warning' }
+          badge = { text: remaining === 1 ? '1 dia' : `${remaining} dias`, tone: 'warning' }
         }
 
         const recurrenceLabel = RECURRENCE_LABELS[expense.recurrence]

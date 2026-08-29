@@ -13,9 +13,15 @@ import { useOnboarding } from '@src/hooks/useOnboarding'
 
 const saveProfileMock = profileRepo.saveProfile as jest.Mock
 const replaceIncomesMock = incomesRepo.replaceIncomes as jest.Mock
+const getIncomesMock = incomesRepo.getIncomes as jest.Mock
+const deleteIncomeMock = incomesRepo.deleteIncome as jest.Mock
 
 jest.mock('@src/db/profile', () => ({ saveProfile: jest.fn(async () => undefined) }))
-jest.mock('@src/db/incomes', () => ({ replaceIncomes: jest.fn(async () => []) }))
+jest.mock('@src/db/incomes', () => ({
+  getIncomes: jest.fn(async () => []),
+  replaceIncomes: jest.fn(async () => []),
+  deleteIncome: jest.fn(async () => undefined)
+}))
 
 /** Rellena el paso de identidad con datos validos */
 async function completeIdentity(result: ReturnType<typeof useOnboarding>): Promise<void> {
@@ -29,6 +35,7 @@ async function completeIdentity(result: ReturnType<typeof useOnboarding>): Promi
 describe('useOnboarding', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    getIncomesMock.mockResolvedValue([])
   })
 
   it('arranca en el paso 1 con el perfil invalido y sin mensajes', async () => {

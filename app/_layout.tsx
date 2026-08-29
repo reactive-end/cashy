@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
+import { AppLockGate } from '@src/components/organisms/AppLockGate'
 import { COLORS } from '@src/constants/theme'
 import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
@@ -126,7 +127,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (!fontsLoaded || !synced || profileReady === null) return
 
-    if (needsOnboarding && pathname !== '/onboarding') {
+    if (
+      needsOnboarding &&
+      pathname !== '/onboarding' &&
+      pathname !== '/new-income' &&
+      !pathname.startsWith('/edit-income')
+    ) {
       router.replace('/onboarding')
 
       return
@@ -155,40 +161,45 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <Stack
-        initialRouteName={needsOnboarding ? 'onboarding' : '(tabs)'}
-        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.paper } }}
-      >
-        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="expenses" />
-        <Stack.Screen name="incomes" />
-        <Stack.Screen name="new-expense" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="expense/[id]" />
-        <Stack.Screen name="edit-expense/[id]" />
-        <Stack.Screen name="income/[id]" />
-      </Stack>
+      <AppLockGate>
+        <Stack
+          initialRouteName={needsOnboarding ? 'onboarding' : '(tabs)'}
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.paper } }}
+        >
+          <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="expenses" />
+          <Stack.Screen name="incomes" />
+          <Stack.Screen name="new-expense" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="new-income" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="edit-income/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="market" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="expense/[id]" />
+          <Stack.Screen name="edit-expense/[id]" />
+          <Stack.Screen name="income/[id]" />
+        </Stack>
 
-      <ConfirmDialog
-        visible={appUpdate.available !== null}
-        title="Nueva version"
-        message={
-          appUpdate.downloading
-            ? `Descargando version ${appUpdate.available?.version ?? ''}... ${Math.round(
-                appUpdate.progress * 100
-              )}%`
-            : `La version ${appUpdate.available?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
-        }
-        confirmLabel={appUpdate.downloading ? 'Descargando...' : 'Actualizar'}
-        cancelLabel="Cancelar"
-        confirmDisabled={appUpdate.downloading}
-        cancelDisabled={appUpdate.downloading}
-        onConfirm={() => void appUpdate.confirm()}
-        onCancel={() => {
-          if (!appUpdate.downloading) void appUpdate.dismiss()
-        }}
-      />
+        <ConfirmDialog
+          visible={appUpdate.available !== null}
+          title="Nueva version"
+          message={
+            appUpdate.downloading
+              ? `Descargando version ${appUpdate.available?.version ?? ''}... ${Math.round(
+                  appUpdate.progress * 100
+                )}%`
+              : `La version ${appUpdate.available?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
+          }
+          confirmLabel={appUpdate.downloading ? 'Descargando...' : 'Actualizar'}
+          cancelLabel="Cancelar"
+          confirmDisabled={appUpdate.downloading}
+          cancelDisabled={appUpdate.downloading}
+          onConfirm={() => void appUpdate.confirm()}
+          onCancel={() => {
+            if (!appUpdate.downloading) void appUpdate.dismiss()
+          }}
+        />
+      </AppLockGate>
     </SafeAreaProvider>
   )
 }

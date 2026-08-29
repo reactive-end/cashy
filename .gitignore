@@ -46,6 +46,7 @@ coverage/
 # AI tooling local
 .claude/
 CLAUDE.md
+.codegraph/
 
 # debug scratch
 fallos.txt

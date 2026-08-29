@@ -7,7 +7,7 @@
 import * as SQLite from 'expo-sqlite'
 
 /** Version actual del esquema; incrementar al cambiar tablas */
-const SCHEMA_VERSION = 6
+const SCHEMA_VERSION = 7
 
 /** Conexion activa tras la primera apertura */
 let instance: SQLite.SQLiteDatabase | null = null
@@ -27,7 +27,8 @@ const INDEXES_V3 = `
  * de gastos para ampliar el CHECK de moneda a EUR, preservando datos;
  * v4 incorpora las tablas de perfil e ingresos del onboarding;
  * v5 renombra las columnas de profile al ingles preservando datos;
- * v6 agrega la tabla de recibos de ingresos confirmados (income_receipts).
+ * v6 agrega la tabla de recibos de ingresos confirmados (income_receipts);
+ * v7 añade expense_receipts, snapshots en moneda base, tipo/recurrencia en incomes e indices.
  * @param db Conexion abierta de la base de datos
  */
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -95,9 +96,9 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS profile (
       id TEXT PRIMARY KEY NOT NULL,
-      nombre TEXT NOT NULL,
-      apellido TEXT NOT NULL,
-      correo TEXT NOT NULL,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      email TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -106,33 +107,47 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       name TEXT NOT NULL,
       amount REAL NOT NULL,
       currency TEXT NOT NULL CHECK (currency IN ('VES', 'USD', 'USDT', 'EUR')),
+      base_amount REAL,
+      base_currency TEXT,
       payday_day INTEGER NOT NULL CHECK (payday_day BETWEEN 1 AND 31),
+      type TEXT NOT NULL DEFAULT 'fixed',
+      recurrence TEXT DEFAULT 'monthly',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
   `)
 
-  // v5: columnas de profile renombradas al ingles, preservando datos.
+  // v5: columnas de profile renombradas al ingles, preservando datos si venian en espanol.
   const oldProfileExists = await db.getFirstAsync<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'profile'"
   )
 
   if (oldProfileExists) {
-    await db.execAsync(`
-      DROP TABLE IF EXISTS profile_nueva;
-      CREATE TABLE profile_nueva (
-        id TEXT PRIMARY KEY NOT NULL,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-      INSERT INTO profile_nueva (id, first_name, last_name, email, created_at, updated_at)
-        SELECT id, nombre, apellido, correo, created_at, updated_at FROM profile;
-      DROP TABLE profile;
-      ALTER TABLE profile_nueva RENAME TO profile;
-    `)
+    let hasSpanishColumns = false
+    try {
+      await db.getFirstAsync('SELECT nombre FROM profile LIMIT 0;')
+      hasSpanishColumns = true
+    } catch {
+      hasSpanishColumns = false
+    }
+
+    if (hasSpanishColumns) {
+      await db.execAsync(`
+        DROP TABLE IF EXISTS profile_nueva;
+        CREATE TABLE profile_nueva (
+          id TEXT PRIMARY KEY NOT NULL,
+          first_name TEXT NOT NULL,
+          last_name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        INSERT INTO profile_nueva (id, first_name, last_name, email, created_at, updated_at)
+          SELECT id, nombre, apellido, correo, created_at, updated_at FROM profile;
+        DROP TABLE profile;
+        ALTER TABLE profile_nueva RENAME TO profile;
+      `)
+    }
   } else {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS profile (
@@ -160,6 +175,52 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_income_receipts_month ON income_receipts (income_id, year_month);
   `)
+
+  // v7: comprobantes de pagos de gastos fijos, snapshots de moneda base, tipo y recurrencia en ingresos
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS expense_receipts (
+      id TEXT PRIMARY KEY NOT NULL,
+      expense_id TEXT NOT NULL,
+      year_month TEXT NOT NULL,
+      amount REAL NOT NULL,
+      currency TEXT NOT NULL CHECK (currency IN ('VES', 'USD', 'USDT', 'EUR')),
+      base_amount REAL NOT NULL,
+      base_currency TEXT NOT NULL,
+      paid_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_expense_receipts_month ON expense_receipts (expense_id, year_month);
+    CREATE INDEX IF NOT EXISTS idx_expense_receipts_year_month ON expense_receipts (year_month);
+    CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses (created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_expenses_type_active ON expenses (type, active);
+    CREATE INDEX IF NOT EXISTS idx_income_receipts_year_month ON income_receipts (year_month);
+  `)
+
+  try {
+    await db.execAsync('ALTER TABLE expenses ADD COLUMN base_amount REAL;')
+  } catch {}
+  try {
+    await db.execAsync('ALTER TABLE expenses ADD COLUMN base_currency TEXT;')
+  } catch {}
+  try {
+    await db.execAsync("ALTER TABLE incomes ADD COLUMN type TEXT NOT NULL DEFAULT 'fixed';")
+  } catch {}
+  try {
+    await db.execAsync("ALTER TABLE incomes ADD COLUMN recurrence TEXT DEFAULT 'monthly';")
+  } catch {}
+  try {
+    await db.execAsync('ALTER TABLE incomes ADD COLUMN base_amount REAL;')
+  } catch {}
+  try {
+    await db.execAsync('ALTER TABLE incomes ADD COLUMN base_currency TEXT;')
+  } catch {}
+  try {
+    await db.execAsync('ALTER TABLE income_receipts ADD COLUMN base_amount REAL;')
+  } catch {}
+  try {
+    await db.execAsync('ALTER TABLE income_receipts ADD COLUMN base_currency TEXT;')
+  } catch {}
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`)
 }

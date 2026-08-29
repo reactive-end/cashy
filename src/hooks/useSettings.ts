@@ -78,6 +78,8 @@ export interface UseSettingsResult {
   setRemindersEnabled: (enabled: boolean) => Promise<void>
   /** Activa o apaga el aviso BCV y aplica el cambio al instante */
   setBcvEnabled: (enabled: boolean) => Promise<void>
+  /** Activa o desactiva la proteccion por bloqueo biometrico */
+  setBiometricsEnabled: (enabled: boolean) => Promise<void>
 }
 
 /**
@@ -158,13 +160,20 @@ export function useSettings(): UseSettingsResult {
     await syncBcvNotice(updated, rates)
   }, [])
 
+  const setBiometricsEnabled = useCallback(async (enabled: boolean) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = { ...current, biometricsEnabled: enabled }
+    persist(updated)
+  }, [])
+
   return {
     settings,
     changeBaseCurrency,
     changeReminderTime,
     changeBcvTime,
     setRemindersEnabled,
-    setBcvEnabled
+    setBcvEnabled,
+    setBiometricsEnabled
   }
 }
 

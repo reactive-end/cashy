@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, message, action, className }: EmptySta
         </Typography>
       </View>
 
-      {action ? <View className="w-full items-center">{action}</View> : null}
+      {action ? <View className="w-full">{action}</View> : null}
     </View>
   )
 }

@@ -37,12 +37,25 @@ export default function Charts() {
   const categories = useMemo<ChartCategory[]>(() => {
     if (!ratesState.rates) return []
 
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
     const amountsByCategory = new Map<string, number>()
 
-    for (const expense of expensesState.expenses) {
+    for (const expense of expensesState.fixedExpenses) {
       const key = (expense.category ?? '').trim() || 'Sin categoria'
       const amount = convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
       amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + amount)
+    }
+
+    for (const expense of expensesState.uniqueExpenses) {
+      const created = new Date(expense.createdAt)
+      if (created.getMonth() === currentMonth && created.getFullYear() === currentYear) {
+        const key = (expense.category ?? '').trim() || 'Sin categoria'
+        const amount = convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+        amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + amount)
+      }
     }
 
     const grandTotal = [...amountsByCategory.values()].reduce((sum, value) => sum + value, 0)
@@ -56,19 +69,26 @@ export default function Charts() {
         pct: Math.round((total / grandTotal) * 100)
       }))
       .sort((a, b) => b.pct - a.pct)
-  }, [expensesState.expenses, ratesState.rates, baseCurrency])
+  }, [expensesState.fixedExpenses, expensesState.uniqueExpenses, ratesState.rates, baseCurrency])
 
   // Indicadores contables: total general, promedio diario y mayores gastos.
   const indicators = useMemo(() => {
     if (!ratesState.rates) return null
 
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
     let uniqueTotal = 0
 
     for (const expense of expensesState.uniqueExpenses) {
-      uniqueTotal += convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+      const created = new Date(expense.createdAt)
+      if (created.getMonth() === currentMonth && created.getFullYear() === currentYear) {
+        uniqueTotal += convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+      }
     }
 
-    const dayOfMonth = new Date().getDate()
+    const dayOfMonth = now.getDate()
     const dailyAverage = dayOfMonth > 0 ? uniqueTotal / dayOfMonth : uniqueTotal
 
     return {
@@ -83,7 +103,15 @@ export default function Charts() {
 
     if (!currentRates) return []
 
-    return [...expensesState.uniqueExpenses]
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    return expensesState.uniqueExpenses
+      .filter((expense) => {
+        const created = new Date(expense.createdAt)
+        return created.getMonth() === currentMonth && created.getFullYear() === currentYear
+      })
       .map((expense) => ({
         id: expense.id,
         name: expense.name,

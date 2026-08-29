@@ -96,7 +96,7 @@ export const sqliteState: { instance: FakeDatabase | null } = { instance: null }
  * @param userVersion Version PRAGMA que reportara la base
  * @returns La instancia recien creada y registrada
  */
-export function initFakeDatabase(userVersion = 6): FakeDatabase {
+export function initFakeDatabase(userVersion = 7): FakeDatabase {
   const db = new FakeDatabase()
   db.queue([{ user_version: userVersion }])
   sqliteState.instance = db

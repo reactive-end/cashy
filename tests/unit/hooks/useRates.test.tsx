@@ -79,4 +79,13 @@ describe('useRates', () => {
     expect(result.current.refreshing).toBe(false)
     expect(getExchangeRatesMock).toHaveBeenLastCalledWith(true)
   })
+
+  it('refleja isStale en true cuando las tasas vienen marcadas como desactualizadas', async () => {
+    getExchangeRatesMock.mockResolvedValueOnce(buildRates({ isStale: true }))
+
+    const { result } = await renderHook(() => useRates())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.isStale).toBe(true)
+  })
 })

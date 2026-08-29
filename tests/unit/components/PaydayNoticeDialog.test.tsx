@@ -12,6 +12,8 @@ const sampleIncome: Income = {
   name: 'Salario Empresa',
   amount: 800,
   currency: 'USD',
+  type: 'fixed',
+  recurrence: 'monthly',
   paydayDay: 15,
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-01T00:00:00.000Z'

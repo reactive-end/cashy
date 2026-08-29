@@ -38,6 +38,11 @@ jest.mock('@src/db/incomes', () => ({
   updateIncome: jest.fn(),
   deleteIncome: jest.fn()
 }))
+jest.mock('@src/db/expenseReceipts', () => ({
+  getExpenseReceipts: jest.fn(async () => []),
+  getExpenseReceiptsByExpense: jest.fn(async () => []),
+  deleteExpenseReceipt: jest.fn(async () => undefined)
+}))
 jest.mock('@src/db/incomeReceipts', () => ({
   formatYearMonth: jest.fn(() => '2026-08'),
   getIncomeReceipts: jest.fn(async () => []),

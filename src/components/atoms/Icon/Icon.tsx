@@ -31,8 +31,14 @@ import {
   SlidersHorizontal,
   Calculator,
   Clock,
+  Copy,
   UserRound,
   Wallet,
+  Eye,
+  EyeOff,
+  Lock,
+  Shield,
+  ShoppingBag,
   type LucideIcon
 } from 'lucide-react-native'
 import { memo } from 'react'
@@ -67,8 +73,14 @@ const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = {
   filter: SlidersHorizontal,
   calculator: Calculator,
   clock: Clock,
+  copy: Copy,
   user: UserRound,
-  wallet: Wallet
+  wallet: Wallet,
+  eye: Eye,
+  eyeOff: EyeOff,
+  lock: Lock,
+  shield: Shield,
+  shoppingBag: ShoppingBag
 }
 
 /**

@@ -15,9 +15,11 @@ const saveProfileMock = profileRepo.saveProfile as jest.Mock
 const getProfileMock = profileRepo.getProfile as jest.Mock
 const getIncomesMock = incomesRepo.getIncomes as jest.Mock
 const insertIncomeMock = incomesRepo.insertIncome as jest.Mock
+const mockPush = jest.fn()
+const mockBack = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: jest.fn(), back: jest.fn(), push: jest.fn() })
+  useRouter: () => ({ replace: jest.fn(), back: mockBack, push: mockPush })
 }))
 
 jest.mock('@src/db/profile', () => ({
@@ -83,7 +85,7 @@ describe('pantalla de edicion de perfil', () => {
     expect(await screen.findByText('Datos guardados correctamente')).toBeTruthy()
   })
 
-  it('agrega un ingreso nuevo con persistencia inmediata desde el modal', async () => {
+  it('navega a la pantalla dedicada de nuevo ingreso', async () => {
     const screen = await render(<EditProfile />)
     const user = userEvent.setup()
 
@@ -91,16 +93,20 @@ describe('pantalla de edicion de perfil', () => {
     await screen.findByText('Salario')
 
     await user.press(screen.getByText('Agregar otro ingreso'))
-    await screen.findByTestId('income-name')
+    expect(mockPush).toHaveBeenCalledWith('/new-income')
+  })
 
-    await user.type(screen.getByLabelText('Concepto'), 'Freelance')
-    await user.type(screen.getByTestId('income-amount'), '30000')
-    await user.type(screen.getByLabelText('Dia de cobro (1-31)'), '20')
-    await user.press(screen.getByText('Agregar ingreso'))
+  it('navega a la pantalla dedicada de edicion de ingreso', async () => {
+    const screen = await render(<EditProfile />)
+    const user = userEvent.setup()
 
-    expect(insertIncomeMock).toHaveBeenCalledWith(
-      { name: 'Freelance', amount: 300, currency: 'USD', paydayDay: 20 },
-      expect.any(String)
-    )
+    await user.press(await screen.findByText('Ingresos'))
+    await screen.findByText('Salario')
+
+    await user.press(screen.getByLabelText('Editar Salario'))
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/edit-income/[id]',
+      params: { id: expect.any(String) }
+    })
   })
 })

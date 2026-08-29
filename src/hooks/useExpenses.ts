@@ -6,6 +6,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import {
+  confirmExpenseReceipt,
+  deleteExpenseReceipt,
+  getExpenseReceipts
+} from '@src/db/expenseReceipts'
 import { deleteExpense, getExpenses, insertExpense, updateExpense } from '@src/db/expenses'
 import { formatYearMonth, getIncomeReceipts } from '@src/db/incomeReceipts'
 import { convert } from '@src/lib/conversions'
@@ -17,12 +22,19 @@ import {
   requestNotificationPermission,
   scheduleReminder
 } from '@src/lib/notifications'
-import { advanceDueDate, daysUntil, fromISODate, toISODate } from '@src/lib/recurrences'
+import {
+  advanceDueDate,
+  daysUntil,
+  fromISODate,
+  revertDueDate,
+  toISODate
+} from '@src/lib/recurrences'
 import type {
   BaseCurrency,
   Currency,
   Expense,
   ExpenseInput,
+  ExpenseReceipt,
   ExchangeRates,
   IncomeReceipt,
   MonthlySummary,
@@ -44,6 +56,8 @@ const MONTHLY_FACTOR: Readonly<Record<string, number>> = {
 export interface UseExpensesResult {
   /** Todos los gastos cargados desde la base local */
   expenses: Expense[]
+  /** Comprobantes de pago de gastos fijos del mes actual */
+  expenseReceipts: ExpenseReceipt[]
   /** true durante la primera lectura */
   loading: boolean
   /** Mensaje del ultimo error de base de datos; null si todo va bien */
@@ -66,17 +80,19 @@ export interface UseExpensesResult {
   editExpense: (id: string, changes: Partial<ExpenseInput>) => Promise<Expense>
   /** Elimina un gasto y retira su recordatorio */
   removeExpense: (id: string) => Promise<void>
-  /** Avanza el vencimiento de un gasto fijo pagado y reagenda el aviso */
+  /** Avanza el vencimiento de un gasto fijo pagado, emite comprobante y reagenda el aviso */
   markAsPaid: (expense: Expense) => Promise<void>
+  /** Revierte el pago de un gasto fijo eliminando su comprobante y retrocediendo el vencimiento */
+  unmarkAsPaid: (expense: Expense, yearMonth?: string) => Promise<void>
 }
 
 /**
  * Convierte un monto a la moneda base usando las tasas vigentes.
  * El llamador garantiza que rates no sea null antes de invocarla.
- * @param amount Cantidad original
- * @param currency Moneda de registro
- * @param rates Snapshot de tasas
- * @param target Moneda base del usuario
+ * @param amount Monto original
+ * @param currency Moneda original
+ * @param rates Snapshot vigente de tasas
+ * @param target Moneda destino
  * @returns Monto convertido
  */
 function toBase(
@@ -104,6 +120,7 @@ export function useExpenses(
 ): UseExpensesResult {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [receipts, setReceipts] = useState<IncomeReceipt[]>([])
+  const [expenseReceipts, setExpenseReceipts] = useState<ExpenseReceipt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloading, setReloading] = useState(false)
@@ -113,12 +130,14 @@ export function useExpenses(
   const reload = useCallback(async () => {
     setReloading(true)
     try {
-      const [fetchedExpenses, fetchedReceipts] = await Promise.all([
+      const [fetchedExpenses, fetchedReceipts, fetchedExpenseReceipts] = await Promise.all([
         getExpenses(),
-        getIncomeReceipts(currentYearMonth)
+        getIncomeReceipts(currentYearMonth),
+        getExpenseReceipts(currentYearMonth)
       ])
       setExpenses(fetchedExpenses)
       setReceipts(fetchedReceipts)
+      setExpenseReceipts(fetchedExpenseReceipts)
       setError(null)
     } catch {
       // Mensaje amigable fijo: nunca se filtran textos tecnicos de la base.
@@ -131,11 +150,16 @@ export function useExpenses(
   useEffect(() => {
     let active = true
 
-    Promise.all([getExpenses(), getIncomeReceipts(currentYearMonth)])
-      .then(([fetchedExpenses, fetchedReceipts]) => {
+    Promise.all([
+      getExpenses(),
+      getIncomeReceipts(currentYearMonth),
+      getExpenseReceipts(currentYearMonth)
+    ])
+      .then(([fetchedExpenses, fetchedReceipts, fetchedExpenseReceipts]) => {
         if (!active) return
         setExpenses(fetchedExpenses)
         setReceipts(fetchedReceipts)
+        setExpenseReceipts(fetchedExpenseReceipts)
         setError(null)
       })
       .catch(() => {
@@ -151,11 +175,15 @@ export function useExpenses(
     const unsubscribeReceipts = subscribe('income-receipts-changed', () => {
       if (active) void reload()
     })
+    const unsubscribeExpenseReceipts = subscribe('expense-receipts-changed', () => {
+      if (active) void reload()
+    })
 
     return () => {
       active = false
       unsubscribeExpenses()
       unsubscribeReceipts()
+      unsubscribeExpenseReceipts()
     }
   }, [reload, currentYearMonth])
 
@@ -271,16 +299,46 @@ export function useExpenses(
         advanceDueDate(fromISODate(expense.nextDueDate), expense.recurrence)
       )
 
+      const baseAmount = rates
+        ? toBase(expense.amount, expense.currency, rates, baseCurrency)
+        : expense.amount
+      await confirmExpenseReceipt(expense, currentYearMonth, baseAmount, baseCurrency, generateId())
+
       const edited = await updateExpense(expense.id, { nextDueDate: nextDueISO })
       await scheduleReminder(edited, reminderHour, reminderMinute)
       await reload()
       emit('expenses-changed')
+      emit('expense-receipts-changed')
     },
-    [reminderHour, reminderMinute, reload]
+    [reminderHour, reminderMinute, reload, rates, baseCurrency, currentYearMonth]
+  )
+
+  const unmarkAsPaid = useCallback(
+    async (expense: Expense, yearMonth?: string): Promise<void> => {
+      if (expense.type !== 'fixed') return
+
+      const targetMonth = yearMonth ?? currentYearMonth
+      await deleteExpenseReceipt(expense.id, targetMonth)
+
+      let edited = expense
+      if (expense.recurrence && expense.nextDueDate) {
+        const previousDueISO = toISODate(
+          revertDueDate(fromISODate(expense.nextDueDate), expense.recurrence)
+        )
+        edited = await updateExpense(expense.id, { nextDueDate: previousDueISO })
+        await scheduleReminder(edited, reminderHour, reminderMinute)
+      }
+
+      await reload()
+      emit('expenses-changed')
+      emit('expense-receipts-changed')
+    },
+    [reminderHour, reminderMinute, reload, currentYearMonth]
   )
 
   return {
     expenses,
+    expenseReceipts,
     loading,
     error,
     fixedExpenses,
@@ -292,6 +350,7 @@ export function useExpenses(
     createExpense,
     editExpense,
     removeExpense,
-    markAsPaid
+    markAsPaid,
+    unmarkAsPaid
   }
 }

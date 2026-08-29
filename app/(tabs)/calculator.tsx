@@ -4,17 +4,22 @@
  * the daily BCV and P2P sell rates.
  */
 
-import { useCallback, useMemo, useState } from 'react'
-import { View } from 'react-native'
+import { setStringAsync } from 'expo-clipboard'
+import { useRouter } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Pressable, View } from 'react-native'
 
+import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
+import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { MoneyInput } from '@src/components/molecules/MoneyInput'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
+import { COLORS } from '@src/constants/theme'
 import { useRates } from '@src/hooks/useRates'
 import { convert } from '@src/lib/conversions'
-import { currencySymbol, formatAmount } from '@src/lib/format'
+import { currencySymbol, formatAmount, formatNumber } from '@src/lib/format'
 import { amountFromCents } from '@src/lib/money'
 import { CURRENCIES, type Currency } from '@src/types/domain'
 
@@ -31,12 +36,34 @@ const CURRENCY_LABELS: Record<Currency, string> = {
 }
 
 export default function Calculator() {
+  const router = useRouter()
   const ratesState = useRates()
   const [amountCents, setAmountCents] = useState(0)
   const [origin, setOrigin] = useState<Currency>('USD')
+  const [copiedCurrency, setCopiedCurrency] = useState<Currency | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Callback estable: MoneyInput nunca se re-renderiza desde el padre.
   const handleCentsChange = useCallback((cents: number) => setAmountCents(cents), [])
+
+  const handleCopy = useCallback(async (target: Currency, formattedText: string) => {
+    await setStringAsync(formattedText)
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current)
+    }
+    setCopiedCurrency(target)
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopiedCurrency(null)
+    }, 1500)
+  }, [])
 
   // Captura cents-first como el formulario de gastos: los digitos
   // tecleados empujan la cifra desde los decimales (0.01 -> 10.00).
@@ -65,7 +92,16 @@ export default function Calculator() {
   return (
     <Screen scrollable onRefresh={refreshRates} refreshing={ratesState.refreshing}>
       <View className="gap-6 pt-6">
-        <Typography variant="display">Calculadora</Typography>
+        <View className="flex-row items-center justify-between">
+          <Typography variant="display">Calculadora</Typography>
+          <Button
+            label="Mercado"
+            icon="shoppingBag"
+            variant="secondary"
+            onPress={() => router.push('/market')}
+            testID="btn-open-market"
+          />
+        </View>
 
         <Card className="gap-4">
           <View className="flex-row items-baseline justify-between gap-3">
@@ -103,18 +139,41 @@ export default function Calculator() {
           <Typography variant="caption">Cargando tasas del dia...</Typography>
         ) : (
           <View className="gap-3">
-            {results.map((result) => (
-              <Card key={result.target} noPadding className="px-4 py-3.5">
-                <View className="flex-row items-baseline justify-between gap-3">
-                  <Typography variant="caption" className="text-faint">
-                    {CURRENCY_LABELS[result.target]}
-                  </Typography>
-                  <Typography variant="title" numberOfLines={1} adjustsFontSizeToFit>
-                    {formatAmount(result.convertedAmount, result.target)}
-                  </Typography>
-                </View>
-              </Card>
-            ))}
+            {results.map((result) => {
+              const formatted = formatAmount(result.convertedAmount, result.target)
+              const isCopied = copiedCurrency === result.target
+
+              return (
+                <Card key={result.target} noPadding className="px-4 py-3.5">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <View className="flex-1 flex-row items-center gap-2.5">
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Copiar monto en ${CURRENCY_LABELS[result.target]}`}
+                        testID={`btn-copy-${result.target.toLowerCase()}`}
+                        onPress={() => {
+                          void handleCopy(result.target, formatNumber(result.convertedAmount))
+                        }}
+                        hitSlop={8}
+                        className="-ml-1 rounded-md p-1 active:opacity-60"
+                      >
+                        <Icon
+                          name={isCopied ? 'check' : 'copy'}
+                          size={18}
+                          color={isCopied ? COLORS.accent : COLORS.muted}
+                        />
+                      </Pressable>
+                      <Typography variant="caption" className="flex-shrink text-faint">
+                        {CURRENCY_LABELS[result.target]}
+                      </Typography>
+                    </View>
+                    <Typography variant="title" numberOfLines={1} adjustsFontSizeToFit>
+                      {formatted}
+                    </Typography>
+                  </View>
+                </Card>
+              )
+            })}
           </View>
         )}
       </View>

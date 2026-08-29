@@ -35,6 +35,7 @@ function makeState(overrides: Partial<UseRatesResult>): UseRatesResult {
     refreshing: false,
     error: null,
     lastRefreshOk: null,
+    isStale: false,
     refresh: jest.fn(),
     ...overrides
   }

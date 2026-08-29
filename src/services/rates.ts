@@ -35,19 +35,26 @@ export async function fetchFreshRates(): Promise<ExchangeRates> {
 /**
  * Devuelve las tasas mas recientes posibles:
  * usa el cache si tiene menos de CACHE_TTL_MS y va a la red en caso contrario.
+ * Si la red falla pero existe un snapshot previo en cache, lo rescata
+ * marcado con isStale: true para garantizar continuidad offline.
  * @param forceNetwork Cuando es true ignora el cache y consulta la red
  * @returns Snapshot de tasas desde cache o red
- * @throws Error solo si hay que ir a la red y la red falla
+ * @throws Error solo si la red falla y no existe ningun cache previo
  */
 export async function getExchangeRates(forceNetwork = false): Promise<ExchangeRates> {
-  if (!forceNetwork) {
-    const cached = await loadRates()
-    const cacheAge = cached ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity
+  const cached = await loadRates()
+  const cacheAge = cached ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity
 
-    if (cached && cacheAge < CACHE_TTL_MS) {
-      return cached
-    }
+  if (!forceNetwork && cached && cacheAge < CACHE_TTL_MS) {
+    return cached
   }
 
-  return fetchFreshRates()
+  try {
+    return await fetchFreshRates()
+  } catch (error) {
+    if (cached) {
+      return { ...cached, isStale: true }
+    }
+    throw error
+  }
 }

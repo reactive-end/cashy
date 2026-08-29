@@ -7,6 +7,7 @@ import {
   emailSchema,
   firstNameSchema,
   incomeSchema,
+  isValidIncomeRow,
   lastNameSchema,
   validateField
 } from '@src/lib/validation'
@@ -115,5 +116,42 @@ describe('validateField', () => {
   it('devuelve el primer mensaje de error cuando falla', () => {
     expect(validateField(firstNameSchema, 'ab')).toBe('El nombre debe tener al menos 3 caracteres')
     expect(validateField(emailSchema, 'roto')).toBe('Ingresa un correo valido')
+  })
+})
+
+describe('isValidIncomeRow', () => {
+  it('valida fila de ingreso fijo con dia de cobro', () => {
+    expect(
+      isValidIncomeRow({
+        name: 'Salario',
+        amountCents: 50000,
+        currency: 'USD',
+        paydayDayText: '15',
+        type: 'fixed'
+      })
+    ).toBe(true)
+  })
+
+  it('valida fila de ingreso unico sin requerir dia de cobro valido', () => {
+    expect(
+      isValidIncomeRow({
+        name: 'Venta garage',
+        amountCents: 8000,
+        currency: 'USD',
+        paydayDayText: '',
+        type: 'unique'
+      })
+    ).toBe(true)
+  })
+
+  it('rechaza fila con monto invalido o concepto vacio', () => {
+    expect(
+      isValidIncomeRow({
+        name: '',
+        amountCents: 0,
+        currency: 'USD',
+        paydayDayText: '10'
+      })
+    ).toBe(false)
   })
 })

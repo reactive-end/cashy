@@ -108,34 +108,23 @@ describe('pantalla de detalle del ingreso', () => {
         amount: 1200
       }),
       '2026-08',
-      expect.any(String)
+      expect.any(String),
+      1200,
+      'USD'
     )
   })
 
-  it('permite editar el ingreso desde el modal', async () => {
-    updateIncomeMock.mockResolvedValue({
-      ...ingresoPrueba,
-      name: 'Nomina Actualizada',
-      amount: 1200
-    })
-
+  it('navega a la pantalla dedicada de edicion al presionar Editar', async () => {
     const pantalla = await render(<IncomeDetail />)
     await wait(200)
 
     fireEvent.press(await pantalla.findByText('Editar'))
     await wait(50)
 
-    expect(pantalla.getByText('Editar ingreso')).toBeTruthy()
-    fireEvent.changeText(pantalla.getByTestId('income-sheet-name'), 'Nomina Actualizada')
-    await wait(50)
-
-    fireEvent.press(pantalla.getByTestId('income-sheet-confirm'))
-    await wait(100)
-
-    expect(updateIncomeMock).toHaveBeenCalledWith(
-      'ingreso-1',
-      expect.objectContaining({ name: 'Nomina Actualizada' })
-    )
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/edit-income/[id]',
+      params: { id: 'ingreso-1' }
+    })
   })
 
   it('elimina el ingreso tras confirmar en el dialogo', async () => {

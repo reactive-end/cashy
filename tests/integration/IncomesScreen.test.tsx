@@ -83,33 +83,14 @@ describe('pantalla de Ingresos', () => {
     expect(pantalla.getAllByText('Agregar ingreso').length).toBeGreaterThan(0)
   })
 
-  it('agrega un ingreso desde la hoja modal', async () => {
-    getIncomesMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValue([
-        buildIncome({ id: 'nuevo-1', name: 'Freelance', amount: 300, paydayDay: 20 })
-      ])
-    insertIncomeMock.mockResolvedValue(undefined)
-
+  it('navega a la pantalla dedicada de nuevo ingreso', async () => {
     const pantalla = await render(<IncomesScreen />)
     const usuario = userEvent.setup()
 
     const botonAgregar = (await pantalla.findAllByText('Agregar ingreso'))[0]
     await usuario.press(botonAgregar)
 
-    await pantalla.findByTestId('income-sheet-name')
-    await usuario.type(pantalla.getByLabelText('Concepto'), 'Freelance')
-    await usuario.type(pantalla.getByTestId('income-sheet-amount'), '30000')
-    await usuario.type(pantalla.getByLabelText('Dia de cobro (1-31)'), '20')
-
-    const confirmar = pantalla.getByTestId('income-sheet-confirm')
-    await waitFor(() => expect(confirmar.props.accessibilityState.disabled).toBe(false))
-    await usuario.press(confirmar)
-
-    expect(insertIncomeMock).toHaveBeenCalledWith(
-      { name: 'Freelance', amount: 300, currency: 'USD', paydayDay: 20 },
-      expect.any(String)
-    )
+    expect(mockPush).toHaveBeenCalledWith('/new-income')
   })
 
   it('filtra los ingresos mediante la barra de busqueda', async () => {

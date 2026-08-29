@@ -9,6 +9,7 @@ import {
   daysUntil,
   fromISODate,
   isSameDay,
+  revertDueDate,
   toISODate
 } from '@src/lib/recurrences'
 
@@ -73,6 +74,33 @@ describe('advanceDueDate', () => {
     const result = advanceDueDate(fromISODate('2023-05-31'), 'yearly')
 
     expect(toISODate(result)).toBe('2024-05-31')
+  })
+})
+
+describe('revertDueDate', () => {
+  it('retrocede 7 dias en recurrencia semanal', () => {
+    const result = revertDueDate(fromISODate('2026-09-08'), 'weekly')
+    expect(toISODate(result)).toBe('2026-09-01')
+  })
+
+  it('retrocede 15 dias en recurrencia quincenal', () => {
+    const result = revertDueDate(fromISODate('2026-09-16'), 'biweekly')
+    expect(toISODate(result)).toBe('2026-09-01')
+  })
+
+  it('retrocede un mes manteniendo el dia', () => {
+    const result = revertDueDate(fromISODate('2026-05-15'), 'monthly')
+    expect(toISODate(result)).toBe('2026-04-15')
+  })
+
+  it('acota al largo real de febrero al retroceder desde marzo', () => {
+    const result = revertDueDate(fromISODate('2026-03-31'), 'monthly')
+    expect(toISODate(result)).toBe('2026-02-28')
+  })
+
+  it('retrocede un año en recurrencia anual', () => {
+    const result = revertDueDate(fromISODate('2026-05-31'), 'yearly')
+    expect(toISODate(result)).toBe('2025-05-31')
   })
 })
 

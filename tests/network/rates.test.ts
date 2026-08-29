@@ -89,4 +89,26 @@ describe('getExchangeRates', () => {
     expect(resultado.bcvUsd).toBe(782)
     expect(saveRatesMock).toHaveBeenCalled()
   })
+
+  it('rescata el snapshot en cache marcado con isStale cuando la red falla', async () => {
+    const previo = buildRates({
+      fetchedAt: new Date(NOW.getTime() - 10 * 60 * 60 * 1000).toISOString()
+    })
+    loadRatesMock.mockResolvedValue(previo)
+    fetchBCVMock.mockRejectedValueOnce(new Error('Fallo de conexion'))
+
+    const resultado = await getExchangeRates(true)
+
+    expect(resultado).toMatchObject({
+      ...previo,
+      isStale: true
+    })
+  })
+
+  it('lanza error cuando la red falla y no existe snapshot previo en cache', async () => {
+    loadRatesMock.mockResolvedValue(null)
+    fetchBCVMock.mockRejectedValueOnce(new Error('Fallo de conexion'))
+
+    await expect(getExchangeRates(true)).rejects.toThrow('Fallo de conexion')
+  })
 })

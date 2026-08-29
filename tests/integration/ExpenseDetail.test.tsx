@@ -34,6 +34,11 @@ jest.mock('expo-router', () => {
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/expenseReceipts', () => ({
+  getExpenseReceipts: jest.fn(async () => []),
+  getExpenseReceiptsByExpense: jest.fn(async () => []),
+  deleteExpenseReceipt: jest.fn(async () => undefined)
+}))
 jest.mock('@src/db/incomeReceipts', () => ({
   formatYearMonth: jest.fn(() => '2026-08'),
   getIncomeReceipts: jest.fn(async () => [])
@@ -107,5 +112,13 @@ describe('pantalla de detalle del gasto', () => {
 
     expect(deleteExpenseMock).toHaveBeenCalledWith('fijo-1')
     expect(mockBack).toHaveBeenCalled()
+  })
+
+  it('muestra la seccion de historial de pagos en gastos fijos', async () => {
+    const pantalla = await render(<ExpenseDetail />)
+    await wait(200)
+
+    expect(await pantalla.findByText('Historial de pagos')).toBeTruthy()
+    expect(pantalla.getByText('Aun no hay pagos registrados para este gasto.')).toBeTruthy()
   })
 })

@@ -55,7 +55,7 @@ const MINUTE_LABELS: readonly string[] = [
 ]
 
 /** Radio de la esfera donde se asientan las marcas, en porcentaje */
-const DIAL_RADIUS = 40
+const DIAL_RADIUS = 38
 
 /**
  * Convierte una hora de 24 horas a su equivalente de caratula 1-12.

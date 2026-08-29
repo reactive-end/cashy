@@ -15,17 +15,14 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { EmptyState } from '@src/components/molecules/EmptyState'
-import { IncomeFormSheet } from '@src/components/molecules/IncomeFormSheet'
 import { IncomeItem } from '@src/components/molecules/IncomeItem'
 import { Pagination } from '@src/components/molecules/Pagination'
 import { SearchBar } from '@src/components/molecules/SearchBar'
-import type { IncomeDraft } from '@src/components/organisms/IncomeEditor'
 import { useIncomes } from '@src/hooks/useIncomes'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
 import { formatAmount } from '@src/lib/format'
-import { isValidIncomeRow } from '@src/lib/validation'
 import type { BaseCurrency, Income } from '@src/types/domain'
 
 /** Cantidad de ingresos por pagina */
@@ -53,44 +50,15 @@ export default function IncomesScreen() {
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
   const incomesState = useIncomes(ratesState.rates, baseCurrency)
 
-  // Filtros de busqueda
+  // Busqueda
   const [searchText, setSearchText] = useState('')
   const [query, setQuery] = useState('')
 
   // Paginacion
   const [currentPage, setPage] = useState(1)
 
-  // Modal para agregar nuevo ingreso
-  const [incomeSheetVisible, setIncomeSheetVisible] = useState(false)
-  const [incomeRow, setIncomeRow] = useState<IncomeDraft>({
-    name: '',
-    amountCents: 0,
-    currency: 'USD',
-    paydayDayText: ''
-  })
-
   function openCreateIncome(): void {
-    setIncomeRow({
-      name: '',
-      amountCents: 0,
-      currency: baseCurrency,
-      paydayDayText: ''
-    })
-    setIncomeSheetVisible(true)
-  }
-
-  async function handleConfirmSheet(): Promise<void> {
-    if (!isValidIncomeRow(incomeRow)) return
-
-    const content = {
-      name: incomeRow.name.trim(),
-      amount: incomeRow.amountCents / 100,
-      currency: incomeRow.currency,
-      paydayDay: Number.parseInt(incomeRow.paydayDayText.trim(), 10)
-    }
-
-    await incomesState.create(content)
-    setIncomeSheetVisible(false)
+    router.push('/new-income')
   }
 
   // Filtrado por query de busqueda
@@ -225,7 +193,7 @@ export default function IncomesScreen() {
               }
               action={
                 !query ? (
-                  <Button label="Agregar ingreso" icon="add" onPress={openCreateIncome} />
+                  <Button label="Agregar ingreso" icon="add" fullWidth onPress={openCreateIncome} />
                 ) : undefined
               }
             />
@@ -259,18 +227,6 @@ export default function IncomesScreen() {
           </View>
         )}
       </View>
-
-      {/* Modal de nuevo ingreso */}
-      <IncomeFormSheet
-        visible={incomeSheetVisible}
-        values={incomeRow}
-        onChange={setIncomeRow}
-        title="Nuevo ingreso"
-        actionLabel="Agregar ingreso"
-        testIDBase="income-sheet"
-        onConfirm={handleConfirmSheet}
-        onClose={() => setIncomeSheetVisible(false)}
-      />
     </Screen>
   )
 }

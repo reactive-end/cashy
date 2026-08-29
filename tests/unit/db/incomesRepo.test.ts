@@ -15,12 +15,16 @@ import {
 import { FakeDatabase, initFakeDatabase } from '../../helpers/expoSqliteMock'
 
 /** Fila cruda tipica de la tabla incomes */
-function salaryRow(): Record<string, string | number> {
+function salaryRow(): Record<string, string | number | null> {
   return {
     id: 'ingreso-1',
     name: 'Salario',
     amount: 500,
     currency: 'USD',
+    base_amount: 500,
+    base_currency: 'USD',
+    type: 'fixed',
+    recurrence: 'monthly',
     payday_day: 5,
     created_at: '2026-08-23T10:00:00.000Z',
     updated_at: '2026-08-23T10:00:00.000Z'
@@ -44,6 +48,10 @@ describe('repositorio de ingresos', () => {
         name: 'Salario',
         amount: 500,
         currency: 'USD',
+        baseAmount: 500,
+        baseCurrency: 'USD',
+        type: 'fixed',
+        recurrence: 'monthly',
         paydayDay: 5,
         createdAt: '2026-08-23T10:00:00.000Z',
         updatedAt: '2026-08-23T10:00:00.000Z'
@@ -61,7 +69,13 @@ describe('repositorio de ingresos', () => {
 
   it('inserta con marca de tiempo y devuelve el objeto creado', async () => {
     const created = await insertIncome(
-      { name: '  Ingresos pasivos ', amount: 250.5, currency: 'USDT', paydayDay: 15 },
+      {
+        name: '  Ingresos pasivos ',
+        amount: 250.5,
+        currency: 'USDT',
+        type: 'unique',
+        paydayDay: 15
+      },
       'ingreso-nuevo'
     )
 
@@ -70,6 +84,8 @@ describe('repositorio de ingresos', () => {
       name: 'Ingresos pasivos',
       amount: 250.5,
       currency: 'USDT',
+      type: 'unique',
+      recurrence: undefined,
       paydayDay: 15,
       createdAt: expect.any(String),
       updatedAt: expect.any(String)
@@ -81,6 +97,10 @@ describe('repositorio de ingresos', () => {
       'Ingresos pasivos',
       250.5,
       'USDT',
+      null,
+      null,
+      'unique',
+      null,
       15,
       expect.any(String),
       expect.any(String)
@@ -97,7 +117,18 @@ describe('repositorio de ingresos', () => {
     expect(edited.name).toBe('Salario')
 
     const update = base.findByFragment('UPDATE incomes')[0]
-    expect(update.params).toEqual(['Salario', 600, 'USD', 1, expect.any(String), 'ingreso-1'])
+    expect(update.params).toEqual([
+      'Salario',
+      600,
+      'USD',
+      500,
+      'USD',
+      'fixed',
+      'monthly',
+      1,
+      expect.any(String),
+      'ingreso-1'
+    ])
   })
 
   it('lanza error al editar un ingreso inexistente', async () => {

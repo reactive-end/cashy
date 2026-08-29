@@ -8,13 +8,13 @@
  * wizard en la proxima apertura.
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { ProfileFieldErrors } from '@src/components/molecules/ProfileFields'
 import type { IncomeDraft } from '@src/components/organisms/IncomeEditor'
-import { replaceIncomes } from '@src/db/incomes'
+import { deleteIncome, getIncomes, replaceIncomes } from '@src/db/incomes'
 import { saveProfile } from '@src/db/profile'
-import { emit } from '@src/lib/events'
+import { emit, subscribe } from '@src/lib/events'
 import { generateId } from '@src/lib/ids'
 import {
   emailSchema,
@@ -31,7 +31,14 @@ export const TOTAL_STEPS = 2
 
 /** Fila vacia para capturar un ingreso nuevo */
 export function emptyRow(): IncomeDraft {
-  return { name: '', amountCents: 0, currency: 'USD', paydayDayText: '' }
+  return {
+    name: '',
+    amountCents: 0,
+    currency: 'USD',
+    paydayDayText: '',
+    type: 'fixed',
+    recurrence: 'monthly'
+  }
 }
 
 /** Perfil vacio para el arranque del wizard */
@@ -105,6 +112,29 @@ export function useOnboarding(): UseOnboardingResult {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    let active = true
+
+    getIncomes()
+      .then((loaded) => {
+        if (active) setIncomes(loaded)
+      })
+      .catch(() => undefined)
+
+    const unsubscribe = subscribe('incomes-changed', () => {
+      getIncomes()
+        .then((loaded) => {
+          if (active) setIncomes(loaded)
+        })
+        .catch(() => undefined)
+    })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
+
   const profileErrors = useMemo(() => deriveProfileErrors(profile), [profile])
   // La validez real consulta los esquemas aunque el campo este vacio;
   // los mensajes visibles solo aparecen desde el primer caracter.
@@ -131,11 +161,16 @@ export function useOnboarding(): UseOnboardingResult {
   const confirmRow = useCallback((): boolean => {
     if (!isValidIncomeRow(row)) return false
 
+    const isUnique = row.type === 'unique'
     const content: Omit<Income, 'id' | 'createdAt' | 'updatedAt'> = {
       name: row.name.trim(),
       amount: row.amountCents / 100,
       currency: row.currency,
-      paydayDay: parseDayFromText(row.paydayDayText) as number
+      paydayDay: isUnique
+        ? (parseDayFromText(row.paydayDayText) ?? new Date().getDate())
+        : (parseDayFromText(row.paydayDayText) as number),
+      type: row.type ?? 'fixed',
+      recurrence: isUnique ? undefined : (row.recurrence ?? 'monthly')
     }
 
     if (editingId) {
@@ -180,6 +215,7 @@ export function useOnboarding(): UseOnboardingResult {
   const removeIncome = useCallback(
     (id: string) => {
       setIncomes((current) => current.filter((income) => income.id !== id))
+      void deleteIncome(id).then(() => emit('incomes-changed'))
 
       if (editingId === id) {
         setEditingId(null)

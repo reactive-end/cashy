@@ -4,17 +4,20 @@
  * gestionadas y el cambio de moneda de origen.
  */
 
-import { fireEvent, render } from '@testing-library/react-native'
+import { setStringAsync } from 'expo-clipboard'
+import { act, fireEvent, render } from '@testing-library/react-native'
 
 import { loadSettings } from '@src/db/settings'
 import { getExchangeRates } from '@src/services/rates'
 
 import Calculator from '../../app/(tabs)/calculator'
-import { wait } from '../helpers/wait'
 import { buildRates, buildSettings } from '../helpers/factories'
+import { wait } from '../helpers/wait'
+
+const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() })
+  useRouter: () => ({ push: mockPush })
 }))
 
 jest.mock('@src/services/rates')
@@ -22,12 +25,23 @@ jest.mock('@src/db/settings')
 
 const getExchangeRatesMock = getExchangeRates as jest.Mock
 const loadSettingsMock = loadSettings as jest.Mock
+const setStringAsyncMock = setStringAsync as jest.Mock
 
 describe('pantalla Calculadora', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     getExchangeRatesMock.mockResolvedValue(buildRates())
     loadSettingsMock.mockResolvedValue(buildSettings())
+  })
+
+  it('navega a la pantalla de Mercado al pulsar el boton Mercado', async () => {
+    const pantalla = await render(<Calculator />)
+    await wait(100)
+
+    const btnMercado = pantalla.getByTestId('btn-open-market')
+    fireEvent.press(btnMercado)
+
+    expect(mockPush).toHaveBeenCalledWith('/market')
   })
 
   it('muestra la equivalencia de 50 dolares en las otras tres divisas', async () => {
@@ -131,5 +145,35 @@ describe('pantalla Calculadora', () => {
 
     expect(await pantalla.findByText('Cargando tasas del dia...')).toBeTruthy()
     expect(pantalla.queryByText('Bolivares')).toBeNull()
+  })
+
+  it('copia el monto al portapapeles y conmuta el icono a check temporalmente', async () => {
+    const pantalla = await render(<Calculator />)
+    await wait(200)
+
+    await pantalla.findByText('Monto a convertir')
+
+    fireEvent.changeText(pantalla.getByTestId('input-monto'), '5000')
+    await wait(60)
+
+    const botonCopiarVes = pantalla.getByTestId('btn-copy-ves')
+    expect(botonCopiarVes).toBeTruthy()
+    expect(pantalla.getAllByTestId('lucide-copy').length).toBe(3)
+    expect(pantalla.queryByTestId('lucide-check')).toBeNull()
+
+    await act(async () => {
+      fireEvent.press(botonCopiarVes)
+      await wait(30)
+    })
+
+    expect(setStringAsyncMock).toHaveBeenCalledWith('38.997,50')
+    expect(pantalla.getByTestId('lucide-check')).toBeTruthy()
+
+    await act(async () => {
+      await wait(1600)
+    })
+
+    expect(pantalla.queryByTestId('lucide-check')).toBeNull()
+    expect(pantalla.getAllByTestId('lucide-copy').length).toBe(3)
   })
 })

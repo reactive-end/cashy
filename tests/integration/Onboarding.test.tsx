@@ -15,14 +15,20 @@ import * as profileRepo from '@src/db/profile'
 
 const saveProfileMock = profileRepo.saveProfile as jest.Mock
 const replaceIncomesMock = incomesRepo.replaceIncomes as jest.Mock
+const getIncomesMock = incomesRepo.getIncomes as jest.Mock
 const mockReplace = jest.fn()
+const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockReplace, push: jest.fn() })
+  useRouter: () => ({ replace: mockReplace, push: mockPush })
 }))
 
 jest.mock('@src/db/profile', () => ({ saveProfile: jest.fn(async () => undefined) }))
-jest.mock('@src/db/incomes', () => ({ replaceIncomes: jest.fn(async () => []) }))
+jest.mock('@src/db/incomes', () => ({
+  getIncomes: jest.fn(async () => []),
+  replaceIncomes: jest.fn(async () => []),
+  deleteIncome: jest.fn(async () => undefined)
+}))
 
 /** Monta el wizard y completa el paso de identidad con datos validos */
 async function mountWithValidIdentity() {
@@ -42,6 +48,7 @@ async function mountWithValidIdentity() {
 describe('pantalla de onboarding', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    getIncomesMock.mockResolvedValue([])
   })
 
   it('bloquea Continuar sin datos y valida el nombre en vivo', async () => {
@@ -67,20 +74,15 @@ describe('pantalla de onboarding', () => {
     expect(screen.getByLabelText('Continuar').props.accessibilityState.disabled).toBe(false)
   })
 
-  it('recorre ambos pasos, agrega un ingreso y guarda', async () => {
+  it('navega a /new-income al presionar Agregar ingreso', async () => {
     const { screen, user } = await mountWithValidIdentity()
 
     await user.press(screen.getByText('Agregar ingreso'))
-    await screen.findByTestId('income-name')
+    expect(mockPush).toHaveBeenCalledWith('/new-income')
+  })
 
-    await user.type(screen.getByLabelText('Concepto'), 'Salario')
-    await user.type(screen.getByTestId('income-amount'), '1500')
-    await user.type(screen.getByLabelText('Dia de cobro (1-31)'), '5')
-    await user.press(
-      screen.getAllByText('Agregar ingreso')[1] ?? screen.getByText('Agregar ingreso')
-    )
-
-    expect(await screen.findByText(/cobra el dia 5/)).toBeTruthy()
+  it('completa el onboarding y guarda el perfil al presionar Terminar', async () => {
+    const { screen, user } = await mountWithValidIdentity()
 
     await user.press(screen.getByText('Terminar'))
 
@@ -89,10 +91,6 @@ describe('pantalla de onboarding', () => {
       lastName: 'Perez',
       email: 'carlos@perez.com'
     })
-    expect(replaceIncomesMock).toHaveBeenCalledWith([
-      { name: 'Salario', amount: 15, currency: 'USD', paydayDay: 5 }
-    ])
-    // La navegacion ahora la orquesta el gate del layout raiz via profile-changed.
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
@@ -106,42 +104,25 @@ describe('pantalla de onboarding', () => {
     expect(campoNombre.value).toBe('Carlos')
   })
 
-  it('el monto invalido impide agregar a la tabla', async () => {
-    const { screen, user } = await mountWithValidIdentity()
+  it('muestra ingresos registrados y navega a edicion al presionar editar', async () => {
+    getIncomesMock.mockResolvedValue([
+      { id: 'inc-1', name: 'Salario', amount: 15, currency: 'USD', paydayDay: 5 }
+    ])
 
-    await user.press(screen.getByLabelText('Agregar ingreso'))
-    await screen.findByTestId('income-name')
+    const screen = await render(<Onboarding />)
+    const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText('Concepto'), 'Salario')
+    await user.type(screen.getByLabelText('Nombre'), 'Carlos')
+    await user.type(screen.getByLabelText('Apellido'), 'Perez')
+    await user.type(screen.getByLabelText('Correo'), 'carlos@perez.com')
+    await user.press(screen.getByText('Continuar'))
 
-    const actionButtons = screen.getAllByLabelText('Agregar ingreso')
-    const actionButton = actionButtons[actionButtons.length - 1]
-    expect(actionButton.props.accessibilityState.disabled).toBe(true)
-    expect(saveProfileMock).not.toHaveBeenCalled()
-    expect(replaceIncomesMock).not.toHaveBeenCalled()
-  })
-
-  it('edita un ingreso agregado desde la tabla', async () => {
-    const { screen, user } = await mountWithValidIdentity()
-
-    await user.press(screen.getByLabelText('Agregar ingreso'))
-    await screen.findByTestId('income-name')
-
-    await user.type(screen.getByLabelText('Concepto'), 'Salario')
-    await user.type(screen.getByTestId('income-amount'), '1500')
-    await user.type(screen.getByLabelText('Dia de cobro (1-31)'), '5')
-    const actionButtons = screen.getAllByLabelText('Agregar ingreso')
-    await user.press(actionButtons[actionButtons.length - 1])
-    await screen.findByText(/cobra el dia 5/)
-
+    expect(await screen.findByText('Salario')).toBeTruthy()
     await user.press(screen.getByLabelText('Editar Salario'))
-    await screen.findByTestId('income-name')
-    await userEvent.clear(screen.getByLabelText('Concepto'))
-    await user.type(screen.getByLabelText('Concepto'), 'Sueldo base')
-    await user.press(screen.getByText('Guardar cambios'))
 
-    expect(await screen.findByText('Sueldo base')).toBeTruthy()
-    expect(screen.getByText(/cobra el dia 5/)).toBeTruthy()
-    expect(replaceIncomesMock).not.toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/edit-income/[id]',
+      params: { id: 'inc-1' }
+    })
   })
 })

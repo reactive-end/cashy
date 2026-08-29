@@ -3,7 +3,7 @@
  * Persists and queries monthly payday confirmations (ingresos efectivamente cobrados).
  */
 
-import type { Currency, Income, IncomeReceipt } from '@src/types/domain'
+import type { BaseCurrency, Currency, Income, IncomeReceipt } from '@src/types/domain'
 
 import { openDatabase } from './base'
 import { getIncomes } from './incomes'
@@ -15,13 +15,16 @@ interface IncomeReceiptRow {
   year_month: string
   amount: number
   currency: string
+  base_amount: number | null
+  base_currency: string | null
   confirmed_at: string
   created_at: string
   updated_at: string
 }
 
 /** Columnas leidas en cada consulta de recibos */
-const COLUMNS = 'id, income_id, year_month, amount, currency, confirmed_at, created_at, updated_at'
+const COLUMNS =
+  'id, income_id, year_month, amount, currency, base_amount, base_currency, confirmed_at, created_at, updated_at'
 
 /**
  * Convierte una fila cruda de SQLite al objeto IncomeReceipt del dominio.
@@ -35,6 +38,8 @@ function mapRowToReceipt(row: IncomeReceiptRow): IncomeReceipt {
     yearMonth: row.year_month,
     amount: row.amount,
     currency: row.currency as Currency,
+    baseAmount: row.base_amount ?? undefined,
+    baseCurrency: (row.base_currency as BaseCurrency | null) ?? undefined,
     confirmedAt: row.confirmed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -77,15 +82,22 @@ export async function getIncomeReceipts(yearMonth: string): Promise<IncomeReceip
  * @param income Ingreso confirmado
  * @param yearMonth Mes en formato YYYY-MM
  * @param id Identificador unico para el recibo
+ * @param baseAmount Monto equivalente en moneda base congelado al cobrar
+ * @param baseCurrency Moneda base activa al cobrar
  * @returns El recibo de ingreso guardado
  */
 export async function confirmIncomeReceipt(
   income: Income,
   yearMonth: string,
-  id: string
+  id: string,
+  baseAmount?: number,
+  baseCurrency?: BaseCurrency
 ): Promise<IncomeReceipt> {
   const db = await openDatabase()
   const timestamp = nowISO()
+
+  const resolvedBaseAmount = baseAmount ?? income.baseAmount
+  const resolvedBaseCurrency = baseCurrency ?? income.baseCurrency
 
   const receipt: IncomeReceipt = {
     id,
@@ -93,6 +105,8 @@ export async function confirmIncomeReceipt(
     yearMonth,
     amount: income.amount,
     currency: income.currency,
+    baseAmount: resolvedBaseAmount,
+    baseCurrency: resolvedBaseCurrency,
     confirmedAt: timestamp,
     createdAt: timestamp,
     updatedAt: timestamp
@@ -100,14 +114,16 @@ export async function confirmIncomeReceipt(
 
   await db.runAsync(
     `INSERT OR REPLACE INTO income_receipts (
-      id, income_id, year_month, amount, currency, confirmed_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, income_id, year_month, amount, currency, base_amount, base_currency, confirmed_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       receipt.id,
       receipt.incomeId,
       receipt.yearMonth,
       receipt.amount,
       receipt.currency,
+      receipt.baseAmount ?? null,
+      receipt.baseCurrency ?? null,
       receipt.confirmedAt,
       receipt.createdAt,
       receipt.updatedAt

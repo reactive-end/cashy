@@ -131,8 +131,33 @@ describe('useIncomes', () => {
 
     desuscribir()
 
-    expect(confirmIncomeReceiptMock).toHaveBeenCalledWith(income, '2026-08', expect.any(String))
+    expect(confirmIncomeReceiptMock).toHaveBeenCalledWith(
+      income,
+      '2026-08',
+      expect.any(String),
+      expect.any(Number),
+      'USD'
+    )
     expect(eventos).toEqual(['recibo'])
+  })
+
+  it('calcula monthlyTotal considerando ingresos unicos y factores de recurrencia', async () => {
+    getIncomesMock.mockResolvedValue([
+      buildIncome({
+        id: 'f-1',
+        amount: 100,
+        currency: 'USD',
+        type: 'fixed',
+        recurrence: 'biweekly'
+      }),
+      buildIncome({ id: 'u-1', amount: 50, currency: 'USD', type: 'unique' })
+    ])
+
+    const { result } = await renderHook(() => useIncomes(buildRates(), 'USD'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // biweekly: 100 * 2 = 200, unique: 50 * 1 = 50 => 250
+    expect(result.current.monthlyTotal).toBe(250)
   })
 
   it('rerevierte o elimina la confirmacion de un ingreso y emite el evento', async () => {

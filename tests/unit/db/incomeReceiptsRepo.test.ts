@@ -15,13 +15,15 @@ import type { Income } from '@src/types/domain'
 import { FakeDatabase, initFakeDatabase } from '../../helpers/expoSqliteMock'
 
 /** Fila cruda tipica de la tabla income_receipts */
-function sampleReceiptRow(): Record<string, string | number> {
+function sampleReceiptRow(): Record<string, string | number | null> {
   return {
     id: 'recibo-1',
     income_id: 'ingreso-1',
     year_month: '2026-08',
     amount: 500,
     currency: 'USD',
+    base_amount: 500,
+    base_currency: 'USD',
     confirmed_at: '2026-08-05T10:00:00.000Z',
     created_at: '2026-08-05T10:00:00.000Z',
     updated_at: '2026-08-05T10:00:00.000Z'
@@ -33,6 +35,7 @@ const sampleIncome: Income = {
   name: 'Salario',
   amount: 500,
   currency: 'USD',
+  type: 'fixed',
   paydayDay: 5,
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-01T00:00:00.000Z'
@@ -63,6 +66,8 @@ describe('repositorio de recibos de ingresos', () => {
         yearMonth: '2026-08',
         amount: 500,
         currency: 'USD',
+        baseAmount: 500,
+        baseCurrency: 'USD',
         confirmedAt: '2026-08-05T10:00:00.000Z',
         createdAt: '2026-08-05T10:00:00.000Z',
         updatedAt: '2026-08-05T10:00:00.000Z'
@@ -71,7 +76,7 @@ describe('repositorio de recibos de ingresos', () => {
   })
 
   it('confirma e inserta un recibo de cobro con marca de tiempo', async () => {
-    const receipt = await confirmIncomeReceipt(sampleIncome, '2026-08', 'recibo-123')
+    const receipt = await confirmIncomeReceipt(sampleIncome, '2026-08', 'recibo-123', 500, 'USD')
 
     expect(receipt).toEqual({
       id: 'recibo-123',
@@ -79,6 +84,8 @@ describe('repositorio de recibos de ingresos', () => {
       yearMonth: '2026-08',
       amount: 500,
       currency: 'USD',
+      baseAmount: 500,
+      baseCurrency: 'USD',
       confirmedAt: expect.any(String),
       createdAt: expect.any(String),
       updatedAt: expect.any(String)
@@ -89,6 +96,8 @@ describe('repositorio de recibos de ingresos', () => {
       'recibo-123',
       'ingreso-1',
       '2026-08',
+      500,
+      'USD',
       500,
       'USD',
       expect.any(String),

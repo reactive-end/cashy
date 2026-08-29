@@ -10,7 +10,7 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ExpenseItem } from '@src/components/molecules/ExpenseItem'
 import { COLORS } from '@src/constants/theme'
-import { formatDate, formatAmount } from '@src/lib/format'
+import { formatAmount, formatDate } from '@src/lib/format'
 
 import type { UpcomingPaymentsProps } from './UpcomingPayments.d'
 
@@ -26,9 +26,9 @@ function toneByDays(daysRemaining: number): BadgeTone {
 }
 
 /**
- * Convierte los dias restantes en una etiqueta amable.
+ * Etiqueta legible segun la cercania del vencimiento.
  * @param daysRemaining Dias hasta el pago
- * @returns Texto corto para la insignia
+ * @returns Texto tipo "Hoy", "Manana" o "en N dias"
  */
 function labelByDays(daysRemaining: number): string {
   if (daysRemaining === 0) return 'vence hoy'

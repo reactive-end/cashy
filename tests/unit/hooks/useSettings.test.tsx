@@ -166,4 +166,18 @@ describe('useSettings', () => {
 
     expect(result.current.settings).toEqual(buildSettings({ baseCurrency: 'USDT' }))
   })
+
+  it('permite cambiar y persistir biometricsEnabled', async () => {
+    const { result } = await renderHook(() => useSettings())
+    await waitFor(() => expect(result.current.settings).not.toBeNull())
+
+    await act(async () => {
+      await result.current.setBiometricsEnabled(true)
+    })
+
+    expect(result.current.settings?.biometricsEnabled).toBe(true)
+    expect(saveSettingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ biometricsEnabled: true })
+    )
+  })
 })

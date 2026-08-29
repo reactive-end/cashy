@@ -92,7 +92,10 @@ export function TimePicker({
         />
 
         <View className="my-3 aspect-square w-full rounded-full border border-line bg-paper">
-          <View className="absolute left-1/2 top-1/2 size-2 -translate-x-1 -translate-y-1 rounded-full bg-accent" />
+          <View
+            className="absolute size-2 rounded-full bg-accent"
+            style={{ left: '50%', top: '50%', marginLeft: -4, marginTop: -4 }}
+          />
 
           {marks.map((mark) => {
             const accessibleLabel =
@@ -106,8 +109,14 @@ export function TimePicker({
                 onPress={() =>
                   step === 'hour' ? selectHour(mark.value) : selectMinute(mark.value)
                 }
-                style={mark.position}
-                className={`absolute size-[15%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full ${
+                style={[
+                  mark.position,
+                  {
+                    marginLeft: -20,
+                    marginTop: -20
+                  }
+                ]}
+                className={`absolute size-10 items-center justify-center rounded-full ${
                   mark.selected ? 'bg-accent' : ''
                 }`}
                 accessibilityRole="button"
@@ -115,7 +124,11 @@ export function TimePicker({
                 accessibilityState={{ selected: mark.selected }}
                 testID={`timepicker-${step}-${mark.value}`}
               >
-                <Typography variant="figure" className={mark.selected ? 'text-paper' : 'text-ink'}>
+                <Typography
+                  variant="figure"
+                  className={mark.selected ? 'text-paper' : 'text-ink'}
+                  style={{ color: mark.selected ? COLORS.paper : COLORS.ink }}
+                >
                   {mark.label}
                 </Typography>
               </Pressable>
@@ -142,8 +155,12 @@ export function TimePicker({
         ) : null}
 
         <View className="mt-4 flex-row gap-3">
-          <Button label="Cancelar" variant="ghost" fullWidth onPress={close} />
-          <Button label="Aceptar" variant="primary" fullWidth onPress={confirm} />
+          <View className="flex-1">
+            <Button label="Cancelar" variant="ghost" fullWidth onPress={close} />
+          </View>
+          <View className="flex-1">
+            <Button label="Aceptar" variant="primary" fullWidth onPress={confirm} />
+          </View>
         </View>
       </ModalBackdrop>
     </View>

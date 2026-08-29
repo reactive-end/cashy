@@ -28,7 +28,12 @@ const disponibleMock = appUpdate.isUpdateAvailable as jest.Mock
 const descargarMock = appUpdate.downloadApk as jest.Mock
 const instalarMock = appUpdate.installApk as jest.Mock
 
-const RELEASE = { version: '1.2.0', apkUrl: 'https://github.com/cashy.apk', notes: 'Mejoras' }
+const RELEASE = {
+  version: '1.2.0',
+  apkUrl: 'https://github.com/cashy.apk',
+  notes: 'Mejoras',
+  sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+}
 
 describe('useAppUpdate', () => {
   beforeEach(async () => {
@@ -82,7 +87,7 @@ describe('useAppUpdate', () => {
       await result.current.confirm()
     })
 
-    expect(descargarMock).toHaveBeenCalledWith(RELEASE.apkUrl, expect.any(Function))
+    expect(descargarMock).toHaveBeenCalledWith(RELEASE.apkUrl, expect.any(Function), RELEASE.sha256)
     expect(instalarMock).toHaveBeenCalledTimes(1)
     expect(result.current.downloading).toBe(false)
   })

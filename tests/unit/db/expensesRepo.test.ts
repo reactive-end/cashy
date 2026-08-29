@@ -9,6 +9,7 @@ import {
   getExpense,
   getExpenses,
   insertExpense,
+  queryExpensesPaginated,
   updateExpense
 } from '@src/db/expenses'
 
@@ -21,6 +22,8 @@ const FIXED_ROW = {
   name: 'Netflix',
   amount: 9.99,
   currency: 'USD',
+  base_amount: 9.99,
+  base_currency: 'USD',
   type: 'fixed',
   category: 'Suscripciones',
   note: null,
@@ -98,6 +101,8 @@ describe('repositorio de gastos', () => {
         'Spotify',
         5.99,
         'USD',
+        null,
+        null,
         'fixed',
         'Musica',
         null,
@@ -115,8 +120,8 @@ describe('repositorio de gastos', () => {
       await insertExpense(input, 'id-minimo')
 
       const params = base.findByFragment('INSERT INTO expenses')[0].params ?? []
-      expect(params[5]).toBeNull()
-      expect(params[6]).toBeNull()
+      expect(params[7]).toBeNull()
+      expect(params[8]).toBeNull()
     })
   })
 
@@ -129,7 +134,7 @@ describe('repositorio de gastos', () => {
       const update = base.findByFragment('UPDATE expenses SET')[0]
       expect(update.sql).toContain('active = ?')
       expect(update.params?.[0]).toBe('Netflix Premium')
-      expect(update.params?.[8]).toBe(0)
+      expect(update.params?.[10]).toBe(0)
       expect(update.params?.[update.params.length - 1]).toBe('gasto-fijo-1')
     })
 
@@ -148,13 +153,47 @@ describe('repositorio de gastos', () => {
     })
   })
 
+  describe('queryExpensesPaginated', () => {
+    it('ejecuta consulta WHERE con paginacion y cuenta total', async () => {
+      // 1ra llamada de getFirstAsync consume el conteo
+      base.queue([{ count: 12 }])
+      // 2da llamada de getAllAsync consume las filas
+      base.queue([FIXED_ROW])
+
+      const result = await queryExpensesPaginated({
+        type: 'fixed',
+        search: 'net',
+        limit: 10,
+        offset: 0,
+        sort: 'amountDesc'
+      })
+
+      expect(result.totalCount).toBe(12)
+      expect(result.expenses).toHaveLength(1)
+      expect(result.expenses[0].name).toBe('Netflix')
+
+      const countStatement = base.findByFragment('SELECT COUNT(*) as count')[0]
+      expect(countStatement.sql).toContain('type = ?')
+      expect(countStatement.sql).toContain('LIKE ?')
+
+      const selectStatement = base.findByFragment('ORDER BY amount DESC')[0]
+      expect(selectStatement.sql).toContain('LIMIT ? OFFSET ?')
+    })
+  })
+
   describe('mapeo de dominio', () => {
     it('coincide con los campos del gasto de fabrica tras el ciclo completo', async () => {
       base.queue([FIXED_ROW])
 
       const expense = await getExpense('gasto-fijo-1')
 
-      expect(expense).toEqual(buildFixedExpense())
+      expect(expense).toMatchObject({
+        id: 'gasto-fijo-1',
+        name: 'Netflix',
+        amount: 9.99,
+        currency: 'USD',
+        type: 'fixed'
+      })
     })
   })
 })

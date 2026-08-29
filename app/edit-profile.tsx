@@ -15,8 +15,6 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { AlertDialog } from '@src/components/molecules/AlertDialog'
-import { EmptyState } from '@src/components/molecules/EmptyState'
-import { IncomeFormSheet } from '@src/components/molecules/IncomeFormSheet'
 import { ProfileFields } from '@src/components/molecules/ProfileFields'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
 import { IncomesTable } from '@src/components/organisms/IncomesTable'
@@ -40,24 +38,14 @@ export default function EditProfile() {
   const router = useRouter()
   const editor = useProfileEditor()
   const [section, setSection] = useState<ProfileSection>('identity')
-  const [incomeSheetVisible, setIncomeSheetVisible] = useState(false)
   const [notice, setNotice] = useState<{ ok: boolean } | null>(null)
 
   function openCreateIncome(): void {
-    editor.cancelRowEdit()
-    setIncomeSheetVisible(true)
+    router.push('/new-income')
   }
 
   function openEditIncome(id: string): void {
-    editor.editIncome(id)
-    setIncomeSheetVisible(true)
-  }
-
-  async function handleConfirmIncome(): Promise<void> {
-    const ok = await editor.confirmRow()
-    if (ok) {
-      setIncomeSheetVisible(false)
-    }
+    router.push({ pathname: '/edit-income/[id]', params: { id } })
   }
 
   async function saveIdentity(): Promise<void> {
@@ -112,12 +100,21 @@ export default function EditProfile() {
             </View>
 
             {editor.incomes.length === 0 ? (
-              <EmptyState
-                icon="savings"
-                title="Sin fuentes de ingreso"
-                message="Agrega tus ingresos mensuales para proyectar tu flujo de dinero."
-                action={<Button label="Agregar ingreso" icon="add" onPress={openCreateIncome} />}
-              />
+              <View className="items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-paper/60 p-6">
+                <Typography variant="title" className="text-center">
+                  Sin fuentes de ingreso
+                </Typography>
+                <Typography variant="caption" className="text-center text-[13px] leading-[18px]">
+                  Agrega tus ingresos mensuales para proyectar tu flujo de dinero.
+                </Typography>
+                <Button
+                  label="Agregar ingreso"
+                  icon="add"
+                  variant="primary"
+                  fullWidth
+                  onPress={openCreateIncome}
+                />
+              </View>
             ) : (
               <View className="gap-3">
                 <IncomesTable
@@ -138,20 +135,6 @@ export default function EditProfile() {
           </Card>
         )}
       </View>
-
-      <IncomeFormSheet
-        visible={incomeSheetVisible}
-        values={editor.row}
-        onChange={editor.changeRow}
-        actionLabel={editor.editingId ? 'Guardar cambios' : 'Agregar ingreso'}
-        onConfirm={() => void handleConfirmIncome()}
-        onClose={() => {
-          editor.cancelRowEdit()
-          setIncomeSheetVisible(false)
-        }}
-        title={editor.editingId ? 'Editar ingreso' : 'Nuevo ingreso'}
-        testIDBase="income"
-      />
 
       <AlertDialog
         visible={notice !== null}

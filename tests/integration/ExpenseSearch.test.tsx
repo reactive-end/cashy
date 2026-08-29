@@ -27,6 +27,11 @@ jest.mock('expo-router', () => ({
 jest.mock('@src/services/rates')
 jest.mock('@src/db/expenses')
 jest.mock('@src/db/settings')
+jest.mock('@src/db/expenseReceipts', () => ({
+  getExpenseReceipts: jest.fn(async () => []),
+  getExpenseReceiptsByExpense: jest.fn(async () => []),
+  deleteExpenseReceipt: jest.fn(async () => undefined)
+}))
 jest.mock('@src/db/incomeReceipts', () => ({
   formatYearMonth: jest.fn(() => '2026-08'),
   getIncomeReceipts: jest.fn(async () => [])

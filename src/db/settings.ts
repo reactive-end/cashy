@@ -18,7 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bcvHour: 9,
   bcvMinute: 0,
   remindersEnabled: true,
-  bcvEnabled: true
+  bcvEnabled: true,
+  biometricsEnabled: false
 }
 
 /** Forma cruda de una fila de la tabla settings */
@@ -63,7 +64,11 @@ function parseAppSettings(value: object): AppSettings | null {
         ? parsed.remindersEnabled
         : DEFAULT_SETTINGS.remindersEnabled,
     bcvEnabled:
-      typeof parsed.bcvEnabled === 'boolean' ? parsed.bcvEnabled : DEFAULT_SETTINGS.bcvEnabled
+      typeof parsed.bcvEnabled === 'boolean' ? parsed.bcvEnabled : DEFAULT_SETTINGS.bcvEnabled,
+    biometricsEnabled:
+      typeof parsed.biometricsEnabled === 'boolean'
+        ? parsed.biometricsEnabled
+        : DEFAULT_SETTINGS.biometricsEnabled
   }
 }
 

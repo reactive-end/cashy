@@ -75,7 +75,7 @@ export function useAppUpdate(): UseAppUpdateResult {
     setProgress(0)
 
     try {
-      const file = await downloadApk(available.apkUrl, setProgress)
+      const file = await downloadApk(available.apkUrl, setProgress, available.sha256)
       await installApk(file)
       setAvailable(null)
     } catch {

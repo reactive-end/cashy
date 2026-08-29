@@ -46,6 +46,8 @@ interface IncomeRowLike {
   amountCents: number
   currency: string
   paydayDayText: string
+  type?: string
+  recurrence?: string
 }
 
 /**
@@ -63,15 +65,19 @@ export function parseDayFromText(text: string): number | null {
 
 /**
  * Valida una fila completa de ingreso (concepto, monto y dia).
+ * Para ingresos unicos no se exige dia de cobro especifico.
  * @param row Fila capturada en el editor o el wizard
  * @returns true cuando puede persistirse
  */
 export function isValidIncomeRow(row: IncomeRowLike): boolean {
+  const isUnique = row.type === 'unique'
+  const isDayValid = isUnique || parseDayFromText(row.paydayDayText) !== null
+
   return (
     validateField(incomeSchema.shape.name, row.name) === null &&
     Number.isInteger(row.amountCents) &&
     row.amountCents > 0 &&
-    parseDayFromText(row.paydayDayText) !== null
+    isDayValid
   )
 }
 

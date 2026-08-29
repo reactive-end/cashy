@@ -58,6 +58,14 @@ export interface UseIncomesResult {
   unconfirmReceipt: (incomeId: string) => Promise<void>
 }
 
+/** Factores de conversion de cada recurrencia a su equivalente mensual */
+const MONTHLY_FACTOR: Readonly<Record<string, number>> = {
+  weekly: 52 / 12,
+  biweekly: 2,
+  monthly: 1,
+  yearly: 1 / 12
+}
+
 /**
  * Administra los ingresos y sus confirmaciones mensuales de cobro.
  * @param rates Snapshot de tasas actual (null mientras carga)
@@ -135,26 +143,35 @@ export function useIncomes(
   const pendingConfirmations = useMemo(() => {
     const currentDay = new Date().getDate()
     return incomes.filter(
-      (income) => income.paydayDay <= currentDay && !confirmedIncomeIds.has(income.id)
+      (income) =>
+        income.type !== 'unique' &&
+        income.paydayDay <= currentDay &&
+        !confirmedIncomeIds.has(income.id)
     )
   }, [incomes, confirmedIncomeIds])
 
   const monthlyTotal = useMemo<number | null>(() => {
     if (!rates || incomes.length === 0) return null
 
-    return incomes.reduce(
-      (sum, income) => sum + convert(income.amount, income.currency, baseCurrency, rates),
-      0
-    )
+    return incomes.reduce((sum, income) => {
+      const base = convert(income.amount, income.currency, baseCurrency, rates)
+      if (income.type === 'unique') {
+        return sum + base
+      }
+      const factor = MONTHLY_FACTOR[income.recurrence ?? 'monthly'] ?? 1
+      return sum + base * factor
+    }, 0)
   }, [incomes, rates, baseCurrency])
 
   const confirmedTotal = useMemo<number | null>(() => {
     if (!rates) return null
 
-    return receipts.reduce(
-      (sum, receipt) => sum + convert(receipt.amount, receipt.currency, baseCurrency, rates),
-      0
-    )
+    return receipts.reduce((sum, receipt) => {
+      if (receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency) {
+        return sum + receipt.baseAmount
+      }
+      return sum + convert(receipt.amount, receipt.currency, baseCurrency, rates)
+    }, 0)
   }, [receipts, rates, baseCurrency])
 
   const create = useCallback(async (input: IncomeInput): Promise<Income> => {
@@ -178,12 +195,21 @@ export function useIncomes(
 
   const confirmReceipt = useCallback(
     async (income: Income): Promise<IncomeReceipt> => {
-      const receipt = await confirmIncomeReceipt(income, currentYearMonth, generateId())
+      const baseAmount = rates
+        ? convert(income.amount, income.currency, baseCurrency, rates)
+        : undefined
+      const receipt = await confirmIncomeReceipt(
+        income,
+        currentYearMonth,
+        generateId(),
+        baseAmount,
+        baseCurrency
+      )
       emit('income-receipts-changed')
 
       return receipt
     },
-    [currentYearMonth]
+    [currentYearMonth, rates, baseCurrency]
   )
 
   const unconfirmReceipt = useCallback(

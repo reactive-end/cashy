@@ -15,16 +15,13 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
-import { IncomeFormSheet } from '@src/components/molecules/IncomeFormSheet'
-import type { IncomeDraft } from '@src/components/organisms/IncomeEditor'
 import { getIncome } from '@src/db/incomes'
 import { useIncomes } from '@src/hooks/useIncomes'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
 import { formatAmount } from '@src/lib/format'
-import { isValidIncomeRow } from '@src/lib/validation'
-import type { BaseCurrency, Income } from '@src/types/domain'
+import { RECURRENCE_LABELS, type BaseCurrency, type Income } from '@src/types/domain'
 
 export default function IncomeDetail() {
   const router = useRouter()
@@ -34,15 +31,6 @@ export default function IncomeDetail() {
   const [income, setIncome] = useState<Income | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
-
-  // Estado de edicion modal
-  const [editSheetVisible, setEditSheetVisible] = useState(false)
-  const [incomeRow, setIncomeRow] = useState<IncomeDraft>({
-    name: '',
-    amountCents: 0,
-    currency: 'USD',
-    paydayDayText: ''
-  })
 
   const ratesState = useRates()
   const { settings } = useSettings()
@@ -77,28 +65,7 @@ export default function IncomeDetail() {
 
   function openEdit(): void {
     if (!income) return
-    setIncomeRow({
-      name: income.name,
-      amountCents: Math.round(income.amount * 100),
-      currency: income.currency,
-      paydayDayText: String(income.paydayDay)
-    })
-    setEditSheetVisible(true)
-  }
-
-  async function handleConfirmEdit(): Promise<void> {
-    if (!income || !isValidIncomeRow(incomeRow)) return
-
-    const content = {
-      name: incomeRow.name.trim(),
-      amount: incomeRow.amountCents / 100,
-      currency: incomeRow.currency,
-      paydayDay: Number.parseInt(incomeRow.paydayDayText.trim(), 10)
-    }
-
-    const updated = await incomesState.edit(income.id, content)
-    setIncome(updated)
-    setEditSheetVisible(false)
+    router.push({ pathname: '/edit-income/[id]', params: { id: income.id } })
   }
 
   async function handleToggleReceipt(): Promise<void> {
@@ -118,9 +85,21 @@ export default function IncomeDetail() {
       value: income.name
     })
     detailRows.push({
-      label: 'Dia de cobro',
-      value: `Dia ${income.paydayDay} de cada mes`
+      label: 'Tipo',
+      value: income.type === 'unique' ? 'Ingreso unico' : 'Ingreso fijo'
     })
+    if (income.type !== 'unique' && income.recurrence) {
+      detailRows.push({
+        label: 'Repeticion',
+        value: RECURRENCE_LABELS[income.recurrence]
+      })
+    }
+    if (income.type !== 'unique') {
+      detailRows.push({
+        label: 'Dia de cobro',
+        value: `Dia ${income.paydayDay} de cada mes`
+      })
+    }
     detailRows.push({
       label: 'Moneda original',
       value: income.currency
@@ -221,18 +200,6 @@ export default function IncomeDetail() {
 
         <View style={{ height: insets.bottom + 16 }} />
       </ScrollView>
-
-      {/* Modal de edicion */}
-      <IncomeFormSheet
-        visible={editSheetVisible}
-        values={incomeRow}
-        onChange={setIncomeRow}
-        title="Editar ingreso"
-        actionLabel="Guardar cambios"
-        testIDBase="income-sheet"
-        onConfirm={handleConfirmEdit}
-        onClose={() => setEditSheetVisible(false)}
-      />
 
       {/* Dialogo de confirmacion de borrado */}
       {income ? (

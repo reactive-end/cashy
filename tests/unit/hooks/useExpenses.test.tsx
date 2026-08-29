@@ -5,10 +5,11 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 
+import * as expenseReceiptsRepo from '@src/db/expenseReceipts'
 import * as expensesRepo from '@src/db/expenses'
 import * as receiptsRepo from '@src/db/incomeReceipts'
-import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { useExpenses } from '@src/hooks/useExpenses'
+import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import * as notificaciones from '@src/lib/notifications'
 import { fromISODate, toISODate } from '@src/lib/recurrences'
 
@@ -19,11 +20,19 @@ const insertExpenseMock = expensesRepo.insertExpense as jest.Mock
 const updateExpenseMock = expensesRepo.updateExpense as jest.Mock
 const deleteExpenseMock = expensesRepo.deleteExpense as jest.Mock
 const getIncomeReceiptsMock = receiptsRepo.getIncomeReceipts as jest.Mock
+const getExpenseReceiptsMock = expenseReceiptsRepo.getExpenseReceipts as jest.Mock
+const confirmExpenseReceiptMock = expenseReceiptsRepo.confirmExpenseReceipt as jest.Mock
+const deleteExpenseReceiptMock = expenseReceiptsRepo.deleteExpenseReceipt as jest.Mock
 const scheduleMock = notificaciones.scheduleReminder as jest.Mock
 const cancelMock = notificaciones.cancelReminder as jest.Mock
 const permisoMock = notificaciones.requestNotificationPermission as jest.Mock
 
 jest.mock('@src/db/expenses')
+jest.mock('@src/db/expenseReceipts', () => ({
+  confirmExpenseReceipt: jest.fn(async () => ({})),
+  deleteExpenseReceipt: jest.fn(async () => undefined),
+  getExpenseReceipts: jest.fn(async () => [])
+}))
 jest.mock('@src/db/incomeReceipts', () => ({
   formatYearMonth: jest.fn(() => '2026-08'),
   getIncomeReceipts: jest.fn(async () => [])
@@ -212,6 +221,13 @@ describe('useExpenses', () => {
       expect(updateExpenseMock).toHaveBeenCalledWith('fijo-1', {
         nextDueDate: esperado
       })
+      expect(confirmExpenseReceiptMock).toHaveBeenCalledWith(
+        alquiler,
+        '2026-08',
+        expect.any(Number),
+        'USD',
+        expect.any(String)
+      )
       expect(scheduleMock).toHaveBeenCalled()
     })
 
@@ -222,6 +238,39 @@ describe('useExpenses', () => {
         await result.current.markAsPaid(buildUniqueExpense())
       })
 
+      expect(updateExpenseMock).not.toHaveBeenCalled()
+      expect(confirmExpenseReceiptMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('unmarkAsPaid', () => {
+    it('elimina el recibo, retrocede el vencimiento y reagenda recordatorio', async () => {
+      const { result } = await montarConSemilla()
+      const alquiler = buildFixedExpense({
+        id: 'fijo-1',
+        recurrence: 'weekly',
+        nextDueDate: '2026-09-08'
+      })
+
+      await act(async () => {
+        await result.current.unmarkAsPaid(alquiler, '2026-08')
+      })
+
+      expect(deleteExpenseReceiptMock).toHaveBeenCalledWith('fijo-1', '2026-08')
+      expect(updateExpenseMock).toHaveBeenCalledWith('fijo-1', {
+        nextDueDate: '2026-09-01'
+      })
+      expect(scheduleMock).toHaveBeenCalled()
+    })
+
+    it('ignora gastos que no son fijos', async () => {
+      const { result } = await montarConSemilla()
+
+      await act(async () => {
+        await result.current.unmarkAsPaid(buildUniqueExpense())
+      })
+
+      expect(deleteExpenseReceiptMock).not.toHaveBeenCalled()
       expect(updateExpenseMock).not.toHaveBeenCalled()
     })
   })

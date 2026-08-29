@@ -6,6 +6,7 @@
  */
 
 import Constants from 'expo-constants'
+import * as Crypto from 'expo-crypto'
 import { Directory, File, Paths } from 'expo-file-system'
 import * as IntentLauncher from 'expo-intent-launcher'
 
@@ -38,6 +39,8 @@ export interface LatestRelease {
   apkUrl: string
   /** Notas de la version publicadas en el release */
   notes: string
+  /** Hash SHA-256 opcional para verificar integridad */
+  sha256?: string
 }
 
 /**
@@ -60,10 +63,14 @@ function validateRelease(value: object): LatestRelease | null {
 
   if (!apk || typeof apk.browser_download_url !== 'string') return null
 
+  const shaMatch = candidate.body?.match(/(?:SHA256|sha256):\s*([a-fA-F0-9]{64})/)
+  const sha256 = shaMatch ? shaMatch[1].toLowerCase() : undefined
+
   return {
     version: candidate.tag_name.replace(/^v/i, ''),
     apkUrl: apk.browser_download_url,
-    notes: typeof candidate.body === 'string' ? candidate.body : ''
+    notes: typeof candidate.body === 'string' ? candidate.body : '',
+    sha256
   }
 }
 
@@ -110,14 +117,17 @@ export function isUpdateAvailable(release: LatestRelease): boolean {
 }
 
 /**
- * Descarga el APK del release en el cache de la aplicacion.
+ * Descarga el APK del release en el cache de la aplicacion
+ * y verifica su integridad criptografica si se provee el hash esperado.
  * @param apkUrl URL de descarga directa del asset
  * @param onProgress Callback opcional con progreso 0-1
+ * @param expectedSha256 Hash SHA-256 opcional para verificar integridad
  * @returns Archivo descargado listo para instalarse
  */
 export async function downloadApk(
   apkUrl: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  expectedSha256?: string
 ): Promise<File> {
   const folder = new Directory(Paths.cache, DOWNLOAD_FOLDER)
   folder.create({ idempotent: true, intermediates: true, overwrite: true })
@@ -131,6 +141,24 @@ export async function downloadApk(
   const file = await task.downloadAsync()
 
   if (!file) throw new Error('Download cancelled')
+
+  if (expectedSha256) {
+    const buffer = await file.arrayBuffer()
+    const digestBuffer = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, buffer)
+    const hashHex = Array.from(new Uint8Array(digestBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toLowerCase()
+
+    if (hashHex !== expectedSha256.toLowerCase()) {
+      try {
+        file.delete()
+      } catch {
+        // Ignora fallo al limpiar archivo corrupto
+      }
+      throw new Error('Integrity check failed: APK SHA-256 does not match release checksum')
+    }
+  }
 
   return file
 }

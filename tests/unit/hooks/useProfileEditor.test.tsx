@@ -136,7 +136,14 @@ describe('useProfileEditor', () => {
 
       expect(added).toBe(true)
       expect(insertIncomeMock).toHaveBeenCalledWith(
-        { name: 'Salario', amount: 2000, currency: 'USD', paydayDay: 5 },
+        expect.objectContaining({
+          name: 'Salario',
+          amount: 2000,
+          currency: 'USD',
+          paydayDay: 5,
+          type: 'fixed',
+          recurrence: 'monthly'
+        }),
         expect.any(String)
       )
       expect(result.current.incomes).toHaveLength(1)

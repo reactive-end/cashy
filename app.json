@@ -22,12 +22,18 @@
     },
     "android": {
       "package": "dev.cashy.app",
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["SCHEDULE_EXACT_ALARM", "REQUEST_INSTALL_PACKAGES"]
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "REQUEST_INSTALL_PACKAGES",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

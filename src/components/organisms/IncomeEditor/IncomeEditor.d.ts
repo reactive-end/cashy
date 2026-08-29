@@ -3,7 +3,7 @@
  * Formulario de una fuente de ingreso con validacion en tiempo real.
  */
 
-import type { Currency } from '@src/types/domain'
+import type { Currency, ExpenseType, Recurrence } from '@src/types/domain'
 
 /** Estado del formulario de una fila de ingreso */
 export interface IncomeDraft {
@@ -15,6 +15,10 @@ export interface IncomeDraft {
   currency: Currency
   /** Texto crudo del dia de cobro capturado en el campo */
   paydayDayText: string
+  /** Tipo de ingreso: fijo (recurrente) o unico (puntual) */
+  type?: ExpenseType
+  /** Recurrencia para ingresos fijos */
+  recurrence?: Recurrence
 }
 
 /** Propiedades del organismo IncomeEditor */
@@ -29,6 +33,8 @@ export interface IncomeEditorProps {
   onConfirm: () => void
   /** Accion opcional para descartar la edicion en curso */
   onCancel?: () => void
+  /** Estado de guardado en curso para mostrar spinner */
+  loading?: boolean
   /** testID base para automatizacion */
   testIDBase?: string
 }

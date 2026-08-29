@@ -3,7 +3,14 @@
  * Congelan un instante de referencia para resultados deterministas.
  */
 
-import type { AppSettings, Expense, ExpenseInput, ExchangeRates, Income } from '@src/types/domain'
+import type {
+  AppSettings,
+  ExchangeRates,
+  Expense,
+  ExpenseInput,
+  ExpenseReceipt,
+  Income
+} from '@src/types/domain'
 
 /** Instante congelado de referencia para todas las pruebas (UTC absoluto) */
 export const NOW = new Date('2026-08-23T10:00:00.000Z')
@@ -99,6 +106,7 @@ export function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings
     bcvMinute: 0,
     remindersEnabled: true,
     bcvEnabled: true,
+    biometricsEnabled: false,
     ...overrides
   }
 }
@@ -110,7 +118,26 @@ export function buildIncome(overrides: Partial<Income> = {}): Income {
     name: 'Salario',
     amount: 500,
     currency: 'USD',
+    type: 'fixed',
+    recurrence: 'monthly',
     paydayDay: 5,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+    ...overrides
+  }
+}
+
+/** Comprobante de pago de gasto fijo para pruebas */
+export function buildExpenseReceipt(overrides: Partial<ExpenseReceipt> = {}): ExpenseReceipt {
+  return {
+    id: 'receipt-1',
+    expenseId: 'gasto-1',
+    yearMonth: '2026-08',
+    amount: 35,
+    currency: 'USD',
+    baseAmount: 35,
+    baseCurrency: 'USD',
+    paidAt: NOW_ISO,
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
     ...overrides

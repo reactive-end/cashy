@@ -14,13 +14,19 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
+import { getExpenseReceiptsByExpense } from '@src/db/expenseReceipts'
 import { getExpense } from '@src/db/expenses'
 import { useExpenses } from '@src/hooks/useExpenses'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
 import { formatAmount, formatDate } from '@src/lib/format'
-import { RECURRENCE_LABELS, type BaseCurrency, type Expense } from '@src/types/domain'
+import {
+  RECURRENCE_LABELS,
+  type BaseCurrency,
+  type Expense,
+  type ExpenseReceipt
+} from '@src/types/domain'
 
 /**
  * Pantalla de detalles de un gasto concreto con acciones de edicion
@@ -33,8 +39,10 @@ export default function ExpenseDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
 
   const [expense, setExpense] = useState<Expense | null>(null)
+  const [expenseReceipts, setExpenseReceipts] = useState<ExpenseReceipt[]>([])
   const [loading, setLoading] = useState(true)
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
+  const [receiptToRevert, setReceiptToRevert] = useState<ExpenseReceipt | null>(null)
 
   const ratesState = useRates()
   const { settings } = useSettings()
@@ -47,11 +55,14 @@ export default function ExpenseDetail() {
       let active = true
 
       if (typeof id === 'string') {
-        getExpense(id).then((encontrado) => {
-          if (!active) return
-          setExpense(encontrado)
-          setLoading(false)
-        })
+        Promise.all([getExpense(id), getExpenseReceiptsByExpense(id)]).then(
+          ([encontrado, receipts]) => {
+            if (!active) return
+            setExpense(encontrado)
+            setExpenseReceipts(receipts)
+            setLoading(false)
+          }
+        )
       }
 
       return () => {
@@ -154,6 +165,52 @@ export default function ExpenseDetail() {
               ))}
             </Card>
 
+            {expense.type === 'fixed' ? (
+              <Card className="gap-3">
+                <Typography variant="title" className="text-[16px]">
+                  Historial de pagos
+                </Typography>
+                {expenseReceipts.length === 0 ? (
+                  <Typography variant="caption" className="text-faint">
+                    Aun no hay pagos registrados para este gasto.
+                  </Typography>
+                ) : (
+                  <View className="gap-2.5">
+                    {expenseReceipts.map((receipt) => (
+                      <View
+                        key={receipt.id}
+                        className="flex-row items-center justify-between border-b border-line pb-2.5 last:border-b-0 last:pb-0"
+                      >
+                        <View className="gap-0.5">
+                          <Typography variant="body" className="font-semibold">
+                            {receipt.yearMonth}
+                          </Typography>
+                          <Typography variant="caption" className="text-faint">
+                            {`Pagado el ${formatDate(receipt.paidAt.split('T')[0])}`}
+                          </Typography>
+                        </View>
+
+                        <View className="flex-row items-center gap-3">
+                          <Typography variant="body" className="font-medium text-accent">
+                            {formatAmount(receipt.amount, receipt.currency)}
+                          </Typography>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Deshacer pago de ${receipt.yearMonth}`}
+                            onPress={() => setReceiptToRevert(receipt)}
+                            hitSlop={8}
+                            className="rounded-full p-1 active:opacity-60"
+                          >
+                            <Icon name="close" size={16} color="#6B6B66" />
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </Card>
+            ) : null}
+
             <View className="gap-3">
               <Button
                 label="Editar"
@@ -178,18 +235,47 @@ export default function ExpenseDetail() {
       </ScrollView>
 
       {expense ? (
-        <ConfirmDialog
-          visible={deleteConfirmationVisible}
-          title="Eliminar gasto"
-          message={`Se eliminara "${expense.name}" de forma permanente.`}
-          confirmLabel="Eliminar"
-          destructive
-          onConfirm={() => {
-            setDeleteConfirmationVisible(false)
-            void expensesState.removeExpense(expense.id).then(() => router.back())
-          }}
-          onCancel={() => setDeleteConfirmationVisible(false)}
-        />
+        <>
+          <ConfirmDialog
+            visible={deleteConfirmationVisible}
+            title="Eliminar gasto"
+            message={`Se eliminara "${expense.name}" de forma permanente.`}
+            confirmLabel="Eliminar"
+            destructive
+            onConfirm={() => {
+              setDeleteConfirmationVisible(false)
+              void expensesState.removeExpense(expense.id).then(() => router.back())
+            }}
+            onCancel={() => setDeleteConfirmationVisible(false)}
+          />
+
+          <ConfirmDialog
+            visible={receiptToRevert !== null}
+            title="Deshacer pago"
+            message={
+              receiptToRevert
+                ? `Deseas revertir el pago registrado para ${receiptToRevert.yearMonth}? El vencimiento retrocedera al periodo anterior.`
+                : ''
+            }
+            confirmLabel="Deshacer pago"
+            destructive
+            onConfirm={() => {
+              if (receiptToRevert && expense) {
+                const target = receiptToRevert
+                setReceiptToRevert(null)
+                void expensesState.unmarkAsPaid(expense, target.yearMonth).then(async () => {
+                  const [updatedReceipts, updatedExpense] = await Promise.all([
+                    getExpenseReceiptsByExpense(expense.id),
+                    getExpense(expense.id)
+                  ])
+                  setExpenseReceipts(updatedReceipts)
+                  if (updatedExpense) setExpense(updatedExpense)
+                })
+              }
+            }}
+            onCancel={() => setReceiptToRevert(null)}
+          />
+        </>
       ) : null}
     </View>
   )

@@ -4,7 +4,14 @@
  * translating snake_case rows to camelCase domain objects.
  */
 
-import type { Currency, Income, IncomeInput } from '@src/types/domain'
+import type {
+  BaseCurrency,
+  Currency,
+  ExpenseType,
+  Income,
+  IncomeInput,
+  Recurrence
+} from '@src/types/domain'
 
 import { openDatabase } from './base'
 
@@ -14,13 +21,18 @@ interface IncomeRow {
   name: string
   amount: number
   currency: string
+  base_amount: number | null
+  base_currency: string | null
+  type: string | null
+  recurrence: string | null
   payday_day: number
   created_at: string
   updated_at: string
 }
 
 /** Columnas leidas en cada consulta de listado */
-const COLUMNS = 'id, name, amount, currency, payday_day, created_at, updated_at'
+const COLUMNS =
+  'id, name, amount, currency, base_amount, base_currency, type, recurrence, payday_day, created_at, updated_at'
 
 /**
  * Convierte una fila cruda al objeto de dominio.
@@ -33,6 +45,10 @@ function mapRowToIncome(row: IncomeRow): Income {
     name: row.name,
     amount: row.amount,
     currency: row.currency as Currency,
+    baseAmount: row.base_amount ?? undefined,
+    baseCurrency: (row.base_currency as BaseCurrency | null) ?? undefined,
+    type: (row.type as ExpenseType | null) ?? 'fixed',
+    recurrence: (row.recurrence as Recurrence | null) ?? undefined,
     paydayDay: row.payday_day,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -76,25 +92,38 @@ function nowISO(): string {
 export async function insertIncome(input: IncomeInput, id: string): Promise<Income> {
   const db = await openDatabase()
   const timestamp = nowISO()
+  const type: ExpenseType = input.type ?? 'fixed'
+  const recurrence: Recurrence | undefined =
+    input.recurrence ?? (type === 'unique' ? undefined : 'monthly')
+  const paydayDay = input.paydayDay ?? new Date().getDate()
 
   const created: Income = {
     id,
     name: input.name.trim(),
     amount: input.amount,
     currency: input.currency,
-    paydayDay: input.paydayDay,
+    baseAmount: input.baseAmount,
+    baseCurrency: input.baseCurrency,
+    type,
+    recurrence,
+    paydayDay,
     createdAt: timestamp,
     updatedAt: timestamp
   }
 
   await db.runAsync(
-    `INSERT INTO incomes (id, name, amount, currency, payday_day, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO incomes (
+       id, name, amount, currency, base_amount, base_currency, type, recurrence, payday_day, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       created.id,
       created.name,
       created.amount,
       created.currency,
+      created.baseAmount ?? null,
+      created.baseCurrency ?? null,
+      created.type,
+      created.recurrence ?? null,
       created.paydayDay,
       timestamp,
       timestamp
@@ -124,9 +153,22 @@ export async function updateIncome(id: string, changes: Partial<IncomeInput>): P
   }
 
   await db.runAsync(
-    `UPDATE incomes SET name = ?, amount = ?, currency = ?, payday_day = ?, updated_at = ?
+    `UPDATE incomes SET
+       name = ?, amount = ?, currency = ?, base_amount = ?, base_currency = ?,
+       type = ?, recurrence = ?, payday_day = ?, updated_at = ?
      WHERE id = ?`,
-    [edited.name, edited.amount, edited.currency, edited.paydayDay, edited.updatedAt, id]
+    [
+      edited.name,
+      edited.amount,
+      edited.currency,
+      edited.baseAmount ?? null,
+      edited.baseCurrency ?? null,
+      edited.type,
+      edited.recurrence ?? null,
+      edited.paydayDay,
+      edited.updatedAt,
+      id
+    ]
   )
 
   return edited
@@ -157,11 +199,28 @@ export async function replaceIncomes(inputs: readonly IncomeInput[]): Promise<In
     for (let index = 0; index < inputs.length; index += 1) {
       const input = inputs[index]
       const id = `ingreso-${index + 1}`
+      const type: ExpenseType = input.type ?? 'fixed'
+      const recurrence: Recurrence | null =
+        input.recurrence ?? (type === 'unique' ? null : 'monthly')
+      const paydayDay = input.paydayDay ?? new Date().getDate()
 
       await db.runAsync(
-        `INSERT INTO incomes (id, name, amount, currency, payday_day, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, input.name.trim(), input.amount, input.currency, input.paydayDay, timestamp, timestamp]
+        `INSERT INTO incomes (
+           id, name, amount, currency, base_amount, base_currency, type, recurrence, payday_day, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          input.name.trim(),
+          input.amount,
+          input.currency,
+          input.baseAmount ?? null,
+          input.baseCurrency ?? null,
+          type,
+          recurrence,
+          paydayDay,
+          timestamp,
+          timestamp
+        ]
       )
     }
   })

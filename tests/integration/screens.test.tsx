@@ -39,6 +39,11 @@ jest.mock('@src/db/incomes', () => ({
   updateIncome: jest.fn(),
   deleteIncome: jest.fn(async () => undefined)
 }))
+jest.mock('@src/db/expenseReceipts', () => ({
+  getExpenseReceipts: jest.fn(async () => []),
+  getExpenseReceiptsByExpense: jest.fn(async () => []),
+  deleteExpenseReceipt: jest.fn(async () => undefined)
+}))
 jest.mock('@src/db/incomeReceipts', () => ({
   formatYearMonth: jest.fn(() => '2026-08'),
   getIncomeReceipts: jest.fn(async () => []),
@@ -166,6 +171,14 @@ describe('pantalla Ajustes', () => {
     expect(getByText(/Tus datos viven solo en este dispositivo/)).toBeTruthy()
     expect(queryByText(/dolarapi/)).toBeNull()
     expect(queryByText(/criptoya/)).toBeNull()
+  })
+
+  it('muestra la seccion de seguridad y privacidad con bloqueo biometrico', async () => {
+    const { getByText, queryByText } = await render(<Settings />)
+
+    await waitFor(() => expect(getByText('Seguridad y privacidad')).toBeTruthy())
+    expect(getByText('Bloqueo biometrico')).toBeTruthy()
+    expect(queryByText('Ocultar saldos')).toBeNull()
   })
 })
 
