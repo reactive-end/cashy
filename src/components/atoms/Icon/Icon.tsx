@@ -39,6 +39,8 @@ import {
   Lock,
   Shield,
   ShoppingBag,
+  Building2,
+  Info,
   type LucideIcon
 } from 'lucide-react-native'
 import { memo } from 'react'
@@ -80,7 +82,9 @@ const ICON_REGISTRY: Readonly<Record<IconName, LucideIcon>> = {
   eyeOff: EyeOff,
   lock: Lock,
   shield: Shield,
-  shoppingBag: ShoppingBag
+  shoppingBag: ShoppingBag,
+  building: Building2,
+  info: Info
 }
 
 /**

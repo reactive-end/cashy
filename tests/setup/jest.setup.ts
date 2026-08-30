@@ -154,3 +154,37 @@ jest.mock('expo-local-authentication', () => ({
     IRIS: 3
   }
 }))
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(async () => ({ type: 'cancel' })),
+  maybeCompleteAuthSession: jest.fn()
+}))
+
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(async () => true),
+    signIn: jest.fn(async () => ({
+      type: 'success' as const,
+      data: {
+        idToken: 'mock-id-token',
+        scopes: [],
+        serverAuthCode: null,
+        user: {
+          id: 'google-uid-123',
+          name: 'Alex Developer',
+          email: 'alex@example.com',
+          photo: 'https://example.com/photo.png',
+          familyName: 'Developer',
+          givenName: 'Alex'
+        }
+      }
+    })),
+    signOut: jest.fn(async () => undefined)
+  },
+  statusCodes: {
+    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE'
+  }
+}))

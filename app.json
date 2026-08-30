@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cashy",
     "slug": "cashy",
-    "version": "1.0.4",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -62,7 +62,9 @@
           "color": "#2F6B4F",
           "defaultChannel": "reminders"
         }
-      ]
+      ],
+      "./plugins/withBankNotificationListener",
+      "@react-native-google-signin/google-signin"
     ],
     "owner": "reactiveend",
     "extra": {

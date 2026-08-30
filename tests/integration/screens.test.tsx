@@ -15,6 +15,8 @@ import ExpensesScreen from '../../app/expenses'
 import Finances from '../../app/(tabs)/finances'
 import Home from '../../app/(tabs)/index'
 import Settings from '../../app/(tabs)/settings'
+import CurrencySettings from '../../app/settings/currency'
+import SecuritySettings from '../../app/settings/security'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -151,12 +153,11 @@ describe('pantalla Ajustes', () => {
     saveSettingsMock.mockResolvedValue(undefined)
   })
 
-  it('cambia y persiste la moneda base del usuario', async () => {
-    const { getByText } = await render(<Settings />)
+  it('permite navegar a la subpantalla de moneda base y cambiar la divisa', async () => {
+    const pantalla = await render(<CurrencySettings />)
+    await wait(200)
 
-    await waitFor(() => expect(loadSettingsMock).toHaveBeenCalledTimes(1))
-
-    fireEvent.press(getByText('VES'))
+    fireEvent.press(pantalla.getByText('VES'))
 
     await waitFor(() =>
       expect(saveSettingsMock).toHaveBeenCalledWith(
@@ -167,18 +168,20 @@ describe('pantalla Ajustes', () => {
 
   it('mantiene el aviso de privacidad local sin exponer fuentes tecnicas', async () => {
     const { getByText, queryByText } = await render(<Settings />)
+    await wait(200)
 
     expect(getByText(/Tus datos viven solo en este dispositivo/)).toBeTruthy()
     expect(queryByText(/dolarapi/)).toBeNull()
     expect(queryByText(/criptoya/)).toBeNull()
   })
 
-  it('muestra la seccion de seguridad y privacidad con bloqueo biometrico', async () => {
-    const { getByText, queryByText } = await render(<Settings />)
+  it('muestra la opcion de seguridad y navega a su subpantalla', async () => {
+    const pantalla = await render(<Settings />)
+    await wait(200)
 
-    await waitFor(() => expect(getByText('Seguridad y privacidad')).toBeTruthy())
-    expect(getByText('Bloqueo biometrico')).toBeTruthy()
-    expect(queryByText('Ocultar saldos')).toBeNull()
+    expect(pantalla.getByText('Seguridad y Privacidad')).toBeTruthy()
+    fireEvent.press(pantalla.getByText('Seguridad y Privacidad'))
+    expect(mockPush).toHaveBeenCalledWith('/settings/security')
   })
 })
 

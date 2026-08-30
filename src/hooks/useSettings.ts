@@ -21,6 +21,9 @@ let inFlightLoad: Promise<AppSettings> | null = null
 /** Suscriptores notificados en cada cambio */
 const listeners = new Set<(settings: AppSettings) => void>()
 
+/** Generacion para invalidar promesas en vuelo tras reset en pruebas */
+let resetGeneration = 0
+
 /**
  * Notifica a todos los consumidores el estado vigente.
  */
@@ -38,15 +41,20 @@ function notify(): void {
 async function ensureLoaded(): Promise<AppSettings> {
   if (sharedCache) return sharedCache
 
+  const gen = resetGeneration
   if (!inFlightLoad) {
     inFlightLoad = loadSettings()
       .then((loaded) => {
-        sharedCache = loaded
-        notify()
+        if (gen === resetGeneration) {
+          sharedCache = loaded
+          notify()
+        }
         return loaded
       })
       .catch(() => {
-        inFlightLoad = null
+        if (gen === resetGeneration) {
+          inFlightLoad = null
+        }
         throw new Error('No se pudieron leer los ajustes')
       })
   }
@@ -182,6 +190,7 @@ export function useSettings(): UseSettingsResult {
  * Exclusivo para pruebas: garantiza estado limpio entre casos.
  */
 export function __resetCacheForTests(): void {
+  resetGeneration++
   sharedCache = null
   inFlightLoad = null
   listeners.clear()

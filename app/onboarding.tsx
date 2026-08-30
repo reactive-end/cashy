@@ -19,6 +19,7 @@ import { AlertDialog } from '@src/components/molecules/AlertDialog'
 import { ProfileFields } from '@src/components/molecules/ProfileFields'
 import { IncomesTable } from '@src/components/organisms/IncomesTable'
 import { COLORS } from '@src/constants/theme'
+import { useAuth } from '@src/hooks/useAuth'
 import { TOTAL_STEPS, useOnboarding } from '@src/hooks/useOnboarding'
 
 /** Titulos descriptivos por paso del wizard */
@@ -64,7 +65,16 @@ function ProgressPills({ current, total }: { current: number; total: number }) {
  */
 export default function Onboarding() {
   const router = useRouter()
-  const wizard = useOnboarding()
+  const { user } = useAuth()
+  const wizard = useOnboarding(
+    user
+      ? {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email
+        }
+      : undefined
+  )
   const [saveFailed, setSaveFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 

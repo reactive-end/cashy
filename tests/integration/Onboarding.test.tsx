@@ -13,6 +13,8 @@ import Onboarding from '../../app/onboarding'
 import * as incomesRepo from '@src/db/incomes'
 import * as profileRepo from '@src/db/profile'
 
+import { useAuth } from '@src/hooks/useAuth'
+
 const saveProfileMock = profileRepo.saveProfile as jest.Mock
 const replaceIncomesMock = incomesRepo.replaceIncomes as jest.Mock
 const getIncomesMock = incomesRepo.getIncomes as jest.Mock
@@ -21,6 +23,13 @@ const mockPush = jest.fn()
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: mockPush })
+}))
+
+jest.mock('@src/hooks/useAuth', () => ({
+  useAuth: jest.fn(() => ({
+    user: null,
+    isAuthenticated: false
+  }))
 }))
 
 jest.mock('@src/db/profile', () => ({ saveProfile: jest.fn(async () => undefined) }))
@@ -124,5 +133,30 @@ describe('pantalla de onboarding', () => {
       pathname: '/edit-income/[id]',
       params: { id: 'inc-1' }
     })
+  })
+
+  it('precarga nombre, apellido y correo desde la sesion de Google', async () => {
+    const { useAuth } = require('@src/hooks/useAuth')
+    ;(useAuth as jest.Mock).mockReturnValueOnce({
+      user: {
+        id: 'usr-google',
+        firstName: 'Elena',
+        lastName: 'Rivas',
+        email: 'elena@gmail.com'
+      },
+      isAuthenticated: true
+    })
+
+    const screen = await render(<Onboarding />)
+
+    const campoNombre = screen.getByLabelText('Nombre').props as { value?: string }
+    const campoApellido = screen.getByLabelText('Apellido').props as { value?: string }
+    const campoCorreo = screen.getByLabelText('Correo').props as { value?: string }
+
+    expect(campoNombre.value).toBe('Elena')
+    expect(campoApellido.value).toBe('Rivas')
+    expect(campoCorreo.value).toBe('elena@gmail.com')
+
+    expect(screen.getByLabelText('Continuar').props.accessibilityState.disabled).toBe(false)
   })
 })

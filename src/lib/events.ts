@@ -7,19 +7,27 @@
 
 /** Eventos disponibles en la aplicacion */
 export type AppEvent =
+  | 'auth-changed'
+  | 'bank-notification-detected'
   | 'expenses-changed'
   | 'expense-receipts-changed'
   | 'incomes-changed'
   | 'income-receipts-changed'
   | 'profile-changed'
+  | 'subscription-changed'
+  | 'welcome-seen-changed'
 
 /** Registro de oyentes por evento */
 const listeners: Record<AppEvent, Set<() => void>> = {
+  'auth-changed': new Set(),
+  'bank-notification-detected': new Set(),
   'expenses-changed': new Set(),
   'expense-receipts-changed': new Set(),
   'incomes-changed': new Set(),
   'income-receipts-changed': new Set(),
-  'profile-changed': new Set()
+  'profile-changed': new Set(),
+  'subscription-changed': new Set(),
+  'welcome-seen-changed': new Set()
 }
 
 /**

@@ -15,6 +15,7 @@ import Finances from '../../app/(tabs)/finances'
 import Home from '../../app/(tabs)/index'
 import IncomesScreen from '../../app/incomes'
 import Settings from '../../app/(tabs)/settings'
+import NotificationsSettings from '../../app/settings/notifications'
 import { wait } from '../helpers/wait'
 import {
   buildFixedExpense,
@@ -102,16 +103,21 @@ describe('accesibilidad de pantallas', () => {
   })
 
   it('Ajustes rotula los controles de preferencias', async () => {
-    const { getByRole, getByText, getByLabelText } = await render(<Settings />)
+    const pantallaAjustes = await render(<Settings />)
     await wait()
 
-    expect(getByRole('header')).toBeTruthy()
-    expect(getByText('Moneda base')).toBeTruthy()
-    expect(getByText('Recordatorios de pagos')).toBeTruthy()
-    expect(getByText('Tasa BCV diaria')).toBeTruthy()
-    expect(getByLabelText('Activar recordatorios de pagos')).toBeTruthy()
-    expect(getByLabelText('Activar la tasa BCV diaria')).toBeTruthy()
-    expect(getByLabelText('Hora de los recordatorios de pagos')).toBeTruthy()
-    expect(getByLabelText('Hora del aviso de tasa BCV')).toBeTruthy()
+    expect(pantallaAjustes.getByRole('header')).toBeTruthy()
+    expect(pantallaAjustes.getByText('Moneda base')).toBeTruthy()
+    expect(pantallaAjustes.getByLabelText('Ir a selector de moneda base')).toBeTruthy()
+    expect(pantallaAjustes.getByLabelText('Ir a notificaciones y recordatorios')).toBeTruthy()
+    expect(pantallaAjustes.getByLabelText('Ir a seguridad y privacidad')).toBeTruthy()
+
+    const pantallaNotificaciones = await render(<NotificationsSettings />)
+    await wait()
+
+    expect(pantallaNotificaciones.getByLabelText('Activar recordatorios de pagos')).toBeTruthy()
+    expect(pantallaNotificaciones.getByLabelText('Activar la tasa BCV diaria')).toBeTruthy()
+    expect(pantallaNotificaciones.getByLabelText('Hora de los recordatorios de pagos')).toBeTruthy()
+    expect(pantallaNotificaciones.getByLabelText('Hora del aviso de tasa BCV')).toBeTruthy()
   })
 })

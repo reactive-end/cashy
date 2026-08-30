@@ -12,13 +12,16 @@ import { Button } from '@src/components/atoms/Button'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { AlertDialog } from '@src/components/molecules/AlertDialog'
+import { PartnerAdBanner } from '@src/components/molecules/PartnerAdBanner'
 import { PaydayNoticeDialog } from '@src/components/molecules/PaydayNoticeDialog'
 import { SectionHeader } from '@src/components/molecules/SectionHeader'
+import { AnnouncementModal } from '@src/components/organisms/AnnouncementModal'
 import { MonthlySummary } from '@src/components/organisms/MonthlySummary'
 import { RatesGrid } from '@src/components/organisms/RatesGrid'
 import { UpcomingPayments } from '@src/components/organisms/UpcomingPayments'
 import { useExpenses } from '@src/hooks/useExpenses'
 import { useIncomes } from '@src/hooks/useIncomes'
+import { useMarketing } from '@src/hooks/useMarketing'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import type { Income } from '@src/types/domain'
@@ -42,6 +45,7 @@ export default function Home() {
   const baseCurrency = settings?.baseCurrency ?? 'USD'
   const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
   const incomesState = useIncomes(ratesState.rates, baseCurrency)
+  const { partnerAd, announcements, dismissAllAnnouncements } = useMarketing('home')
 
   // Aviso temporal al terminar un refresco manual de tasas.
   const [ratesNotice, setRatesNotice] = useState<{ ok: boolean } | null>(null)
@@ -108,6 +112,8 @@ export default function Home() {
 
         <RatesGrid ratesState={ratesState} />
 
+        <PartnerAdBanner ad={partnerAd} />
+
         <MonthlySummary
           summary={expensesState.monthlySummary}
           baseCurrency={baseCurrency}
@@ -135,6 +141,12 @@ export default function Home() {
         loading={confirmingReceipt}
         onConfirm={() => activePendingIncome && void handleConfirmPending(activePendingIncome)}
         onDismiss={() => activePendingIncome && handleDismissPending(activePendingIncome)}
+      />
+
+      <AnnouncementModal
+        visible={announcements.length > 0}
+        announcements={announcements}
+        onDismiss={() => void dismissAllAnnouncements()}
       />
     </Screen>
   )

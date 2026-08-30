@@ -29,3 +29,5 @@ export const G = createStub()
 export const Defs = createStub()
 export const ClipPath = createStub()
 export const Mask = createStub()
+
+export default Svg

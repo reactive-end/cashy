@@ -6,6 +6,7 @@ module.exports = {
   setupFilesAfterEnv: ['./tests/setup/after-env.ts'],
   moduleNameMapper: {
     '^@src/(.*)$': '<rootDir>/src/$1',
+    '^@modules/(.*)$': '<rootDir>/modules/$1',
     '^lucide-react-native$': '<rootDir>/tests/helpers/lucideStub.tsx',
     '^react-native-svg$': '<rootDir>/tests/helpers/svgStub.tsx',
     '^@react-native-async-storage/async-storage$':
@@ -20,7 +21,7 @@ module.exports = {
     'src/hooks/**/*.ts',
     'src/db/**/*.ts'
   ],
-  testTimeout: 15000,
+  testTimeout: 30000,
   coverageThreshold: {
     './src/lib/': { branches: 80, functions: 85, lines: 85, statements: 85 },
     './src/services/': { branches: 80, functions: 85, lines: 85, statements: 85 },

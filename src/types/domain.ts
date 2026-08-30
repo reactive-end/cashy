@@ -209,3 +209,30 @@ export interface ExpenseReceipt {
   createdAt: string
   updatedAt: string
 }
+
+/** Plan de suscripcion de la aplicacion */
+export type SubscriptionPlan = 'free' | 'pro'
+
+/** Estado de una suscripcion */
+export type SubscriptionStatus = 'active' | 'expired' | 'canceled'
+
+/** Registro de suscripcion del usuario en Supabase */
+export interface UserSubscription {
+  id: string
+  userId: string
+  email: string | null
+  plan: SubscriptionPlan
+  status: SubscriptionStatus
+  expiresAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** Usuario autenticado con proveedor OAuth */
+export interface AuthUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  avatarUrl?: string
+}

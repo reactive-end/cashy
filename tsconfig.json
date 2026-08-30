@@ -4,7 +4,9 @@
     "strict": true,
     "types": ["jest"],
     "paths": {
-      "@src/*": ["./src/*"]
+      "@src/*": ["./src/*"],
+      "@modules/*": ["./modules/*"],
+      "@assets/*": ["./assets/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]

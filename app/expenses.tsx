@@ -293,6 +293,7 @@ export default function ExpensesScreen() {
                   <Button
                     label="Registrar gasto"
                     icon="add"
+                    fullWidth
                     onPress={() => router.push('/new-expense')}
                   />
                 ) : undefined

@@ -1,0 +1,7 @@
+{
+  "name": "bank-notification-listener",
+  "platforms": ["android"],
+  "android": {
+    "package": "com.reactiveend.cashy.notificationlistener"
+  }
+}

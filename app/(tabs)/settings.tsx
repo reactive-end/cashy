@@ -1,343 +1,281 @@
 /**
- * Settings screen: user preferences.
- * Base currency for summaries plus per-notification controls:
- * payment reminders and daily BCV rate notice, each with its own
- * switch and hour picker, and a diagnostics card for permissions.
+ * Pantalla principal de Ajustes.
+ * Centro de navegacion modular con acceso a 7 subpantallas especializadas,
+ * visualizacion de perfil de Google con avatar y estado de Cashy PRO.
  */
 
 import { useRouter } from 'expo-router'
-import * as Updates from 'expo-updates'
 import { useEffect, useState } from 'react'
-import { AppState, Platform, View } from 'react-native'
+import { Image, Pressable, View } from 'react-native'
 
-import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
+import { Icon } from '@src/components/atoms/Icon'
+import type { IconName } from '@src/components/atoms/Icon/Icon.d'
 import { Screen } from '@src/components/atoms/Screen'
-import { Switch } from '@src/components/atoms/Switch'
 import { Typography } from '@src/components/atoms/Typography'
-import { AlertDialog, type AlertDialogTone } from '@src/components/molecules/AlertDialog'
-import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
-import { TimePicker } from '@src/components/organisms/TimePicker'
+import { COLORS } from '@src/constants/theme'
 import { getProfile } from '@src/db/profile'
+import { useAuth } from '@src/hooks/useAuth'
 import { useSettings } from '@src/hooks/useSettings'
-import { authenticateWithBiometrics, isBiometricsAvailable } from '@src/lib/biometrics'
+import { useSubscription } from '@src/hooks/useSubscription'
 import { subscribe } from '@src/lib/events'
-import { nextNoticeLabel } from '@src/lib/format'
-import {
-  openExactAlarmSettings,
-  getBcvNoticeStatus,
-  notificationsAvailable,
-  isNotificationPermissionGranted,
-  type BcvNoticeStatus
-} from '@src/lib/notifications'
+import { formatTime12 } from '@src/lib/format'
 import { installedVersion } from '@src/services/appUpdate'
-import { BASE_CURRENCIES, type BaseCurrency } from '@src/types/domain'
 
-/** Opciones de moneda base para el control segmentado */
-const CURRENCY_OPTIONS = BASE_CURRENCIES.map((currency) => ({ value: currency, label: currency }))
-
-/** Version minima de Android que exige conceder alarmas exactas */
-const ANDROID_EXACT_ALARM_VERSION = 31
-
-/**
- * Determina si el dispositivo requiere la concesion manual de
- * alarmas exactas (Android 12 o superior).
- * @returns true cuando aplica mostrar el acceso directo de sistema
- */
-function requiresExactAlarm(): boolean {
-  return Platform.OS === 'android' && Number(Platform.Version) >= ANDROID_EXACT_ALARM_VERSION
+/** Elemento de navegacion de la lista de ajustes */
+interface SettingsNavItemProps {
+  icon: IconName
+  title: string
+  subtitle: string
+  valueBadge?: string
+  badgeTone?: 'accent' | 'neutral' | 'warn'
+  onPress: () => void
+  accessibilityLabel: string
 }
 
-/**
- * Pestaña de configuracion con moneda base, avisos por tipo de
- * notificacion, estado de permisos y actualizaciones.
- * @returns Pantalla de ajustes minimalista
- */
+function SettingsNavItem({
+  icon,
+  title,
+  subtitle,
+  valueBadge,
+  badgeTone = 'neutral',
+  onPress,
+  accessibilityLabel
+}: SettingsNavItemProps) {
+  const badgeClasses =
+    badgeTone === 'accent'
+      ? 'bg-accent-soft text-accent'
+      : badgeTone === 'warn'
+        ? 'bg-warn-soft text-warn'
+        : 'bg-line text-muted'
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      className="flex-row items-center justify-between py-3 active:opacity-60"
+    >
+      <View className="flex-1 flex-row items-center gap-3 pr-2">
+        <View
+          className="h-10 w-10 items-center justify-center rounded-xl border border-line"
+          style={{ backgroundColor: COLORS.paper }}
+        >
+          <Icon name={icon} size={20} color={COLORS.ink} />
+        </View>
+        <View className="flex-1">
+          <Typography variant="body" className="font-semibold text-ink">
+            {title}
+          </Typography>
+          <Typography variant="caption" className="text-faint" numberOfLines={1}>
+            {subtitle}
+          </Typography>
+        </View>
+      </View>
+
+      <View className="flex-row items-center gap-2">
+        {valueBadge ? (
+          <View className={`rounded-full px-2.5 py-0.5 ${badgeClasses.split(' ')[0]}`}>
+            <Typography variant="caption" className={`font-semibold ${badgeClasses.split(' ')[1]}`}>
+              {valueBadge}
+            </Typography>
+          </View>
+        ) : null}
+        <Icon name="chevronRight" size={18} color="#757570" />
+      </View>
+    </Pressable>
+  )
+}
+
 export default function Settings() {
   const router = useRouter()
-  const {
-    settings,
-    changeBaseCurrency,
-    changeReminderTime,
-    changeBcvTime,
-    setRemindersEnabled,
-    setBcvEnabled,
-    setBiometricsEnabled
-  } = useSettings()
-
-  const [permissionGranted, setPermissionGranted] = useState(false)
-  const [bcvStatus, setBcvStatus] = useState<BcvNoticeStatus | null>(null)
+  const { settings } = useSettings()
+  const { user, isAuthenticated } = useAuth()
+  const { isPro } = useSubscription()
   const [profileName, setProfileName] = useState<string | null>(null)
-  const [biometricsSupported, setBiometricsSupported] = useState(false)
-  const [checking, setChecking] = useState(false)
-  const [notice, setNotice] = useState<{ tone: AlertDialogTone; message: string } | null>(null)
 
-  useEffect(() => {
-    void isBiometricsAvailable().then(setBiometricsSupported)
-  }, [])
-
-  /** Activa o desactiva la proteccion biometrica previa autenticacion */
-  async function handleToggleBiometrics(enabled: boolean): Promise<void> {
-    const ok = await authenticateWithBiometrics(
-      enabled
-        ? 'Confirma tu identidad para activar el bloqueo biometrico'
-        : 'Confirma tu identidad para desactivar el bloqueo biometrico'
-    )
-    if (ok) {
-      await setBiometricsEnabled(enabled)
-    } else {
-      setNotice({
-        tone: 'danger',
-        message: 'No se pudo verificar la identidad.'
-      })
-    }
-  }
-
-  /** Busca una actualizacion de JS via EAS Update y la deja lista */
-  async function checkForUpdates(): Promise<void> {
-    if (!Updates.isEnabled) {
-      setNotice({
-        tone: 'danger',
-        message: 'Las actualizaciones no estan disponibles en este entorno.'
-      })
-      return
-    }
-
-    setChecking(true)
-
-    try {
-      const check = await Updates.checkForUpdateAsync()
-
-      if (!check.isAvailable) {
-        setNotice({ tone: 'success', message: 'Ya tienes la ultima version instalada.' })
-        return
-      }
-
-      await Updates.fetchUpdateAsync()
-      setNotice({
-        tone: 'success',
-        message: 'Actualizacion descargada. Se aplicara al reiniciar la aplicacion.'
-      })
-    } catch {
-      setNotice({
-        tone: 'danger',
-        message: 'No se pudo verificar actualizaciones. Revisa tu conexion.'
-      })
-    } finally {
-      setChecking(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!notificationsAvailable()) return
-
-    const refreshPermissions = (): void => {
-      void isNotificationPermissionGranted().then(setPermissionGranted)
-      void getBcvNoticeStatus().then(setBcvStatus)
-    }
-
-    refreshPermissions()
-
-    const subscription = AppState.addEventListener('change', refreshPermissions)
-
-    return () => subscription.remove()
-  }, [])
-
-  // Resumen de identidad para la tarjeta "Tus datos".
   useEffect(() => {
     let active = true
 
-    getProfile()
-      .then((savedProfile) => {
-        if (!active) return
-        setProfileName(savedProfile ? `${savedProfile.firstName} ${savedProfile.lastName}` : null)
-      })
-      .catch(() => {
-        if (active) setProfileName(null)
-      })
+    async function load(): Promise<void> {
+      const p = await getProfile().catch(() => null)
+      if (active && p) {
+        setProfileName(`${p.firstName} ${p.lastName}`.trim())
+      }
+    }
 
-    const unsubscribe = subscribe('profile-changed', () => {
-      void getProfile().then((savedProfile) => {
-        setProfileName(savedProfile ? `${savedProfile.firstName} ${savedProfile.lastName}` : null)
-      })
-    })
-
+    void load()
+    const unsubscribe = subscribe('profile-changed', () => void load())
     return () => {
       active = false
       unsubscribe()
     }
   }, [])
 
-  const remindersActive = settings?.remindersEnabled ?? true
-  const bcvActive = settings?.bcvEnabled ?? true
-  const biometricsActive = settings?.biometricsEnabled ?? false
+  const reminderTime = formatTime12(settings?.reminderHour ?? 9, settings?.reminderMinute ?? 0)
 
   return (
     <Screen scrollable>
-      <View className="gap-5 pt-6">
+      <View className="gap-5 pt-6 pb-12">
         <Typography variant="display">Ajustes</Typography>
 
-        <Card className="gap-3">
-          <Typography variant="label">Moneda base</Typography>
-          <Typography variant="caption">
-            Los resumenes convierten todos tus gastos a esta moneda usando las tasas del dia.
-          </Typography>
-          <SegmentedControl
-            options={CURRENCY_OPTIONS}
-            value={(settings?.baseCurrency ?? 'USD') as BaseCurrency}
-            onChange={(currency) => void changeBaseCurrency(currency)}
-          />
-        </Card>
+        {/* Tarjeta de Identidad y Perfil superior */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Abrir gestion de cuenta y datos"
+          onPress={() => router.push('/settings/account')}
+          className="active:opacity-80"
+        >
+          <Card className="flex-row items-center justify-between p-4">
+            <View className="flex-1 flex-row items-center gap-3 pr-2">
+              {isAuthenticated && user?.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={{ width: 48, height: 48, borderRadius: 24 }}
+                  accessibilityLabel="Foto de perfil de Google"
+                />
+              ) : (
+                <View
+                  className="h-12 w-12 items-center justify-center rounded-full border border-line"
+                  style={{ backgroundColor: COLORS.accentSoft }}
+                >
+                  <Icon name="user" size={24} color={COLORS.accent} />
+                </View>
+              )}
 
-        <Card className="gap-2">
-          <Typography variant="label">Tus datos</Typography>
-          <Typography variant="caption">
-            {profileName
-              ? `Hola, ${profileName}. Actualiza tu identidad e ingresos cuando quieras.`
-              : 'Completa tu perfil para personalizar Cashy.'}
-          </Typography>
-          <Button
-            label="Editar mis datos"
-            variant="secondary"
-            icon="edit"
-            fullWidth
-            onPress={() => router.push('/edit-profile')}
-          />
-        </Card>
-
-        <Card className="gap-3">
-          <Typography variant="label">Seguridad y privacidad</Typography>
-          <Typography variant="caption">
-            Protege tus datos financieros requiriendo autenticacion biometrica.
-          </Typography>
-
-          <View className="flex-row items-center justify-between pt-1">
-            <View className="flex-1 pr-3">
-              <Typography variant="body">Bloqueo biometrico</Typography>
-              <Typography variant="caption">
-                {biometricsSupported
-                  ? 'Exige autenticacion al abrir la app o tras 60 segundos de inactividad.'
-                  : 'Tu dispositivo no cuenta con biometria configurada.'}
-              </Typography>
+              <View className="flex-1">
+                <Typography variant="body" className="font-semibold text-ink">
+                  {isAuthenticated && user
+                    ? `${user.firstName} ${user.lastName}`
+                    : profileName || 'Usuario de Cashy'}
+                </Typography>
+                <Typography variant="caption" className="text-faint" numberOfLines={1}>
+                  {isAuthenticated && user?.email
+                    ? user.email
+                    : 'Modo local · Toca para vincular Google'}
+                </Typography>
+              </View>
             </View>
-            <Switch
-              value={biometricsActive}
-              disabled={!biometricsSupported}
-              onValueChange={(enabled) => void handleToggleBiometrics(enabled)}
-              accessibilityLabel="Activar bloqueo biometrico"
-            />
-          </View>
-        </Card>
 
-        {!notificationsAvailable() ? (
-          <Card className="gap-2 border-warn bg-warn-soft">
-            <Typography variant="caption" className="text-warn">
-              Estas usando Expo Go: los recordatorios nativos estan desactivados. Los vencimientos
-              se siguen actualizando, pero para recibir avisos instala una development build (npx
-              expo run:android).
-            </Typography>
+            <View className="flex-row items-center gap-2">
+              <View
+                className={`rounded-full px-2.5 py-0.5 ${isPro ? 'bg-accent-soft' : 'bg-line'}`}
+              >
+                <Typography
+                  variant="caption"
+                  className={isPro ? 'font-semibold text-accent' : 'text-faint'}
+                >
+                  {isPro ? 'Cashy PRO' : isAuthenticated ? 'Plan Gratuito' : 'Modo local'}
+                </Typography>
+              </View>
+              <Icon name="chevronRight" size={18} color="#757570" />
+            </View>
           </Card>
-        ) : (
-          <Card className="gap-2">
-            <Typography variant="label">Estado de las notificaciones</Typography>
-            <Typography variant="caption">
-              {permissionGranted
-                ? 'Permiso de notificaciones concedido.'
-                : 'Permiso de notificaciones sin conceder: los avisos no podran mostrarse.'}
-            </Typography>
-            {requiresExactAlarm() ? (
-              <Button
-                label="Permitir alarmas exactas"
-                variant="secondary"
-                icon="bell"
-                fullWidth
-                onPress={() => void openExactAlarmSettings()}
-              />
-            ) : null}
+        </Pressable>
+
+        {/* Categoria: Cuenta y Datos */}
+        <View className="gap-2">
+          <Typography variant="label" className="px-1 text-muted">
+            Cuenta y perfil
+          </Typography>
+          <Card className="py-1">
+            <SettingsNavItem
+              icon="user"
+              title="Tus datos y Cuenta"
+              subtitle="Perfil, fuentes de ingreso y Google Auth"
+              onPress={() => router.push('/settings/account')}
+              accessibilityLabel="Ir a tus datos y cuenta"
+            />
           </Card>
-        )}
+        </View>
 
-        <Card className="gap-3">
-          <View className="flex-row items-center justify-between">
-            <Typography variant="label">Recordatorios de pagos</Typography>
-            <Switch
-              value={remindersActive}
-              onValueChange={(enabled) => void setRemindersEnabled(enabled)}
-              accessibilityLabel="Activar recordatorios de pagos"
+        {/* Categoria: Preferencias */}
+        <View className="gap-2">
+          <Typography variant="label" className="px-1 text-muted">
+            Preferencias
+          </Typography>
+          <Card className="py-1 divide-y divide-line">
+            <SettingsNavItem
+              icon="dollar"
+              title="Moneda base"
+              subtitle="Divisa de consolidación y reportes"
+              valueBadge={settings?.baseCurrency ?? 'USD'}
+              badgeTone="accent"
+              onPress={() => router.push('/settings/currency')}
+              accessibilityLabel="Ir a selector de moneda base"
             />
-          </View>
-          <Typography variant="caption">
-            Llegan un dia antes de cada vencimiento de tus gastos fijos.
-          </Typography>
-          <TimePicker
-            hour={settings?.reminderHour ?? 9}
-            minute={settings?.reminderMinute ?? 0}
-            onChange={(hour, minute) => void changeReminderTime(hour, minute)}
-            disabled={!remindersActive}
-            accessibilityLabel="Hora de los recordatorios de pagos"
-          />
-        </Card>
 
-        <Card className="gap-3">
-          <View className="flex-row items-center justify-between">
-            <Typography variant="label">Tasa BCV diaria</Typography>
-            <Switch
-              value={bcvActive}
-              onValueChange={(enabled) => void setBcvEnabled(enabled)}
-              accessibilityLabel="Activar la tasa BCV diaria"
+            <SettingsNavItem
+              icon="bell"
+              title="Notificaciones y Recordatorios"
+              subtitle={`Avisos (${reminderTime}) y tasa BCV diaria`}
+              onPress={() => router.push('/settings/notifications')}
+              accessibilityLabel="Ir a notificaciones y recordatorios"
             />
-          </View>
-          <Typography variant="caption">
-            Aviso diario con el dolar y el euro oficiales consultados antes de mostrarse.
-          </Typography>
-          <TimePicker
-            hour={settings?.bcvHour ?? 9}
-            minute={settings?.bcvMinute ?? 0}
-            onChange={(hour, minute) => void changeBcvTime(hour, minute)}
-            disabled={!bcvActive}
-            accessibilityLabel="Hora del aviso de tasa BCV"
-          />
-          {bcvStatus?.scheduled ? (
-            <Typography variant="caption" className="text-faint">
-              {bcvStatus.nextTrigger
-                ? `Proximo aviso agendado: ${nextNoticeLabel(bcvStatus.nextTrigger)}`
-                : 'El aviso esta agendado en el sistema.'}
-            </Typography>
-          ) : bcvActive && bcvStatus !== null ? (
-            <Typography variant="caption" className="text-warn">
-              El aviso no quedo agendado. Concede el permiso de notificaciones y vuelve a abrir la
-              aplicacion.
-            </Typography>
-          ) : null}
-        </Card>
 
-        <Card className="gap-3">
-          <Typography variant="label">Actualizaciones</Typography>
-          <Typography variant="caption">
-            Version instalada: {installedVersion() || 'desconocida'}. Las correcciones de la
-            aplicacion se descargan automaticamente; las versiones nuevas se anuncian al abrir.
-          </Typography>
-          <Button
-            label="Buscar actualizaciones"
-            variant="secondary"
-            loading={checking}
-            fullWidth
-            onPress={() => void checkForUpdates()}
-          />
-        </Card>
+            <SettingsNavItem
+              icon="shield"
+              title="Seguridad y Privacidad"
+              subtitle={
+                settings?.biometricsEnabled
+                  ? 'Bloqueo biométrico activo'
+                  : 'Bloqueo biométrico inactivo'
+              }
+              valueBadge={settings?.biometricsEnabled ? 'Activo' : undefined}
+              badgeTone="accent"
+              onPress={() => router.push('/settings/security')}
+              accessibilityLabel="Ir a seguridad y privacidad"
+            />
+          </Card>
+        </View>
 
-        <Typography variant="caption" className="text-center">
+        {/* Categoria: Funciones Avanzadas */}
+        <View className="gap-2">
+          <Typography variant="label" className="px-1 text-muted">
+            Funciones avanzadas
+          </Typography>
+          <Card className="py-1">
+            <SettingsNavItem
+              icon="savings"
+              title="Pagos móviles (BNC)"
+              subtitle="Detección inteligente de transferencias"
+              valueBadge={isPro ? 'PRO' : 'PRO (Bloqueado)'}
+              badgeTone={isPro ? 'accent' : 'warn'}
+              onPress={() => router.push('/settings/bank-payments')}
+              accessibilityLabel="Ir a detección de pagos móviles BNC"
+            />
+          </Card>
+        </View>
+
+        {/* Categoria: Informacion y Acerca de */}
+        <View className="gap-2">
+          <Typography variant="label" className="px-1 text-muted">
+            Información
+          </Typography>
+          <Card className="py-1 divide-y divide-line">
+            <SettingsNavItem
+              icon="refresh"
+              title="Actualizaciones"
+              subtitle="Búsqueda y descarga de versiones"
+              valueBadge={`v${installedVersion() || '1.1.0'}`}
+              onPress={() => router.push('/settings/updates')}
+              accessibilityLabel="Ir a actualizaciones"
+            />
+
+            <SettingsNavItem
+              icon="info"
+              title="Acerca de Cashy"
+              subtitle="Desarrollado por Rafael Pisani"
+              onPress={() => router.push('/settings/about')}
+              accessibilityLabel="Ir a acerca de Cashy"
+            />
+          </Card>
+        </View>
+
+        <Typography variant="caption" className="text-center pt-2">
           Tasas referenciales. Tus datos viven solo en este dispositivo.
         </Typography>
       </View>
-
-      <AlertDialog
-        visible={notice !== null}
-        title={notice?.tone === 'success' ? 'Actualizaciones' : 'Error'}
-        message={notice?.message ?? ''}
-        tone={notice?.tone ?? 'success'}
-        onClose={() => setNotice(null)}
-      />
     </Screen>
   )
 }

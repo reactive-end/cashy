@@ -4,7 +4,6 @@
  * reminders on every application start.
  */
 
-import '@src/styles/global.css'
 import { Fraunces_500Medium, Fraunces_600SemiBold, useFonts } from '@expo-google-fonts/fraunces'
 import {
   Manrope_400Regular,
@@ -13,19 +12,27 @@ import {
   Manrope_700Bold,
   useFonts as useManropeFonts
 } from '@expo-google-fonts/manrope'
-import { Stack, usePathname, router } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { router, Stack, usePathname } from 'expo-router'
 import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import '@src/styles/global.css'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
 import { AppLockGate } from '@src/components/organisms/AppLockGate'
+import { BankPaymentNoticeDialog } from '@src/components/organisms/BankPaymentNoticeDialog'
+import { WELCOME_SEEN_KEY } from '@src/constants/supabase'
 import { COLORS } from '@src/constants/theme'
 import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
 import { useAppUpdate } from '@src/hooks/useAppUpdate'
+import { useAuth } from '@src/hooks/useAuth'
+import { useBankPayments } from '@src/hooks/useBankPayments'
 import { useNotificationDeepLink } from '@src/hooks/useNotificationDeepLink'
+import { useRates } from '@src/hooks/useRates'
+import { useSettings } from '@src/hooks/useSettings'
 import { registerBackgroundTask } from '@src/lib/backgroundTask'
 import { subscribe } from '@src/lib/events'
 import { setupNotifications, syncBcvNotice, syncReminders } from '@src/lib/notifications'
@@ -120,32 +127,103 @@ export default function RootLayout() {
     }
   }, [])
 
+  const [welcomeSeen, setWelcomeSeen] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    async function checkWelcome(): Promise<void> {
+      const seen = await AsyncStorage.getItem(WELCOME_SEEN_KEY).catch(() => null)
+      if (active) setWelcomeSeen(seen === 'true')
+    }
+
+    void checkWelcome()
+
+    const unsubscribe = subscribe('welcome-seen-changed', () => {
+      void checkWelcome()
+    })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
+
   const needsOnboarding = profileReady === false
+  const { isAuthenticated, loading: authLoading } = useAuth()
 
   // Redireccion centralizada del gate: mantiene el navegador sobre la
   // ruta correcta sin alterar la topologia del Stack ni usar key dinamico.
   useEffect(() => {
-    if (!fontsLoaded || !synced || profileReady === null) return
-
     if (
-      needsOnboarding &&
-      pathname !== '/onboarding' &&
-      pathname !== '/new-income' &&
-      !pathname.startsWith('/edit-income')
+      !fontsLoaded ||
+      !synced ||
+      profileReady === null ||
+      authLoading ||
+      welcomeSeen === null
     ) {
-      router.replace('/onboarding')
-
       return
     }
 
-    if (!needsOnboarding && pathname === '/onboarding') {
-      router.replace('/(tabs)')
+    // No interrumpir la resolucion del deep link de OAuth
+    if (pathname === '/auth/callback' || pathname.startsWith('/auth/callback')) {
+      return
     }
-  }, [fontsLoaded, synced, profileReady, needsOnboarding, pathname])
+
+    const timer = setTimeout(() => {
+      try {
+        if (isAuthenticated) {
+          if (needsOnboarding) {
+            if (
+              pathname !== '/onboarding' &&
+              pathname !== '/new-income' &&
+              !pathname.startsWith('/edit-income')
+            ) {
+              router.replace('/onboarding')
+            }
+            return
+          }
+
+          if (
+            pathname === '/welcome' ||
+            pathname === '/login' ||
+            pathname === '/onboarding'
+          ) {
+            router.replace('/(tabs)')
+          }
+          return
+        }
+
+        if (!welcomeSeen) {
+          if (pathname !== '/welcome') {
+            router.replace('/welcome')
+          }
+          return
+        }
+
+        if (pathname !== '/login') {
+          router.replace('/login')
+        }
+      } catch {
+        // Fallback defensivo si el contexto de navegacion aun no esta disponible
+      }
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [
+    fontsLoaded,
+    synced,
+    profileReady,
+    authLoading,
+    welcomeSeen,
+    needsOnboarding,
+    isAuthenticated,
+    pathname
+  ])
 
   const isReady = useCallback(
-    () => fontsLoaded && synced && profileReady !== null,
-    [fontsLoaded, synced, profileReady]
+    () => fontsLoaded && synced && profileReady !== null && !authLoading && welcomeSeen !== null,
+    [fontsLoaded, synced, profileReady, authLoading, welcomeSeen]
   )
 
   const deepLinkEnabled = profileReady === true
@@ -153,6 +231,9 @@ export default function RootLayout() {
   useNotificationDeepLink(deepLinkEnabled)
 
   const appUpdate = useAppUpdate()
+  const bankPayments = useBankPayments()
+  const ratesState = useRates()
+  const { settings } = useSettings()
 
   if (!isReady()) {
     return null
@@ -163,9 +244,20 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <AppLockGate>
         <Stack
-          initialRouteName={needsOnboarding ? 'onboarding' : '(tabs)'}
+          initialRouteName={
+            needsOnboarding
+              ? isAuthenticated
+                ? 'onboarding'
+                : welcomeSeen
+                  ? 'login'
+                  : 'welcome'
+              : '(tabs)'
+          }
           screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.paper } }}
         >
+          <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="login" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="auth/callback" options={{ gestureEnabled: false }} />
           <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="expenses" />
@@ -178,6 +270,13 @@ export default function RootLayout() {
           <Stack.Screen name="expense/[id]" />
           <Stack.Screen name="edit-expense/[id]" />
           <Stack.Screen name="income/[id]" />
+          <Stack.Screen name="settings/account" />
+          <Stack.Screen name="settings/currency" />
+          <Stack.Screen name="settings/notifications" />
+          <Stack.Screen name="settings/security" />
+          <Stack.Screen name="settings/bank-payments" />
+          <Stack.Screen name="settings/updates" />
+          <Stack.Screen name="settings/about" />
         </Stack>
 
         <ConfirmDialog
@@ -198,6 +297,16 @@ export default function RootLayout() {
           onCancel={() => {
             if (!appUpdate.downloading) void appUpdate.dismiss()
           }}
+        />
+
+        <BankPaymentNoticeDialog
+          visible={bankPayments.activeNotification !== null && !needsOnboarding}
+          notification={bankPayments.activeNotification}
+          rates={ratesState.rates}
+          baseCurrency={settings?.baseCurrency ?? 'USD'}
+          loading={bankPayments.saving}
+          onConfirm={(name) => void bankPayments.confirm(name)}
+          onDismiss={() => void bankPayments.dismiss()}
         />
       </AppLockGate>
     </SafeAreaProvider>

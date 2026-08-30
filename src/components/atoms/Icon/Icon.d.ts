@@ -41,6 +41,8 @@ export type IconName =
   | 'lock'
   | 'shield'
   | 'shoppingBag'
+  | 'building'
+  | 'info'
 
 /** Propiedades del atomo Icon */
 export interface IconProps {

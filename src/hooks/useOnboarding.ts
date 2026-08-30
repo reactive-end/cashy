@@ -102,15 +102,33 @@ export interface UseOnboardingResult {
 
 /**
  * Administra el flujo completo del onboarding en memoria.
+ * @param initialProfile Perfil inicial precargado (ej. desde Google OAuth)
  * @returns Estado reactivo del wizard con acciones por paso
  */
-export function useOnboarding(): UseOnboardingResult {
+export function useOnboarding(initialProfile?: Partial<UserProfile>): UseOnboardingResult {
   const [step, setStep] = useState(0)
-  const [profile, setProfile] = useState<UserProfile>(emptyProfile)
+  const [profile, setProfile] = useState<UserProfile>(() => ({
+    ...emptyProfile(),
+    ...initialProfile
+  }))
   const [row, setRow] = useState<IncomeDraft>(emptyRow)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [incomes, setIncomes] = useState<Income[]>([])
   const [saving, setSaving] = useState(false)
+
+  const [prevInitial, setPrevInitial] = useState(initialProfile)
+  if (
+    initialProfile?.firstName !== prevInitial?.firstName ||
+    initialProfile?.lastName !== prevInitial?.lastName ||
+    initialProfile?.email !== prevInitial?.email
+  ) {
+    setPrevInitial(initialProfile)
+    setProfile((prev) => ({
+      firstName: prev.firstName || initialProfile?.firstName || '',
+      lastName: prev.lastName || initialProfile?.lastName || '',
+      email: prev.email || initialProfile?.email || ''
+    }))
+  }
 
   useEffect(() => {
     let active = true
