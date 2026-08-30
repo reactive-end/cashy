@@ -48,7 +48,12 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 ## Verificacion
 
-- `npm run typecheck` (tsc --noEmit), `npm run lint` (expo lint), `npm test` (Jest + cobertura con umbrales) y `npx expo export --platform android` para validar el bundling completo sin dispositivo.
+- Flujo obligatorio antes de pushear cualquier cambio:
+  1. `npm run typecheck` (tsc --noEmit).
+  2. `npm run lint` (expo lint).
+  3. `npm test` (Jest + cobertura con umbrales): **todos los tests deben pasar obligatoriamente al 100%**; prohibido subir cambios con tests fallando.
+  4. `npx expo-doctor`: **obligatorio ejecutarlo antes de pushear** cualquier cambio para validar dependencias y compatibilidad del Expo SDK, evitando advertencias y fallos en EAS Build y CI.
+  5. `npx expo export --platform android` para validar el bundling completo sin dispositivo.
 - `.npmrc` tiene `legacy-peer-deps=true`: no eliminarlo, npm falla sin el por conflictos de peer deps de expo-router/radix.
 
 ## Suite de pruebas
