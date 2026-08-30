@@ -43,10 +43,7 @@ export async function dismissAnnouncements(ids: string[]): Promise<void> {
   try {
     const current = await getDismissedAnnouncementIds()
     ids.forEach((id) => current.add(id))
-    await AsyncStorage.setItem(
-      DISMISSED_ANNOUNCEMENTS_KEY,
-      JSON.stringify(Array.from(current))
-    )
+    await AsyncStorage.setItem(DISMISSED_ANNOUNCEMENTS_KEY, JSON.stringify(Array.from(current)))
   } catch {
     // Ignora fallas de guardado local
   }
@@ -97,10 +94,7 @@ export function isAdVisibleForPlan(ad: PartnerAd, isPro: boolean): boolean {
  * @param appVersion Version actual de Cashy instalada
  * @returns true si la version esta dentro de los rangos especificados
  */
-export function isVersionEligible(
-  announcement: AppAnnouncement,
-  appVersion: string
-): boolean {
+export function isVersionEligible(announcement: AppAnnouncement, appVersion: string): boolean {
   if (announcement.min_app_version) {
     if (compareVersions(appVersion, announcement.min_app_version) < 0) {
       return false
@@ -208,10 +202,9 @@ export async function getActiveAnnouncements(
     const announcements = (data ?? []) as AppAnnouncement[]
 
     // Guarda en cache local
-    void AsyncStorage.setItem(
-      ANNOUNCEMENTS_CACHE_KEY,
-      JSON.stringify(announcements)
-    ).catch(() => null)
+    void AsyncStorage.setItem(ANNOUNCEMENTS_CACHE_KEY, JSON.stringify(announcements)).catch(
+      () => null
+    )
 
     return announcements.filter((item) => {
       if (item.is_dismissible && dismissedIds.has(item.id)) return false

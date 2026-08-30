@@ -22,17 +22,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import '@src/styles/global.css'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
 import { AppLockGate } from '@src/components/organisms/AppLockGate'
-import { BankPaymentNoticeDialog } from '@src/components/organisms/BankPaymentNoticeDialog'
 import { WELCOME_SEEN_KEY } from '@src/constants/supabase'
 import { COLORS } from '@src/constants/theme'
 import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
 import { useAppUpdate } from '@src/hooks/useAppUpdate'
 import { useAuth } from '@src/hooks/useAuth'
-import { useBankPayments } from '@src/hooks/useBankPayments'
 import { useNotificationDeepLink } from '@src/hooks/useNotificationDeepLink'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
 import { registerBackgroundTask } from '@src/lib/backgroundTask'
 import { subscribe } from '@src/lib/events'
 import { setupNotifications, syncBcvNotice, syncReminders } from '@src/lib/notifications'
@@ -155,13 +151,7 @@ export default function RootLayout() {
   // Redireccion centralizada del gate: mantiene el navegador sobre la
   // ruta correcta sin alterar la topologia del Stack ni usar key dinamico.
   useEffect(() => {
-    if (
-      !fontsLoaded ||
-      !synced ||
-      profileReady === null ||
-      authLoading ||
-      welcomeSeen === null
-    ) {
+    if (!fontsLoaded || !synced || profileReady === null || authLoading || welcomeSeen === null) {
       return
     }
 
@@ -184,11 +174,7 @@ export default function RootLayout() {
             return
           }
 
-          if (
-            pathname === '/welcome' ||
-            pathname === '/login' ||
-            pathname === '/onboarding'
-          ) {
+          if (pathname === '/welcome' || pathname === '/login' || pathname === '/onboarding') {
             router.replace('/(tabs)')
           }
           return
@@ -231,9 +217,6 @@ export default function RootLayout() {
   useNotificationDeepLink(deepLinkEnabled)
 
   const appUpdate = useAppUpdate()
-  const bankPayments = useBankPayments()
-  const ratesState = useRates()
-  const { settings } = useSettings()
 
   if (!isReady()) {
     return null
@@ -274,7 +257,6 @@ export default function RootLayout() {
           <Stack.Screen name="settings/currency" />
           <Stack.Screen name="settings/notifications" />
           <Stack.Screen name="settings/security" />
-          <Stack.Screen name="settings/bank-payments" />
           <Stack.Screen name="settings/updates" />
           <Stack.Screen name="settings/about" />
         </Stack>
@@ -297,16 +279,6 @@ export default function RootLayout() {
           onCancel={() => {
             if (!appUpdate.downloading) void appUpdate.dismiss()
           }}
-        />
-
-        <BankPaymentNoticeDialog
-          visible={bankPayments.activeNotification !== null && !needsOnboarding}
-          notification={bankPayments.activeNotification}
-          rates={ratesState.rates}
-          baseCurrency={settings?.baseCurrency ?? 'USD'}
-          loading={bankPayments.saving}
-          onConfirm={(name) => void bankPayments.confirm(name)}
-          onDismiss={() => void bankPayments.dismiss()}
         />
       </AppLockGate>
     </SafeAreaProvider>

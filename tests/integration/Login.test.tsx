@@ -39,9 +39,7 @@ describe('pantalla dedicada de Inicio de Sesion (LoginScreen)', () => {
 
     expect(screen.getByText('Inicia sesión')).toBeTruthy()
     expect(screen.getByText('Continuar con Google')).toBeTruthy()
-    expect(
-      screen.getByText(/Tus datos financieros viven 100% en este dispositivo/)
-    ).toBeTruthy()
+    expect(screen.getByText(/Tus datos financieros viven 100% en este dispositivo/)).toBeTruthy()
   })
 
   it('inicia sesion con Google y navega a onboarding si no hay perfil previo', async () => {

@@ -105,11 +105,7 @@ export default function Welcome() {
             <Typography variant="caption" className="text-faint">
               Paso {currentStep + 1} de {STEPS.length}
             </Typography>
-            <Button
-              label="Saltar"
-              variant="ghost"
-              onPress={() => void markSeenAndNavigate()}
-            />
+            <Button label="Saltar" variant="ghost" onPress={() => void markSeenAndNavigate()} />
           </View>
         </View>
 
@@ -180,11 +176,7 @@ export default function Welcome() {
                 ) : (
                   <View />
                 )}
-                <Button
-                  label="Saltar"
-                  variant="ghost"
-                  onPress={() => void markSeenAndNavigate()}
-                />
+                <Button label="Saltar" variant="ghost" onPress={() => void markSeenAndNavigate()} />
               </View>
             </View>
           )}

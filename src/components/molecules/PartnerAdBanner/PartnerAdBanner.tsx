@@ -79,7 +79,9 @@ export const PartnerAdBanner = memo(function PartnerAdBanner({
         </View>
 
         <Icon
-          name={ad.cta_action === 'copy' ? 'copy' : ad.cta_action === 'route' ? 'chevronRight' : 'info'}
+          name={
+            ad.cta_action === 'copy' ? 'copy' : ad.cta_action === 'route' ? 'chevronRight' : 'info'
+          }
           size={16}
           color={ad.text_color ?? COLORS.faint}
         />

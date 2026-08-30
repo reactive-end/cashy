@@ -72,7 +72,7 @@ export default function AboutSettings() {
             Cashy · Finanzas Personales Multimoneda
           </Typography>
           <Typography variant="caption" className="text-faint">
-            Versión {installedVersion() || '1.1.0'}
+            Versión {installedVersion() || '1.1.1'}
           </Typography>
 
           <Typography variant="caption">

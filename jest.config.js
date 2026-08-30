@@ -6,7 +6,6 @@ module.exports = {
   setupFilesAfterEnv: ['./tests/setup/after-env.ts'],
   moduleNameMapper: {
     '^@src/(.*)$': '<rootDir>/src/$1',
-    '^@modules/(.*)$': '<rootDir>/modules/$1',
     '^lucide-react-native$': '<rootDir>/tests/helpers/lucideStub.tsx',
     '^react-native-svg$': '<rootDir>/tests/helpers/svgStub.tsx',
     '^@react-native-async-storage/async-storage$':

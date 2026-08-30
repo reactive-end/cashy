@@ -75,7 +75,7 @@ export default function UpdatesSettings() {
             <Typography variant="label">Versión instalada</Typography>
             <View className="rounded-full bg-accent-soft px-2.5 py-0.5">
               <Typography variant="caption" className="font-semibold text-accent">
-                v{installedVersion() || '1.1.0'}
+                v{installedVersion() || '1.1.1'}
               </Typography>
             </View>
           </View>

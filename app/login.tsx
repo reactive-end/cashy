@@ -88,8 +88,8 @@ export default function LoginScreen() {
       {/* Pie de pantalla: garantia de privacidad y almacenamiento local */}
       <View className="pt-4 pb-2 px-2">
         <Typography variant="caption" className="text-center text-faint leading-[18px]">
-          Tus datos financieros viven 100% en este dispositivo. Tu cuenta de Google solo se
-          utiliza para verificar tu identidad y beneficios.
+          Tus datos financieros viven 100% en este dispositivo. Tu cuenta de Google solo se utiliza
+          para verificar tu identidad y beneficios.
         </Typography>
       </View>
 

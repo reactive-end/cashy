@@ -6,14 +6,7 @@
 
 import { useRouter } from 'expo-router'
 import { memo, useState } from 'react'
-import {
-  Image,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  View
-} from 'react-native'
+import { Image, Linking, Modal, Pressable, ScrollView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@src/components/atoms/Button'
@@ -25,16 +18,32 @@ import type { AnnouncementTone, AppAnnouncement } from '@src/types/marketing'
 import type { AnnouncementModalProps } from './AnnouncementModal.d'
 
 /** Mapeo de tono visual a estilos de color */
-function getToneStyles(tone: AnnouncementTone): { bg: string; iconColor: string; badgeText: string } {
+function getToneStyles(tone: AnnouncementTone): {
+  bg: string
+  iconColor: string
+  badgeText: string
+} {
   switch (tone) {
     case 'warning':
-      return { bg: 'bg-amber-50 border-amber-200', iconColor: '#D97706', badgeText: 'text-amber-800' }
+      return {
+        bg: 'bg-amber-50 border-amber-200',
+        iconColor: '#D97706',
+        badgeText: 'text-amber-800'
+      }
     case 'danger':
       return { bg: 'bg-red-50 border-red-200', iconColor: '#DC2626', badgeText: 'text-red-700' }
     case 'success':
-      return { bg: 'bg-emerald-50 border-emerald-200', iconColor: '#059669', badgeText: 'text-emerald-800' }
+      return {
+        bg: 'bg-emerald-50 border-emerald-200',
+        iconColor: '#059669',
+        badgeText: 'text-emerald-800'
+      }
     case 'accent':
-      return { bg: 'bg-accent-soft border-accent/20', iconColor: COLORS.accent, badgeText: 'text-accent' }
+      return {
+        bg: 'bg-accent-soft border-accent/20',
+        iconColor: COLORS.accent,
+        badgeText: 'text-accent'
+      }
     case 'info':
     default:
       return { bg: 'bg-sky-50 border-sky-200', iconColor: '#0284C7', badgeText: 'text-sky-800' }
@@ -134,7 +143,11 @@ function FormattedMessage({ text }: { text: string }) {
             </Typography>
           )
         }
-        return <Typography key={index} variant="body" className="text-base text-muted leading-[24px]">{part.content}</Typography>
+        return (
+          <Typography key={index} variant="body" className="text-base text-muted leading-[24px]">
+            {part.content}
+          </Typography>
+        )
       })}
     </Typography>
   )
@@ -210,7 +223,10 @@ export const AnnouncementModal = memo(function AnnouncementModal({
           <View className="flex-row items-center justify-between border-b border-line pb-3">
             <View className="flex-row items-center gap-2">
               <View className={`rounded-full border px-2.5 py-0.5 ${toneStyle.bg}`}>
-                <Typography variant="caption" className={`text-xs font-semibold ${toneStyle.badgeText}`}>
+                <Typography
+                  variant="caption"
+                  className={`text-xs font-semibold ${toneStyle.badgeText}`}
+                >
                   {getCategoryLabel(current.category)}
                 </Typography>
               </View>
@@ -244,11 +260,7 @@ export const AnnouncementModal = memo(function AnnouncementModal({
                 <View
                   className={`h-16 w-16 items-center justify-center rounded-full border ${toneStyle.bg}`}
                 >
-                  <Icon
-                    name={current.icon_name || 'bell'}
-                    size={32}
-                    color={toneStyle.iconColor}
-                  />
+                  <Icon name={current.icon_name || 'bell'} size={32} color={toneStyle.iconColor} />
                 </View>
               </View>
 
@@ -265,10 +277,7 @@ export const AnnouncementModal = memo(function AnnouncementModal({
               ) : null}
 
               {/* Titulo editorial */}
-              <Typography
-                variant="display"
-                className="text-center text-2xl text-ink"
-              >
+              <Typography variant="display" className="text-center text-2xl text-ink">
                 {current.title}
               </Typography>
 
@@ -285,10 +294,7 @@ export const AnnouncementModal = memo(function AnnouncementModal({
                     variant="primary"
                     fullWidth
                     onPress={() =>
-                      void handleCtaAction(
-                        current.primary_cta_action,
-                        current.primary_cta_payload
-                      )
+                      void handleCtaAction(current.primary_cta_action, current.primary_cta_payload)
                     }
                   />
 
@@ -348,12 +354,7 @@ export const AnnouncementModal = memo(function AnnouncementModal({
                 </View>
               </View>
             ) : (
-              <Button
-                label="Entendido"
-                variant="primary"
-                fullWidth
-                onPress={onDismiss}
-              />
+              <Button label="Entendido" variant="primary" fullWidth onPress={onDismiss} />
             )}
           </View>
         </View>

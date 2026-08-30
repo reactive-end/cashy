@@ -54,7 +54,11 @@ describe('AnnouncementModal', () => {
 
   it('no renderiza nada si visible es false o la lista esta vacia', async () => {
     const { toJSON: toJSON1 } = await render(
-      <AnnouncementModal visible={false} announcements={sampleAnnouncements} onDismiss={onDismissMock} />
+      <AnnouncementModal
+        visible={false}
+        announcements={sampleAnnouncements}
+        onDismiss={onDismissMock}
+      />
     )
     expect(toJSON1()).toBeNull()
 
@@ -66,7 +70,11 @@ describe('AnnouncementModal', () => {
 
   it('muestra el primer comunicado y permite avanzar y retroceder en carrusel', async () => {
     const screen = await render(
-      <AnnouncementModal visible={true} announcements={sampleAnnouncements} onDismiss={onDismissMock} />
+      <AnnouncementModal
+        visible={true}
+        announcements={sampleAnnouncements}
+        onDismiss={onDismissMock}
+      />
     )
     const user = userEvent.setup()
 
@@ -88,7 +96,11 @@ describe('AnnouncementModal', () => {
 
   it('cierra la modal al pulsar el boton de cerrar X en la cabecera', async () => {
     const screen = await render(
-      <AnnouncementModal visible={true} announcements={sampleAnnouncements} onDismiss={onDismissMock} />
+      <AnnouncementModal
+        visible={true}
+        announcements={sampleAnnouncements}
+        onDismiss={onDismissMock}
+      />
     )
     const user = userEvent.setup()
 
@@ -100,7 +112,11 @@ describe('AnnouncementModal', () => {
 
   it('abre enlace clickeable embebido en el texto del mensaje', async () => {
     const screen = await render(
-      <AnnouncementModal visible={true} announcements={sampleAnnouncements} onDismiss={onDismissMock} />
+      <AnnouncementModal
+        visible={true}
+        announcements={sampleAnnouncements}
+        onDismiss={onDismissMock}
+      />
     )
     const user = userEvent.setup()
 
@@ -113,7 +129,11 @@ describe('AnnouncementModal', () => {
 
   it('ejecuta la accion del boton primario y descarta la modal', async () => {
     const screen = await render(
-      <AnnouncementModal visible={true} announcements={sampleAnnouncements} onDismiss={onDismissMock} />
+      <AnnouncementModal
+        visible={true}
+        announcements={sampleAnnouncements}
+        onDismiss={onDismissMock}
+      />
     )
     const user = userEvent.setup()
 
