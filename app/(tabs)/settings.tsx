@@ -1,6 +1,6 @@
 /**
  * Pantalla principal de Ajustes.
- * Centro de navegacion modular con acceso a 6 subpantallas especializadas,
+ * Centro de navegacion modular con acceso a 7 subpantallas especializadas,
  * visualizacion de perfil de Google con avatar y estado de Cashy PRO.
  */
 
@@ -229,6 +229,24 @@ export default function Settings() {
           </Card>
         </View>
 
+        {/* Categoria: Funciones Avanzadas */}
+        <View className="gap-2">
+          <Typography variant="label" className="px-1 text-muted">
+            Funciones avanzadas
+          </Typography>
+          <Card className="py-1">
+            <SettingsNavItem
+              icon="savings"
+              title="Pagos móviles"
+              subtitle="Detección de transferencias recibidas"
+              valueBadge={isPro ? 'PRO' : 'PRO (Bloqueado)'}
+              badgeTone={isPro ? 'accent' : 'warn'}
+              onPress={() => router.push('/settings/bank-payments')}
+              accessibilityLabel="Ir a detección de pagos móviles"
+            />
+          </Card>
+        </View>
+
         {/* Categoria: Informacion y Acerca de */}
         <View className="gap-2">
           <Typography variant="label" className="px-1 text-muted">
@@ -239,7 +257,7 @@ export default function Settings() {
               icon="refresh"
               title="Actualizaciones"
               subtitle="Búsqueda y descarga de versiones"
-              valueBadge={`v${installedVersion() || '1.1.1'}`}
+              valueBadge={`v${installedVersion() || '1.2.0'}`}
               onPress={() => router.push('/settings/updates')}
               accessibilityLabel="Ir a actualizaciones"
             />

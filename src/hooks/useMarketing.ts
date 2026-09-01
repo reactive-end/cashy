@@ -31,7 +31,7 @@ export interface UseMarketingResult {
  */
 export function useMarketing(placement: string = 'home'): UseMarketingResult {
   const { isPro } = useSubscription()
-  const appVersion = installedVersion() || '1.1.1'
+  const appVersion = installedVersion() || '1.2.0'
 
   const [partnerAd, setPartnerAd] = useState<PartnerAd | null>(null)
   const [announcements, setAnnouncements] = useState<AppAnnouncement[]>([])

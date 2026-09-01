@@ -1,0 +1,20 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+group = 'com.reactiveend.cashy.notificationlistener'
+version = '1.0.0'
+
+android {
+  compileSdkVersion 35
+  defaultConfig {
+    minSdkVersion 24
+    targetSdkVersion 35
+  }
+  namespace "com.reactiveend.cashy.notificationlistener"
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24"
+  implementation "androidx.core:core-ktx:1.15.0"
+}

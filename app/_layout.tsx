@@ -17,18 +17,24 @@ import { router, Stack, usePathname } from 'expo-router'
 import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
+import { View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import '@src/styles/global.css'
+import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
 import { AppLockGate } from '@src/components/organisms/AppLockGate'
+import { BankPaymentNoticeDialog } from '@src/components/organisms/BankPaymentNoticeDialog'
 import { WELCOME_SEEN_KEY } from '@src/constants/supabase'
 import { COLORS } from '@src/constants/theme'
 import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
 import { useAppUpdate } from '@src/hooks/useAppUpdate'
 import { useAuth } from '@src/hooks/useAuth'
+import { useBankPayments } from '@src/hooks/useBankPayments'
 import { useNotificationDeepLink } from '@src/hooks/useNotificationDeepLink'
+import { useRates } from '@src/hooks/useRates'
+import { useSettings } from '@src/hooks/useSettings'
 import { registerBackgroundTask } from '@src/lib/backgroundTask'
 import { subscribe } from '@src/lib/events'
 import { setupNotifications, syncBcvNotice, syncReminders } from '@src/lib/notifications'
@@ -217,6 +223,9 @@ export default function RootLayout() {
   useNotificationDeepLink(deepLinkEnabled)
 
   const appUpdate = useAppUpdate()
+  const bankPayments = useBankPayments()
+  const ratesState = useRates()
+  const { settings } = useSettings()
 
   if (!isReady()) {
     return null
@@ -257,6 +266,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings/currency" />
           <Stack.Screen name="settings/notifications" />
           <Stack.Screen name="settings/security" />
+          <Stack.Screen name="settings/bank-payments" />
           <Stack.Screen name="settings/updates" />
           <Stack.Screen name="settings/about" />
         </Stack>
@@ -266,9 +276,7 @@ export default function RootLayout() {
           title="Nueva version"
           message={
             appUpdate.downloading
-              ? `Descargando version ${appUpdate.available?.version ?? ''}... ${Math.round(
-                  appUpdate.progress * 100
-                )}%`
+              ? `Descargando version ${appUpdate.available?.version ?? ''}...`
               : `La version ${appUpdate.available?.version ?? ''} esta disponible. Se descargara la nueva version de Cashy.`
           }
           confirmLabel={appUpdate.downloading ? 'Descargando...' : 'Actualizar'}
@@ -279,6 +287,30 @@ export default function RootLayout() {
           onCancel={() => {
             if (!appUpdate.downloading) void appUpdate.dismiss()
           }}
+        >
+          {appUpdate.downloading ? (
+            <View className="relative my-2 h-8 w-full flex-row items-center justify-center overflow-hidden rounded-lg border border-line bg-line">
+              <View
+                className="absolute bottom-0 left-0 top-0 rounded-lg bg-accent"
+                style={{
+                  width: `${Math.min(Math.max(Math.round(appUpdate.progress * 100), 0), 100)}%`
+                }}
+              />
+              <Typography variant="caption" className="relative z-10 font-bold text-ink">
+                {Math.round(appUpdate.progress * 100)}%
+              </Typography>
+            </View>
+          ) : null}
+        </ConfirmDialog>
+
+        <BankPaymentNoticeDialog
+          visible={bankPayments.activeNotification !== null && !needsOnboarding}
+          notification={bankPayments.activeNotification}
+          rates={ratesState.rates}
+          baseCurrency={settings?.baseCurrency ?? 'USD'}
+          loading={bankPayments.saving}
+          onConfirm={(name) => void bankPayments.confirm(name)}
+          onDismiss={() => void bankPayments.dismiss()}
         />
       </AppLockGate>
     </SafeAreaProvider>

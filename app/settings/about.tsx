@@ -35,11 +35,11 @@ export default function AboutSettings() {
         </View>
 
         {/* Imagen de la empresa */}
-        <Card className="overflow-hidden p-0 border border-line">
+        <Card className="items-center justify-center border border-line bg-paper p-4 overflow-hidden">
           <Image
             source={enterpriseBanner}
-            style={{ width: '100%', height: 180 }}
-            resizeMode="cover"
+            style={{ width: '100%', height: 200 }}
+            resizeMode="contain"
             accessibilityLabel="Logo y fotografia corporativa de la empresa"
           />
         </Card>
@@ -72,18 +72,13 @@ export default function AboutSettings() {
             Cashy · Finanzas Personales Multimoneda
           </Typography>
           <Typography variant="caption" className="text-faint">
-            Versión {installedVersion() || '1.1.1'}
+            Versión {installedVersion() || '1.2.0'}
           </Typography>
 
           <Typography variant="caption">
             Diseñada especialmente para darte control total sobre tus finanzas en Venezuela con
             conversión multimoneda en vivo (BCV USD/EUR y USDT P2P), recordatorios de pago y
             presupuestos.
-          </Typography>
-
-          <Typography variant="caption">
-            Arquitectura 100% local-first: tus datos viven en tu dispositivo. Sin rastreadores, sin
-            publicidad y con total respeto a tu privacidad financiera.
           </Typography>
         </Card>
       </View>
