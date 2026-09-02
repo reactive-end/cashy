@@ -324,6 +324,61 @@ export async function signInWithGoogle(): Promise<SignInResult> {
   return signInWithGoogleWeb()
 }
 
+/** Clave en AsyncStorage para persistir la sesion de pruebas local */
+export const DEV_SESSION_STORAGE_KEY = 'cashy.auth.dev-session'
+
+/** Usuario predeterminado para pruebas locales de desarrollo */
+export const DEV_TESTER_USER: AuthUser = {
+  id: 'dev-tester-local-id',
+  email: 'tester@cashy.local',
+  firstName: 'Desarrollador',
+  lastName: 'Cashy'
+}
+
+/** Sesion predeterminada simulada para pruebas locales */
+export const DEV_TESTER_SESSION: Session = {
+  access_token: 'mock-dev-access-token',
+  refresh_token: 'mock-dev-refresh-token',
+  expires_in: 31536000,
+  token_type: 'bearer',
+  user: {
+    id: 'dev-tester-local-id',
+    app_metadata: {},
+    user_metadata: {
+      full_name: 'Desarrollador Cashy',
+      given_name: 'Desarrollador',
+      family_name: 'Cashy'
+    },
+    aud: 'authenticated',
+    created_at: '2026-01-01T00:00:00.000Z',
+    email: 'tester@cashy.local',
+    phone: '',
+    role: 'authenticated',
+    updated_at: '2026-01-01T00:00:00.000Z'
+  }
+}
+
+/**
+ * Inicia sesion como usuario de desarrollo para testing local en Expo Go
+ * sin requerir redirecciones web de OAuth ni colisionar con APKs instalados.
+ * @returns Resultado con el usuario y sesion simulada de pruebas
+ */
+export async function signInAsDevTester(): Promise<SignInResult> {
+  try {
+    await AsyncStorage.setItem(DEV_SESSION_STORAGE_KEY, JSON.stringify(DEV_TESTER_SESSION))
+    return {
+      success: true,
+      user: DEV_TESTER_USER,
+      session: DEV_TESTER_SESSION
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: getErrorMessage(err)
+    }
+  }
+}
+
 /**
  * Cierra la sesion activa de Supabase y de Google nativo si aplica.
  */
@@ -336,6 +391,15 @@ export async function signOut(): Promise<void> {
       // Ignora si no habia sesion nativa
     }
   }
+
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    try {
+      await AsyncStorage.removeItem(DEV_SESSION_STORAGE_KEY)
+    } catch {
+      // Ignora fallo al limpiar storage de desarrollo
+    }
+  }
+
   await supabase.auth.signOut()
 }
 
@@ -344,7 +408,20 @@ export async function signOut(): Promise<void> {
  */
 export async function getCurrentSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession()
-  return data.session
+  if (data.session) return data.session
+
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    try {
+      const devRaw = await AsyncStorage.getItem(DEV_SESSION_STORAGE_KEY)
+      if (devRaw) {
+        return DEV_TESTER_SESSION
+      }
+    } catch {
+      // Fallback si no hay almacenamiento
+    }
+  }
+
+  return null
 }
 
 /**
@@ -352,6 +429,18 @@ export async function getCurrentSession(): Promise<Session | null> {
  */
 export async function getCurrentAuthUser(): Promise<AuthUser | null> {
   const { data } = await supabase.auth.getUser()
-  if (!data.user) return null
-  return extractGoogleIdentity(data.user)
+  if (data.user) return extractGoogleIdentity(data.user)
+
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    try {
+      const devRaw = await AsyncStorage.getItem(DEV_SESSION_STORAGE_KEY)
+      if (devRaw) {
+        return DEV_TESTER_USER
+      }
+    } catch {
+      // Fallback si no hay almacenamiento
+    }
+  }
+
+  return null
 }

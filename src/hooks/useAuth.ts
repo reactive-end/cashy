@@ -11,6 +11,7 @@ import {
   extractGoogleIdentity,
   getCurrentAuthUser,
   getCurrentSession,
+  signInAsDevTester,
   signInWithGoogle,
   signOut as supabaseSignOut,
   supabase,
@@ -24,6 +25,7 @@ export interface UseAuthResult {
   loading: boolean
   isAuthenticated: boolean
   signIn: () => Promise<SignInResult>
+  signInAsDev: () => Promise<SignInResult>
   signOut: () => Promise<void>
 }
 
@@ -107,6 +109,23 @@ export function useAuth(): UseAuthResult {
     }
   }, [])
 
+  const signInAsDev = useCallback(async (): Promise<SignInResult> => {
+    setLoading(true)
+    try {
+      const res = await signInAsDevTester()
+      if (res.success && res.user && res.session) {
+        cachedUser = res.user
+        cachedSession = res.session
+        setUser(res.user)
+        setSession(res.session)
+        emit('auth-changed')
+      }
+      return res
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const signOut = useCallback(async (): Promise<void> => {
     setLoading(true)
     try {
@@ -127,6 +146,7 @@ export function useAuth(): UseAuthResult {
     loading,
     isAuthenticated: session !== null && user !== null,
     signIn,
+    signInAsDev,
     signOut
   }
 }

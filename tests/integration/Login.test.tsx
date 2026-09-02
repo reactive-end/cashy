@@ -22,13 +22,16 @@ jest.mock('expo-router', () => ({
 const useAuthMock = useAuth as jest.Mock
 const isProfileCompleteMock = isProfileComplete as jest.Mock
 const signInMock = jest.fn()
+const signInAsDevMock = jest.fn()
 
 describe('pantalla dedicada de Inicio de Sesion (LoginScreen)', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     signInMock.mockResolvedValue({ success: true })
+    signInAsDevMock.mockResolvedValue({ success: true })
     useAuthMock.mockReturnValue({
       signIn: signInMock,
+      signInAsDev: signInAsDevMock,
       loading: false
     })
     isProfileCompleteMock.mockResolvedValue(false)
@@ -71,5 +74,19 @@ describe('pantalla dedicada de Inicio de Sesion (LoginScreen)', () => {
     await user.press(screen.getByText('Continuar con Google'))
 
     expect(screen.getByText('Credenciales inválidas')).toBeTruthy()
+  })
+
+  it('permite iniciar sesion con el boton de desarrollador en modo dev', async () => {
+    const screen = await render(<LoginScreen />)
+    const user = userEvent.setup()
+
+    const devBtn = screen.getByTestId('dev-login-btn')
+    expect(devBtn).toBeTruthy()
+    expect(screen.getByText('Entrar como desarrollador (Testing local)')).toBeTruthy()
+
+    await user.press(devBtn)
+
+    expect(signInAsDevMock).toHaveBeenCalledTimes(1)
+    expect(mockReplace).toHaveBeenCalledWith('/onboarding')
   })
 })

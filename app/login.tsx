@@ -18,11 +18,25 @@ import { useAuth } from '@src/hooks/useAuth'
 
 export default function LoginScreen() {
   const router = useRouter()
-  const { signIn, loading: authLoading } = useAuth()
+  const { signIn, signInAsDev, loading: authLoading } = useAuth()
   const [errorNotice, setErrorNotice] = useState<string | null>(null)
 
   async function handleGoogleLogin(): Promise<void> {
     const res = await signIn()
+    if (res.success) {
+      const complete = await isProfileComplete().catch(() => false)
+      if (complete) {
+        router.replace('/(tabs)')
+      } else {
+        router.replace('/onboarding')
+      }
+    } else if (res.error && !res.canceled) {
+      setErrorNotice(res.error)
+    }
+  }
+
+  async function handleDevLogin(): Promise<void> {
+    const res = await signInAsDev()
     if (res.success) {
       const complete = await isProfileComplete().catch(() => false)
       if (complete) {
@@ -82,6 +96,21 @@ export default function LoginScreen() {
               </>
             )}
           </Pressable>
+
+          {typeof __DEV__ !== 'undefined' && __DEV__ ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Entrar como desarrollador"
+              testID="dev-login-btn"
+              disabled={authLoading}
+              onPress={() => void handleDevLogin()}
+              className="mt-3 w-full flex-row items-center justify-center rounded-xl border border-dashed border-accent/60 bg-accent-soft/30 py-2.5 px-4 active:opacity-70"
+            >
+              <Typography variant="caption" className="font-sans-semibold text-accent">
+                Entrar como desarrollador (Testing local)
+              </Typography>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 

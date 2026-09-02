@@ -3,15 +3,20 @@
  * de identidades OAuth de Google.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
 import { AuthError } from '@supabase/supabase-js'
 import * as WebBrowser from 'expo-web-browser'
 
 import {
+  DEV_SESSION_STORAGE_KEY,
+  DEV_TESTER_SESSION,
+  DEV_TESTER_USER,
   extractGoogleIdentity,
   extractParamsFromUrl,
   getCurrentAuthUser,
   getCurrentSession,
+  signInAsDevTester,
   signInWithGoogle,
   signInWithGoogleNative,
   signInWithGoogleWeb,
@@ -348,5 +353,53 @@ describe('signOut y getSession', () => {
     })
     const user = await getCurrentAuthUser()
     expect(user).toBeNull()
+  })
+})
+
+describe('signInAsDevTester', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear()
+  })
+
+  it('guarda la sesion de pruebas en AsyncStorage y retorna el usuario simulado', async () => {
+    const res = await signInAsDevTester()
+    expect(res.success).toBe(true)
+    expect(res.user?.id).toBe(DEV_TESTER_USER.id)
+    expect(res.user?.email).toBe(DEV_TESTER_USER.email)
+    expect(res.session?.access_token).toBe(DEV_TESTER_SESSION.access_token)
+
+    const stored = await AsyncStorage.getItem(DEV_SESSION_STORAGE_KEY)
+    expect(stored).not.toBeNull()
+    const parsed = JSON.parse(stored!)
+    expect(parsed.user.id).toBe(DEV_TESTER_USER.id)
+  })
+
+  it('getCurrentSession y getCurrentAuthUser recuperan la sesion de dev en __DEV__', async () => {
+    jest.spyOn(supabase.auth, 'getSession').mockResolvedValueOnce({
+      data: { session: null },
+      error: null
+    })
+    jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
+      data: { user: null },
+      error: new AuthError('No user', 400)
+    })
+
+    await signInAsDevTester()
+
+    const session = await getCurrentSession()
+    expect(session?.access_token).toBe(DEV_TESTER_SESSION.access_token)
+
+    const user = await getCurrentAuthUser()
+    expect(user?.email).toBe(DEV_TESTER_USER.email)
+  })
+
+  it('signOut limpia la sesion de desarrollo de AsyncStorage', async () => {
+    await signInAsDevTester()
+    expect(await AsyncStorage.getItem(DEV_SESSION_STORAGE_KEY)).not.toBeNull()
+
+    jest.spyOn(supabase.auth, 'signOut').mockResolvedValueOnce({ error: null })
+    await signOut()
+
+    expect(await AsyncStorage.getItem(DEV_SESSION_STORAGE_KEY)).toBeNull()
   })
 })

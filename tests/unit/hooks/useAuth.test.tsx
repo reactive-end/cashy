@@ -17,6 +17,7 @@ jest.mock('@src/services/supabase', () => ({
     }
   },
   signInWithGoogle: jest.fn(),
+  signInAsDevTester: jest.fn(),
   signOut: jest.fn(),
   getCurrentSession: jest.fn(),
   getCurrentAuthUser: jest.fn(),
@@ -24,6 +25,7 @@ jest.mock('@src/services/supabase', () => ({
 }))
 
 const signInMock = supabaseService.signInWithGoogle as jest.Mock
+const signInAsDevTesterMock = supabaseService.signInAsDevTester as jest.Mock
 const signOutMock = supabaseService.signOut as jest.Mock
 const getCurrentSessionMock = supabaseService.getCurrentSession as jest.Mock
 const getCurrentAuthUserMock = supabaseService.getCurrentAuthUser as jest.Mock
@@ -100,5 +102,49 @@ describe('useAuth', () => {
 
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.user).toBeNull()
+  })
+
+  it('inicia sesion en modo desarrollo con signInAsDev y actualiza el estado', async () => {
+    const devUser = {
+      id: 'dev-tester-local-id',
+      email: 'tester@cashy.local',
+      firstName: 'Desarrollador',
+      lastName: 'Cashy'
+    }
+    const devSession: Session = {
+      access_token: 'mock-dev-token',
+      refresh_token: 'mock-dev-ref',
+      expires_in: 3600,
+      token_type: 'bearer',
+      user: {
+        id: 'dev-tester-local-id',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '2026-01-01T00:00:00Z'
+      }
+    }
+
+    signInAsDevTesterMock.mockImplementation(async () => {
+      getCurrentSessionMock.mockResolvedValue(devSession)
+      getCurrentAuthUserMock.mockResolvedValue(devUser)
+      return {
+        success: true,
+        user: devUser,
+        session: devSession
+      }
+    })
+
+    const { result } = await renderHook(() => useAuth())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      const res = await result.current.signInAsDev()
+      expect(res.success).toBe(true)
+    })
+
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true))
+    expect(result.current.user).toEqual(devUser)
+    expect(result.current.session).toEqual(devSession)
   })
 })
