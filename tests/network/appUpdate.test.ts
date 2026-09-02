@@ -148,7 +148,7 @@ describe('downloadApk and installApk', () => {
     const launcher = require('expo-intent-launcher')
     expect(launcher.startActivityAsync).toHaveBeenCalledWith('android.intent.action.VIEW', {
       data: file.contentUri,
-      flags: 1,
+      flags: 268435457,
       type: 'application/vnd.android.package-archive'
     })
   })

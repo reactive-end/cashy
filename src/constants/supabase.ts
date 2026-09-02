@@ -25,10 +25,10 @@ export const PRO_PRICE_USD = 2
 /** Datos oficiales de pago movil para activacion de Cashy PRO */
 export const PRO_PAYMENT_DETAILS = {
   priceUsd: PRO_PRICE_USD,
-  bankCode: '0191',
-  bankName: 'Banco Nacional de Crédito (BNC)',
-  idDoc: 'V28502328',
-  phone: '04247413675'
+  bankCode: process.env.EXPO_PUBLIC_PRO_BANK_CODE ?? '0191',
+  bankName: process.env.EXPO_PUBLIC_PRO_BANK_NAME ?? 'Banco Nacional de Crédito (BNC)',
+  idDoc: process.env.EXPO_PUBLIC_PRO_ID_DOC ?? 'V28502328',
+  phone: process.env.EXPO_PUBLIC_PRO_PHONE ?? '04247413675'
 } as const
 
 /** Mensaje explicativo para el dialogo de adquisicion de Cashy PRO */

@@ -79,7 +79,9 @@ export function parseBolivarAmount(raw: string): number | null {
       normalized = cleaned.replace(/,/g, '')
     }
   } else if (hasComma) {
-    normalized = /^\d{1,3}(,\d{3})+$/.test(cleaned) ? cleaned.replace(/,/g, '') : cleaned.replace(/,/g, '.')
+    normalized = /^\d{1,3}(,\d{3})+$/.test(cleaned)
+      ? cleaned.replace(/,/g, '')
+      : cleaned.replace(/,/g, '.')
   } else if (hasDot && /^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
     normalized = cleaned.replace(/\./g, '')
   } else {
@@ -147,9 +149,7 @@ export function parsePaymentNotification(
   const bank = detectBank(normalized)
   const senderMatch = body.match(SENDER_PATTERN) ?? title.match(SENDER_PATTERN)
   const phoneMatch = body.match(PHONE_PATTERN) ?? title.match(PHONE_PATTERN)
-  const sender = phoneMatch
-    ? phoneMatch[1].trim()
-    : senderMatch?.[1].trim().replace(/\s+/g, ' ')
+  const sender = phoneMatch ? phoneMatch[1].trim() : senderMatch?.[1].trim().replace(/\s+/g, ' ')
   const reference = extractReference(body) ?? extractReference(title)
 
   return {

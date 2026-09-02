@@ -63,7 +63,6 @@
           "defaultChannel": "reminders"
         }
       ],
-      "./plugins/withBankNotificationListener",
       "@react-native-google-signin/google-signin"
     ],
     "owner": "reactiveend",
