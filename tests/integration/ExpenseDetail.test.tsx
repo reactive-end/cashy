@@ -121,4 +121,11 @@ describe('pantalla de detalle del gasto', () => {
     expect(await pantalla.findByText('Historial de pagos')).toBeTruthy()
     expect(pantalla.getByText('Aun no hay pagos registrados para este gasto.')).toBeTruthy()
   })
+
+  it('muestra el boton Marcar como pagado cuando el gasto fijo no esta pagado este mes', async () => {
+    const pantalla = await render(<ExpenseDetail />)
+    await wait(200)
+
+    expect(await pantalla.findByText('Marcar como pagado')).toBeTruthy()
+  })
 })

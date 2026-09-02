@@ -77,6 +77,8 @@ export interface Expense {
   recurrence?: Recurrence
   /** Fixed expenses only: ISO date (yyyy-mm-dd) of the next payment */
   nextDueDate?: string
+  /** Fixed expenses only: Anchor day of month (1-31) for recurring payments */
+  dueDay?: number
   active: boolean
   createdAt: string
   updatedAt: string
@@ -94,6 +96,8 @@ export interface ExpenseInput {
   note?: string
   recurrence?: Recurrence
   nextDueDate?: string
+  /** Dia ancla del mes (1-31) para gastos fijos mensuales */
+  dueDay?: number
   /** Permite desactivar un fijo sin eliminarlo (pausar suscripcion) */
   active?: boolean
 }

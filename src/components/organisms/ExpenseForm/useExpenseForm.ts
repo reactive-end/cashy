@@ -8,7 +8,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { amountFromCents, centsFromText, textFromCents } from '@src/lib/money'
-import { toISODate } from '@src/lib/recurrences'
+import { fromISODate, toISODate } from '@src/lib/recurrences'
 import type { Currency, Expense, ExpenseInput, ExpenseType, Recurrence } from '@src/types/domain'
 import { RECURRENCE_LABELS } from '@src/types/domain'
 
@@ -77,6 +77,9 @@ function buildInput(state: {
   if (state.type === 'fixed') {
     base.recurrence = state.recurrence
     base.nextDueDate = state.dueDateISO
+    if (state.dueDateISO) {
+      base.dueDay = fromISODate(state.dueDateISO).getDate()
+    }
   }
 
   return base

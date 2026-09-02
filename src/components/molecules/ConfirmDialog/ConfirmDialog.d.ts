@@ -24,4 +24,6 @@ export interface ConfirmDialogProps {
   onConfirm: () => void
   /** Accion al cancelar o cerrar el dialogo */
   onCancel: () => void
+  /** Contenido personalizado opcional a renderizar entre el mensaje y los botones */
+  children?: React.ReactNode
 }

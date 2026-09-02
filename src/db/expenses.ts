@@ -28,6 +28,7 @@ interface ExpenseRow {
   note: string | null
   recurrence: string | null
   next_due_date: string | null
+  due_day: number | null
   active: number
   created_at: string
   updated_at: string
@@ -35,7 +36,7 @@ interface ExpenseRow {
 
 /** Columnas leidas en cada consulta de listado */
 const COLUMNS =
-  'id, name, amount, currency, base_amount, base_currency, type, category, note, recurrence, next_due_date, active, created_at, updated_at'
+  'id, name, amount, currency, base_amount, base_currency, type, category, note, recurrence, next_due_date, due_day, active, created_at, updated_at'
 
 /**
  * Convierte una fila cruda al objeto de dominio.
@@ -55,6 +56,7 @@ function mapRowToExpense(row: ExpenseRow): Expense {
     note: row.note ?? undefined,
     recurrence: (row.recurrence as Recurrence | null) ?? undefined,
     nextDueDate: row.next_due_date ?? undefined,
+    dueDay: row.due_day ?? undefined,
     active: row.active === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -218,8 +220,8 @@ export async function insertExpense(input: ExpenseInput, id: string): Promise<Ex
   await db.runAsync(
     `INSERT INTO expenses (
        id, name, amount, currency, base_amount, base_currency, type, category, note,
-       recurrence, next_due_date, active, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+       recurrence, next_due_date, due_day, active, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       input.name,
@@ -232,6 +234,7 @@ export async function insertExpense(input: ExpenseInput, id: string): Promise<Ex
       input.note ?? null,
       input.recurrence ?? null,
       input.nextDueDate ?? null,
+      input.dueDay ?? null,
       timestamp,
       timestamp
     ]
@@ -263,7 +266,7 @@ export async function updateExpense(id: string, changes: Partial<ExpenseInput>):
     `UPDATE expenses SET
        name = ?, amount = ?, currency = ?, base_amount = ?, base_currency = ?,
        type = ?, category = ?, note = ?, recurrence = ?, next_due_date = ?,
-       active = ?, updated_at = ?
+       due_day = ?, active = ?, updated_at = ?
      WHERE id = ?`,
     [
       combinado.name,
@@ -276,6 +279,7 @@ export async function updateExpense(id: string, changes: Partial<ExpenseInput>):
       combinado.note ?? null,
       combinado.recurrence ?? null,
       combinado.nextDueDate ?? null,
+      combinado.dueDay ?? null,
       combinado.active ? 1 : 0,
       combinado.updatedAt,
       id

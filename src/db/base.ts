@@ -7,7 +7,7 @@
 import * as SQLite from 'expo-sqlite'
 
 /** Version actual del esquema; incrementar al cambiar tablas */
-const SCHEMA_VERSION = 7
+const SCHEMA_VERSION = 8
 
 /** Conexion activa tras la primera apertura */
 let instance: SQLite.SQLiteDatabase | null = null
@@ -220,6 +220,20 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   } catch {}
   try {
     await db.execAsync('ALTER TABLE income_receipts ADD COLUMN base_currency TEXT;')
+  } catch {}
+
+  // v8: dia ancla (due_day 1-31) para gastos fijos mensuales con clamping
+  try {
+    await db.execAsync(
+      'ALTER TABLE expenses ADD COLUMN due_day INTEGER CHECK (due_day BETWEEN 1 AND 31);'
+    )
+  } catch {}
+  try {
+    await db.execAsync(`
+      UPDATE expenses
+      SET due_day = CAST(strftime('%d', next_due_date) AS INTEGER)
+      WHERE type = 'fixed' AND due_day IS NULL AND next_due_date IS NOT NULL;
+    `)
   } catch {}
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`)

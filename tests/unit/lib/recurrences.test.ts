@@ -5,11 +5,14 @@
 
 import {
   advanceDueDate,
+  advanceMonthlyWithAnchor,
   daysInMonth,
   daysUntil,
   fromISODate,
+  getEffectiveDueDate,
   isSameDay,
   revertDueDate,
+  revertMonthlyWithAnchor,
   toISODate
 } from '@src/lib/recurrences'
 
@@ -155,5 +158,50 @@ describe('toISODate / fromISODate', () => {
     expect(date.getFullYear()).toBe(2026)
     expect(date.getMonth()).toBe(8)
     expect(date.getDate()).toBe(1)
+  })
+})
+
+describe('getEffectiveDueDate', () => {
+  it('respeta el dia ancla cuando el mes tiene suficientes dias', () => {
+    const result = getEffectiveDueDate(2026, 0, 15)
+    expect(toISODate(result)).toBe('2026-01-15')
+  })
+
+  it('acota el dia ancla al ultimo dia del mes si tiene menos dias', () => {
+    const feb2026 = getEffectiveDueDate(2026, 1, 31)
+    expect(toISODate(feb2026)).toBe('2026-02-28')
+
+    const feb2024 = getEffectiveDueDate(2024, 1, 31)
+    expect(toISODate(feb2024)).toBe('2024-02-29')
+
+    const abr = getEffectiveDueDate(2026, 3, 31)
+    expect(toISODate(abr)).toBe('2026-04-30')
+  })
+})
+
+describe('advanceMonthlyWithAnchor', () => {
+  it('conserva el dia ancla al pasar de febrero acotado a marzo', () => {
+    const feb = fromISODate('2026-02-28')
+    const mar = advanceMonthlyWithAnchor(feb, 31)
+    expect(toISODate(mar)).toBe('2026-03-31')
+  })
+})
+
+describe('revertMonthlyWithAnchor', () => {
+  it('conserva el dia ancla al retroceder de marzo a febrero acotado', () => {
+    const mar = fromISODate('2026-03-31')
+    const feb = revertMonthlyWithAnchor(mar, 31)
+    expect(toISODate(feb)).toBe('2026-02-28')
+  })
+})
+
+describe('advanceDueDate con dia ancla', () => {
+  it('recupera el dia 31 en marzo tras haber sido acotado a 28 en febrero', () => {
+    const enero = fromISODate('2026-01-31')
+    const febrero = advanceDueDate(enero, 'monthly', 31)
+    expect(toISODate(febrero)).toBe('2026-02-28')
+
+    const marzo = advanceDueDate(febrero, 'monthly', 31)
+    expect(toISODate(marzo)).toBe('2026-03-31')
   })
 })

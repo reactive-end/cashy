@@ -27,7 +27,8 @@ export function ConfirmDialog({
   confirmDisabled = false,
   cancelDisabled = false,
   onConfirm,
-  onCancel
+  onCancel,
+  children
 }: ConfirmDialogProps) {
   const handleRequestClose = (): void => {
     if (!cancelDisabled) {
@@ -42,6 +43,8 @@ export function ConfirmDialog({
         <Typography variant="body" className="text-muted">
           {message}
         </Typography>
+
+        {children}
 
         <View className="mt-2 flex-row justify-end gap-2">
           <Button

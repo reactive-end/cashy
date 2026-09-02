@@ -108,6 +108,7 @@ describe('repositorio de gastos', () => {
         null,
         'monthly',
         '2026-09-05',
+        null,
         expect.any(String),
         expect.any(String)
       ])
@@ -134,7 +135,7 @@ describe('repositorio de gastos', () => {
       const update = base.findByFragment('UPDATE expenses SET')[0]
       expect(update.sql).toContain('active = ?')
       expect(update.params?.[0]).toBe('Netflix Premium')
-      expect(update.params?.[10]).toBe(0)
+      expect(update.params?.[11]).toBe(0)
       expect(update.params?.[update.params.length - 1]).toBe('gasto-fijo-1')
     })
 

@@ -64,7 +64,8 @@ function sembrarConDatos() {
       name: 'Taxi',
       category: 'Transporte',
       amount: 10,
-      currency: 'USD'
+      currency: 'USD',
+      createdAt: new Date().toISOString()
     })
   ]
   getExpensesMock.mockImplementation(async () => datos)

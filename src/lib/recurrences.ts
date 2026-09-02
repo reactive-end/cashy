@@ -16,14 +16,52 @@ export function daysInMonth(year: number, month: number): number {
 }
 
 /**
+ * Calcula la fecha efectiva de cobro para un mes determinado respetando el dia ancla.
+ * Si el mes tiene menos dias que el dia ancla (ej. dia 31 en febrero o abril),
+ * se acota automaticamente al ultimo dia de ese mes (28/29 o 30).
+ * @param year Anio calendario (ejemplo 2026)
+ * @param month Mes 0-indexado (0 = enero, 11 = diciembre)
+ * @param dueDay Dia ancla configurado (1 a 31)
+ * @returns Fecha Date en medianoche local del dia efectivo
+ */
+export function getEffectiveDueDate(year: number, month: number, dueDay: number): Date {
+  const maxDays = daysInMonth(year, month)
+  const effectiveDay = Math.min(Math.max(dueDay, 1), maxDays)
+  return new Date(year, month, effectiveDay)
+}
+
+/**
+ * Avanza la fecha de vencimiento mensual conservando el dia ancla original.
+ * @param currentDate Fecha de vencimiento actual
+ * @param dueDay Dia ancla original del mes (1 a 31)
+ * @returns Nueva fecha en el mes siguiente ajustada al dia ancla
+ */
+export function advanceMonthlyWithAnchor(currentDate: Date, dueDay: number): Date {
+  const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+  return getEffectiveDueDate(nextMonth.getFullYear(), nextMonth.getMonth(), dueDay)
+}
+
+/**
+ * Retrocede la fecha de vencimiento mensual conservando el dia ancla original.
+ * @param currentDate Fecha de vencimiento actual
+ * @param dueDay Dia ancla original del mes (1 a 31)
+ * @returns Nueva fecha en el mes anterior ajustada al dia ancla
+ */
+export function revertMonthlyWithAnchor(currentDate: Date, dueDay: number): Date {
+  const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+  return getEffectiveDueDate(prevMonth.getFullYear(), prevMonth.getMonth(), dueDay)
+}
+
+/**
  * Avanza una fecha segun la recurrencia indicada.
  * Para mensual y anual acota el dia al largo real del mes destino
  * (31 de enero avanza a 28/29 de febrero, no al 3 de marzo).
  * @param date Fecha base del vencimiento actual
  * @param recurrence Cadencia a aplicar
+ * @param dueDay Dia ancla opcional para no perder el dia 31 en meses cortos
  * @returns Nueva fecha correspondiente al siguiente vencimiento
  */
-export function advanceDueDate(date: Date, recurrence: Recurrence): Date {
+export function advanceDueDate(date: Date, recurrence: Recurrence, dueDay?: number): Date {
   const nueva = new Date(date)
 
   switch (recurrence) {
@@ -34,6 +72,9 @@ export function advanceDueDate(date: Date, recurrence: Recurrence): Date {
       nueva.setDate(nueva.getDate() + 15)
       break
     case 'monthly': {
+      if (dueDay !== undefined) {
+        return advanceMonthlyWithAnchor(nueva, dueDay)
+      }
       const diaOriginal = nueva.getDate()
       nueva.setDate(1)
       nueva.setMonth(nueva.getMonth() + 1)
@@ -41,12 +82,12 @@ export function advanceDueDate(date: Date, recurrence: Recurrence): Date {
       break
     }
     case 'yearly': {
-      const diaOriginal = nueva.getDate()
+      const anchor = dueDay ?? nueva.getDate()
       const mesOriginal = nueva.getMonth()
       const anioDestino = nueva.getFullYear() + 1
       const maximoDia =
         mesOriginal === 1 ? daysInMonth(anioDestino, 1) : daysInMonth(anioDestino, mesOriginal)
-      return new Date(anioDestino, mesOriginal, Math.min(diaOriginal, maximoDia))
+      return new Date(anioDestino, mesOriginal, Math.min(anchor, maximoDia))
     }
   }
 
@@ -58,9 +99,10 @@ export function advanceDueDate(date: Date, recurrence: Recurrence): Date {
  * Para mensual y anual acota el dia al largo real del mes destino.
  * @param date Fecha base del vencimiento actual
  * @param recurrence Cadencia a retroceder
+ * @param dueDay Dia ancla opcional para no perder el dia 31 en meses cortos
  * @returns Nueva fecha correspondiente al vencimiento anterior
  */
-export function revertDueDate(date: Date, recurrence: Recurrence): Date {
+export function revertDueDate(date: Date, recurrence: Recurrence, dueDay?: number): Date {
   const anterior = new Date(date)
 
   switch (recurrence) {
@@ -71,6 +113,9 @@ export function revertDueDate(date: Date, recurrence: Recurrence): Date {
       anterior.setDate(anterior.getDate() - 15)
       break
     case 'monthly': {
+      if (dueDay !== undefined) {
+        return revertMonthlyWithAnchor(anterior, dueDay)
+      }
       const diaOriginal = anterior.getDate()
       anterior.setDate(1)
       anterior.setMonth(anterior.getMonth() - 1)
@@ -80,12 +125,12 @@ export function revertDueDate(date: Date, recurrence: Recurrence): Date {
       break
     }
     case 'yearly': {
-      const diaOriginal = anterior.getDate()
+      const anchor = dueDay ?? anterior.getDate()
       const mesOriginal = anterior.getMonth()
       const anioDestino = anterior.getFullYear() - 1
       const maximoDia =
         mesOriginal === 1 ? daysInMonth(anioDestino, 1) : daysInMonth(anioDestino, mesOriginal)
-      return new Date(anioDestino, mesOriginal, Math.min(diaOriginal, maximoDia))
+      return new Date(anioDestino, mesOriginal, Math.min(anchor, maximoDia))
     }
   }
 
