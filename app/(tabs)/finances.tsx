@@ -11,11 +11,16 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
+import { MonthNavigator } from '@src/components/molecules/MonthNavigator'
 import { COLORS } from '@src/constants/theme'
 import { useFinancesScreen } from '@src/hooks/useFinancesScreen'
 
 export default function Finances() {
   const {
+    selectedYearMonth,
+    isCurrentMonth,
+    monthLabel,
+    handleMonthChange,
     expensesSubtitle,
     incomesSubtitle,
     formattedBalance,
@@ -37,6 +42,9 @@ export default function Finances() {
             Gestiona tus gastos fijos y unicos o administra tus fuentes de ingreso.
           </Typography>
         </View>
+
+        {/* Navegador de meses para consulta historica */}
+        <MonthNavigator currentYearMonth={selectedYearMonth} onMonthChange={handleMonthChange} />
 
         {/* Tarjetas interactivas de navegacion */}
         <View className="gap-4">
@@ -94,7 +102,9 @@ export default function Finances() {
         {/* Resumen contable rapido */}
         <Card className="gap-3 bg-card/60">
           <View className="flex-row items-center justify-between">
-            <Typography variant="label">Balance de este mes</Typography>
+            <Typography variant="label">
+              {isCurrentMonth ? 'Balance de este mes' : `Balance de ${monthLabel}`}
+            </Typography>
             <Typography variant="figure" className="text-accent text-[15px]">
               {formattedBalance}
             </Typography>
@@ -112,7 +122,7 @@ export default function Finances() {
 
             <View className="items-end gap-0.5">
               <Typography variant="caption" className="text-muted">
-                Gastos del mes
+                {isCurrentMonth ? 'Gastos del mes' : `Gastos de ${monthLabel}`}
               </Typography>
               <Typography variant="body" className="font-sans-semibold">
                 {formattedSpent}

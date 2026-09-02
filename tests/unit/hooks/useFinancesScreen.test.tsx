@@ -2,7 +2,7 @@
  * Pruebas unitarias del hook useFinancesScreen.
  */
 
-import { renderHook, waitFor } from '@testing-library/react-native'
+import { act, renderHook, waitFor } from '@testing-library/react-native'
 
 import { useFinancesScreen } from '@src/hooks/useFinancesScreen'
 import { getExchangeRates } from '@src/services/rates'
@@ -89,5 +89,23 @@ describe('useFinancesScreen', () => {
 
     result.current.openIncomes()
     expect(mockPush).toHaveBeenCalledWith('/incomes')
+  })
+
+  it('cambia el mes seleccionado con handleMonthChange y actualiza isCurrentMonth y monthLabel', async () => {
+    const { result } = await renderHook(() => useFinancesScreen())
+    await waitFor(() => expect(result.current?.expensesSubtitle).toBeDefined())
+
+    expect(result.current.selectedYearMonth).toBe('2026-08')
+    expect(result.current.isCurrentMonth).toBe(true)
+    expect(result.current.monthLabel).toBe('Agosto 2026')
+
+    await act(async () => {
+      result.current.handleMonthChange('2026-07')
+    })
+
+    expect(result.current.selectedYearMonth).toBe('2026-07')
+    expect(result.current.isCurrentMonth).toBe(false)
+    expect(result.current.monthLabel).toBe('Julio 2026')
+    expect(result.current.expensesSubtitle).toContain('julio 2026')
   })
 })

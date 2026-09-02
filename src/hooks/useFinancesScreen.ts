@@ -4,16 +4,21 @@
  */
 
 import { useRouter } from 'expo-router'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
+import { formatYearMonth } from '@src/db/incomeReceipts'
 import { useExpenses } from '@src/hooks/useExpenses'
 import { useIncomes } from '@src/hooks/useIncomes'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
-import { formatAmount } from '@src/lib/format'
+import { formatAmount, formatYearMonthLabel } from '@src/lib/format'
 import type { BaseCurrency } from '@src/types/domain'
 
 export interface UseFinancesScreenResult {
+  selectedYearMonth: string
+  isCurrentMonth: boolean
+  monthLabel: string
+  handleMonthChange: (nextYearMonth: string) => void
   expensesSubtitle: string
   incomesSubtitle: string
   formattedBalance: string
@@ -34,8 +39,20 @@ export function useFinancesScreen(): UseFinancesScreenResult {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
-  const incomesState = useIncomes(ratesState.rates, baseCurrency)
+
+  const actualYearMonth = formatYearMonth()
+  const [selectedYearMonth, setSelectedYearMonth] = useState(actualYearMonth)
+  const isCurrentMonth = selectedYearMonth === actualYearMonth
+  const monthLabel = formatYearMonthLabel(selectedYearMonth)
+
+  const expensesState = useExpenses(
+    ratesState.rates,
+    baseCurrency,
+    settings?.reminderHour ?? 9,
+    0,
+    selectedYearMonth
+  )
+  const incomesState = useIncomes(ratesState.rates, baseCurrency, selectedYearMonth)
 
   const summary = expensesState.monthlySummary
   const totalSpent = summary ? summary.totalFixed + summary.totalUnique : 0
@@ -47,14 +64,20 @@ export function useFinancesScreen(): UseFinancesScreenResult {
   const expensesSubtitle = useMemo(() => {
     const count = expensesState.expenses.length
     const label = count === 1 ? '1 registrado' : `${count} registrados`
-    return `${label} · ${formattedSpent} este mes`
-  }, [expensesState.expenses.length, formattedSpent])
+    const periodo = isCurrentMonth ? 'este mes' : monthLabel.toLowerCase()
+    return `${label} · ${formattedSpent} ${periodo}`
+  }, [expensesState.expenses.length, formattedSpent, isCurrentMonth, monthLabel])
 
   const incomesSubtitle = useMemo(() => {
     const count = incomesState.incomes.length
     const label = count === 1 ? '1 fuente' : `${count} fuentes`
-    return `${label} · ${formattedConfirmed} cobrado`
-  }, [incomesState.incomes.length, formattedConfirmed])
+    const periodo = isCurrentMonth ? 'cobrado' : `cobrado en ${monthLabel.toLowerCase()}`
+    return `${label} · ${formattedConfirmed} ${periodo}`
+  }, [incomesState.incomes.length, formattedConfirmed, isCurrentMonth, monthLabel])
+
+  const handleMonthChange = useCallback((nextYearMonth: string) => {
+    setSelectedYearMonth(nextYearMonth)
+  }, [])
 
   const openExpenses = useCallback(() => {
     router.push('/expenses')
@@ -65,6 +88,10 @@ export function useFinancesScreen(): UseFinancesScreenResult {
   }, [router])
 
   return {
+    selectedYearMonth,
+    isCurrentMonth,
+    monthLabel,
+    handleMonthChange,
     expensesSubtitle,
     incomesSubtitle,
     formattedBalance,
