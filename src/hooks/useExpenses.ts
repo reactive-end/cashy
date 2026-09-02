@@ -26,6 +26,7 @@ import {
   advanceDueDate,
   daysUntil,
   fromISODate,
+  getEffectiveDueDate,
   revertDueDate,
   toISODate
 } from '@src/lib/recurrences'
@@ -58,6 +59,10 @@ export interface UseExpensesResult {
   expenses: Expense[]
   /** Comprobantes de pago de gastos fijos del mes actual */
   expenseReceipts: ExpenseReceipt[]
+  /** Gastos fijos cuyo dia de cobro ya llego en el mes y no han sido pagados */
+  pendingDueExpenses: Expense[]
+  /** Indica si un gasto fijo especifico ya fue pagado este mes */
+  isPaidThisMonth: (expenseId: string) => boolean
   /** true durante la primera lectura */
   loading: boolean
   /** Mensaje del ultimo error de base de datos; null si todo va bien */
@@ -211,10 +216,13 @@ export function useExpenses(
       return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
     })
 
-    const totalUnique = uniqueThisMonth.reduce(
-      (sum, expense) => sum + toBase(expense.amount, expense.currency, rates, baseCurrency),
-      0
-    )
+    const totalUnique = uniqueThisMonth.reduce((sum, expense) => {
+      const converted =
+        expense.baseAmount !== undefined && expense.baseCurrency === baseCurrency
+          ? expense.baseAmount
+          : toBase(expense.amount, expense.currency, rates, baseCurrency)
+      return sum + converted
+    }, 0)
 
     const confirmedIncome = receipts.reduce(
       (sum, receipt) => sum + toBase(receipt.amount, receipt.currency, rates, baseCurrency),
@@ -231,6 +239,35 @@ export function useExpenses(
       netBalance
     }
   }, [fixedExpenses, uniqueExpenses, receipts, rates, baseCurrency])
+
+  const paidExpenseIds = useMemo(() => {
+    return new Set(expenseReceipts.map((r) => r.expenseId))
+  }, [expenseReceipts])
+
+  const isPaidThisMonth = useCallback(
+    (expenseId: string): boolean => {
+      return paidExpenseIds.has(expenseId)
+    },
+    [paidExpenseIds]
+  )
+
+  const pendingDueExpenses = useMemo<Expense[]>(() => {
+    const now = new Date()
+    const currentDay = now.getDate()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    return fixedExpenses.filter((expense) => {
+      if (!expense.active || paidExpenseIds.has(expense.id)) return false
+
+      const anchor =
+        expense.dueDay ?? (expense.nextDueDate ? fromISODate(expense.nextDueDate).getDate() : 1)
+      const effectiveDueDate = getEffectiveDueDate(currentYear, currentMonth, anchor)
+      const effectiveDay = effectiveDueDate.getDate()
+
+      return currentDay >= effectiveDay
+    })
+  }, [fixedExpenses, paidExpenseIds])
 
   const upcomingPayments = useMemo<UpcomingPayment[]>(() => {
     const upcoming: UpcomingPayment[] = []
@@ -250,7 +287,21 @@ export function useExpenses(
 
   const createExpense = useCallback(
     async (input: ExpenseInput): Promise<Expense> => {
-      const created = await insertExpense(input, generateId())
+      let baseAmount = input.baseAmount
+      let baseCurrencyInput = input.baseCurrency
+      if (rates && baseAmount === undefined) {
+        baseAmount = toBase(input.amount, input.currency, rates, baseCurrency)
+        baseCurrencyInput = baseCurrency
+      }
+
+      const created = await insertExpense(
+        {
+          ...input,
+          baseAmount,
+          baseCurrency: baseCurrencyInput
+        },
+        generateId()
+      )
 
       if (created.type === 'fixed') {
         const permiso = await requestNotificationPermission()
@@ -261,7 +312,7 @@ export function useExpenses(
       emit('expenses-changed')
       return created
     },
-    [reminderHour, reminderMinute, reload]
+    [reminderHour, reminderMinute, reload, rates, baseCurrency]
   )
 
   const editExpense = useCallback(
@@ -296,7 +347,7 @@ export function useExpenses(
       if (expense.type !== 'fixed' || !expense.recurrence || !expense.nextDueDate) return
 
       const nextDueISO = toISODate(
-        advanceDueDate(fromISODate(expense.nextDueDate), expense.recurrence)
+        advanceDueDate(fromISODate(expense.nextDueDate), expense.recurrence, expense.dueDay)
       )
 
       const baseAmount = rates
@@ -323,7 +374,7 @@ export function useExpenses(
       let edited = expense
       if (expense.recurrence && expense.nextDueDate) {
         const previousDueISO = toISODate(
-          revertDueDate(fromISODate(expense.nextDueDate), expense.recurrence)
+          revertDueDate(fromISODate(expense.nextDueDate), expense.recurrence, expense.dueDay)
         )
         edited = await updateExpense(expense.id, { nextDueDate: previousDueISO })
         await scheduleReminder(edited, reminderHour, reminderMinute)
@@ -339,6 +390,8 @@ export function useExpenses(
   return {
     expenses,
     expenseReceipts,
+    pendingDueExpenses,
+    isPaidThisMonth,
     loading,
     error,
     fixedExpenses,

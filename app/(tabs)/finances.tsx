@@ -2,10 +2,9 @@
  * Pantalla principal de Finanzas (Hub): presenta el acceso principal a la
  * gestion de Gastos y a la gestion de Ingresos mediante tarjetas interactivas,
  * junto a un resumen rapido del balance disponible.
+ * La logica de totales y subtitulos reside en useFinancesScreen.
  */
 
-import { useRouter } from 'expo-router'
-import { useMemo } from 'react'
 import { Pressable, View } from 'react-native'
 
 import { Card } from '@src/components/atoms/Card'
@@ -13,42 +12,23 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { COLORS } from '@src/constants/theme'
-import { useExpenses } from '@src/hooks/useExpenses'
-import { useIncomes } from '@src/hooks/useIncomes'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { formatAmount } from '@src/lib/format'
-import type { BaseCurrency } from '@src/types/domain'
+import { useFinancesScreen } from '@src/hooks/useFinancesScreen'
 
 export default function Finances() {
-  const router = useRouter()
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
-  const incomesState = useIncomes(ratesState.rates, baseCurrency)
-
-  const summary = expensesState.monthlySummary
-  const totalSpent = summary ? summary.totalFixed + summary.totalUnique : 0
-  const formattedSpent = formatAmount(totalSpent, baseCurrency)
-  const confirmedTotal = incomesState.confirmedTotal ?? 0
-  const formattedConfirmed = formatAmount(confirmedTotal, baseCurrency)
-  const formattedBalance = summary ? formatAmount(summary.netBalance, baseCurrency) : '$ --'
-
-  const expensesSubtitle = useMemo(() => {
-    const count = expensesState.expenses.length
-    const label = count === 1 ? '1 registrado' : `${count} registrados`
-    return `${label} · ${formattedSpent} este mes`
-  }, [expensesState.expenses.length, formattedSpent])
-
-  const incomesSubtitle = useMemo(() => {
-    const count = incomesState.incomes.length
-    const label = count === 1 ? '1 fuente' : `${count} fuentes`
-    return `${label} · ${formattedConfirmed} cobrado`
-  }, [incomesState.incomes.length, formattedConfirmed])
+  const {
+    expensesSubtitle,
+    incomesSubtitle,
+    formattedBalance,
+    formattedConfirmed,
+    formattedSpent,
+    refreshing,
+    onRefresh,
+    openExpenses,
+    openIncomes
+  } = useFinancesScreen()
 
   return (
-    <Screen scrollable refreshing={ratesState.refreshing} onRefresh={ratesState.refresh}>
+    <Screen scrollable refreshing={refreshing} onRefresh={onRefresh}>
       <View className="gap-6 pt-6 pb-12">
         {/* Titulo y descripcion */}
         <View className="gap-1">
@@ -64,7 +44,7 @@ export default function Finances() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ir a Gastos"
-            onPress={() => router.push('/expenses')}
+            onPress={openExpenses}
             className="active:opacity-75"
           >
             <Card className="flex-row items-center gap-4 p-4">
@@ -89,7 +69,7 @@ export default function Finances() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ir a Ingresos"
-            onPress={() => router.push('/incomes')}
+            onPress={openIncomes}
             className="active:opacity-75"
           >
             <Card className="flex-row items-center gap-4 p-4">

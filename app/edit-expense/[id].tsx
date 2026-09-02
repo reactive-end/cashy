@@ -1,54 +1,24 @@
 /**
- * EditExpense screen: modification and deletion of an existing expense.
- * Loads the expense by id from the /expense/[id] route.
+ * EditExpense screen: modificacion y borrado de un gasto existente.
+ * Carga el gasto segun el parametro id de la ruta /edit-expense/[id].
+ * La logica de consulta y persistencia reside en useEditExpense.
  */
 
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ExpenseForm } from '@src/components/organisms/ExpenseForm'
-import { getExpense } from '@src/db/expenses'
-import { useExpenses } from '@src/hooks/useExpenses'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import type { Expense } from '@src/types/domain'
+import { useEditExpense } from '@src/hooks/useEditExpense'
 
-/**
- * Pantalla de edicion de un gasto concreto.
- * @returns Formulario precargado con acciones de guardado y borrado
- */
 export default function EditExpense() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
 
-  const [expense, setExpense] = useState<Expense | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
-
-  useEffect(() => {
-    let active = true
-
-    if (typeof id === 'string') {
-      getExpense(id).then((encontrado) => {
-        if (!active) return
-        setExpense(encontrado)
-        setLoading(false)
-      })
-    }
-
-    return () => {
-      active = false
-    }
-  }, [id])
+  const { expense, loading, handleSave, handleDelete } = useEditExpense(id)
 
   return (
     <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
@@ -73,19 +43,8 @@ export default function EditExpense() {
         ) : !expense ? (
           <Typography variant="body">Este gasto ya no existe.</Typography>
         ) : (
-          <ExpenseForm
-            initialExpense={expense}
-            onSave={async (input) => {
-              await expensesState.editExpense(expense.id, input)
-              router.back()
-            }}
-            onDelete={async () => {
-              await expensesState.removeExpense(expense.id)
-              router.back()
-            }}
-          />
+          <ExpenseForm initialExpense={expense} onSave={handleSave} onDelete={handleDelete} />
         )}
-        {/* Espaciador con altura del area segura: evita style dinamico en el ScrollView */}
         <View style={{ height: insets.bottom + 32 }} />
       </ScrollView>
     </View>

@@ -1,11 +1,11 @@
 /**
  * Subpantalla de Ajustes: Notificaciones y Recordatorios.
  * Configura recordatorios de gastos fijos, aviso diario de tasa BCV y permisos de sistema.
+ * La logica de permisos y sincronizacion reside en useNotificationsSettings.
  */
 
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
-import { AppState, Platform, Pressable, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 
 import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
@@ -14,56 +14,28 @@ import { Screen } from '@src/components/atoms/Screen'
 import { Switch } from '@src/components/atoms/Switch'
 import { Typography } from '@src/components/atoms/Typography'
 import { TimePicker } from '@src/components/organisms/TimePicker'
-import { useSettings } from '@src/hooks/useSettings'
+import { useNotificationsSettings } from '@src/hooks/useNotificationsSettings'
 import { nextNoticeLabel } from '@src/lib/format'
-import {
-  getBcvNoticeStatus,
-  isNotificationPermissionGranted,
-  notificationsAvailable,
-  openExactAlarmSettings,
-  type BcvNoticeStatus
-} from '@src/lib/notifications'
-
-/** Version minima de Android que exige conceder alarmas exactas */
-const ANDROID_EXACT_ALARM_VERSION = 31
-
-function requiresExactAlarm(): boolean {
-  return Platform.OS === 'android' && Number(Platform.Version) >= ANDROID_EXACT_ALARM_VERSION
-}
 
 export default function NotificationsSettings() {
   const router = useRouter()
-  const { settings, changeReminderTime, changeBcvTime, setRemindersEnabled, setBcvEnabled } =
-    useSettings()
-
-  const [permissionGranted, setPermissionGranted] = useState(false)
-  const [bcvStatus, setBcvStatus] = useState<BcvNoticeStatus | null>(null)
-
-  const remindersActive = settings?.remindersEnabled ?? false
-  const bcvActive = settings?.bcvEnabled ?? false
-
-  useEffect(() => {
-    let active = true
-
-    async function check(): Promise<void> {
-      const granted = await isNotificationPermissionGranted()
-      const status = await getBcvNoticeStatus()
-      if (active) {
-        setPermissionGranted(granted)
-        setBcvStatus(status)
-      }
-    }
-
-    void check()
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void check()
-    })
-
-    return () => {
-      active = false
-      sub.remove()
-    }
-  }, [])
+  const {
+    permissionGranted,
+    bcvStatus,
+    remindersActive,
+    bcvActive,
+    reminderHour,
+    reminderMinute,
+    bcvHour,
+    bcvMinute,
+    isExpoGo,
+    requiresExactAlarm,
+    handleToggleReminders,
+    handleToggleBcv,
+    handleChangeReminderTime,
+    handleChangeBcvTime,
+    openAlarmSettings
+  } = useNotificationsSettings()
 
   return (
     <Screen scrollable>
@@ -82,7 +54,7 @@ export default function NotificationsSettings() {
         </View>
 
         {/* Estado de permisos */}
-        {!notificationsAvailable() ? (
+        {isExpoGo ? (
           <Card className="gap-2 border-warn bg-warn-soft">
             <Typography variant="caption" className="text-warn">
               Estás usando Expo Go: los recordatorios del sistema están desactivados en este
@@ -98,13 +70,13 @@ export default function NotificationsSettings() {
                 ? 'Permiso de notificaciones concedido en el sistema operativo.'
                 : 'Permiso de notificaciones sin conceder: los avisos no podrán mostrarse en la barra superior.'}
             </Typography>
-            {requiresExactAlarm() ? (
+            {requiresExactAlarm ? (
               <Button
                 label="Permitir alarmas exactas"
                 variant="secondary"
                 icon="bell"
                 fullWidth
-                onPress={() => void openExactAlarmSettings()}
+                onPress={() => void openAlarmSettings()}
               />
             ) : null}
           </Card>
@@ -116,7 +88,7 @@ export default function NotificationsSettings() {
             <Typography variant="label">Recordatorios de pagos</Typography>
             <Switch
               value={remindersActive}
-              onValueChange={(enabled) => void setRemindersEnabled(enabled)}
+              onValueChange={(enabled) => void handleToggleReminders(enabled)}
               accessibilityLabel="Activar recordatorios de pagos"
             />
           </View>
@@ -124,9 +96,9 @@ export default function NotificationsSettings() {
             Llegan un día antes de cada fecha límite de tus gastos fijos recurrentes.
           </Typography>
           <TimePicker
-            hour={settings?.reminderHour ?? 9}
-            minute={settings?.reminderMinute ?? 0}
-            onChange={(hour, minute) => void changeReminderTime(hour, minute)}
+            hour={reminderHour}
+            minute={reminderMinute}
+            onChange={(hour, minute) => void handleChangeReminderTime(hour, minute)}
             disabled={!remindersActive}
             accessibilityLabel="Hora de los recordatorios de pagos"
           />
@@ -138,7 +110,7 @@ export default function NotificationsSettings() {
             <Typography variant="label">Aviso de tasa BCV diaria</Typography>
             <Switch
               value={bcvActive}
-              onValueChange={(enabled) => void setBcvEnabled(enabled)}
+              onValueChange={(enabled) => void handleToggleBcv(enabled)}
               accessibilityLabel="Activar la tasa BCV diaria"
             />
           </View>
@@ -146,9 +118,9 @@ export default function NotificationsSettings() {
             Aviso diario con las cotizaciones oficiales de dólar y euro consultadas en tiempo real.
           </Typography>
           <TimePicker
-            hour={settings?.bcvHour ?? 9}
-            minute={settings?.bcvMinute ?? 0}
-            onChange={(hour, minute) => void changeBcvTime(hour, minute)}
+            hour={bcvHour}
+            minute={bcvMinute}
+            onChange={(hour, minute) => void handleChangeBcvTime(hour, minute)}
             disabled={!bcvActive}
             accessibilityLabel="Hora del aviso de tasa BCV"
           />

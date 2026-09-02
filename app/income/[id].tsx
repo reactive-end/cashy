@@ -2,10 +2,10 @@
  * Pantalla de Detalle de Ingreso (app/income/[id].tsx): vista completa de una
  * fuente de ingreso con su dia de cobro, estado de cobro en el mes, accion de
  * marcar/desmarcar como recibido, edicion y eliminacion.
+ * La logica de datos, conversiones y mutaciones reside en useIncomeDetail.
  */
 
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Pressable, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -15,96 +15,27 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
-import { getIncome } from '@src/db/incomes'
-import { useIncomes } from '@src/hooks/useIncomes'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { convert } from '@src/lib/conversions'
+import { useIncomeDetail } from '@src/hooks/useIncomeDetail'
 import { formatAmount } from '@src/lib/format'
-import { RECURRENCE_LABELS, type BaseCurrency, type Income } from '@src/types/domain'
 
 export default function IncomeDetail() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
 
-  const [income, setIncome] = useState<Income | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
-
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const incomesState = useIncomes(ratesState.rates, baseCurrency)
-
-  // Carga inicial y recarga al recibir foco tras una edicion
-  useFocusEffect(
-    useCallback(() => {
-      let active = true
-
-      if (typeof id === 'string') {
-        getIncome(id).then((encontrado) => {
-          if (!active) return
-          setIncome(encontrado)
-          setLoading(false)
-        })
-      }
-
-      return () => {
-        active = false
-      }
-    }, [id])
-  )
-
-  const isConfirmed = income ? incomesState.receipts.some((r) => r.incomeId === income.id) : false
-
-  const montoConvertido =
-    income && ratesState.rates && income.currency !== baseCurrency
-      ? convert(income.amount, income.currency, baseCurrency, ratesState.rates)
-      : null
-
-  function openEdit(): void {
-    if (!income) return
-    router.push({ pathname: '/edit-income/[id]', params: { id: income.id } })
-  }
-
-  async function handleToggleReceipt(): Promise<void> {
-    if (!income) return
-    if (isConfirmed) {
-      await incomesState.unconfirmReceipt(income.id)
-    } else {
-      await incomesState.confirmReceipt(income)
-    }
-  }
-
-  const detailRows: { label: string; value: string }[] = []
-
-  if (income) {
-    detailRows.push({
-      label: 'Concepto',
-      value: income.name
-    })
-    detailRows.push({
-      label: 'Tipo',
-      value: income.type === 'unique' ? 'Ingreso unico' : 'Ingreso fijo'
-    })
-    if (income.type !== 'unique' && income.recurrence) {
-      detailRows.push({
-        label: 'Repeticion',
-        value: RECURRENCE_LABELS[income.recurrence]
-      })
-    }
-    if (income.type !== 'unique') {
-      detailRows.push({
-        label: 'Dia de cobro',
-        value: `Dia ${income.paydayDay} de cada mes`
-      })
-    }
-    detailRows.push({
-      label: 'Moneda original',
-      value: income.currency
-    })
-  }
+  const {
+    income,
+    loading,
+    isConfirmed,
+    montoConvertido,
+    baseCurrency,
+    detailRows,
+    deleteConfirmationVisible,
+    setDeleteConfirmationVisible,
+    openEdit,
+    handleToggleReceipt,
+    handleConfirmDelete
+  } = useIncomeDetail(id)
 
   return (
     <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
@@ -154,11 +85,12 @@ export default function IncomeDetail() {
                 )}`}</Typography>
               ) : null}
 
-              <View className="pt-1">
-                <Badge
-                  text={isConfirmed ? 'Cobrado este mes' : 'Pendiente de cobro'}
-                  tone={isConfirmed ? 'success' : 'neutral'}
-                />
+              <View className="mt-1">
+                {isConfirmed ? (
+                  <Badge text="Cobro registrado este mes" tone="success" />
+                ) : (
+                  <Badge text="Pendiente de cobro" tone="neutral" />
+                )}
               </View>
             </Card>
 
@@ -182,7 +114,7 @@ export default function IncomeDetail() {
                 icon={isConfirmed ? 'close' : 'check'}
                 variant={isConfirmed ? 'secondary' : 'primary'}
                 fullWidth
-                onPress={handleToggleReceipt}
+                onPress={() => void handleToggleReceipt()}
               />
 
               <Button label="Editar" icon="edit" variant="secondary" fullWidth onPress={openEdit} />
@@ -209,10 +141,7 @@ export default function IncomeDetail() {
           message={`Se eliminara "${income.name}" de forma permanente.`}
           confirmLabel="Eliminar"
           destructive
-          onConfirm={() => {
-            setDeleteConfirmationVisible(false)
-            void incomesState.remove(income.id).then(() => router.back())
-          }}
+          onConfirm={() => void handleConfirmDelete()}
           onCancel={() => setDeleteConfirmationVisible(false)}
         />
       ) : null}

@@ -1,12 +1,11 @@
 /**
  * Pantalla dedicada de Ingresos (app/incomes.tsx):
  * Administracion de fuentes de ingreso con busqueda, paginacion,
- * confirmacion de cobros pendientes y navegacion hacia el detalle
- * de cada ingreso.
+ * confirmacion de cobros pendientes y navegacion hacia el detalle.
+ * La logica de enriquecimiento y busqueda reside en useIncomesScreen.
  */
 
 import { useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
 
 import { Button } from '@src/components/atoms/Button'
@@ -18,108 +17,30 @@ import { EmptyState } from '@src/components/molecules/EmptyState'
 import { IncomeItem } from '@src/components/molecules/IncomeItem'
 import { Pagination } from '@src/components/molecules/Pagination'
 import { SearchBar } from '@src/components/molecules/SearchBar'
-import { useIncomes } from '@src/hooks/useIncomes'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { convert } from '@src/lib/conversions'
+import { useIncomesScreen } from '@src/hooks/useIncomesScreen'
 import { formatAmount } from '@src/lib/format'
-import type { BaseCurrency, Income } from '@src/types/domain'
 
-/** Cantidad de ingresos por pagina */
-const ITEMS_PER_PAGE = 8
-
-/** Fila visible de la lista enriquecida de ingresos */
-interface VisibleIncomeRow {
-  id: string
-  name: string
-  paydayDay: number
-  formattedAmount: string
-  formattedOriginalAmount?: string
-  isConfirmed: boolean
-  rawIncome: Income
-}
-
-/**
- * Vista de ingresos con cobros pendientes, busqueda y paginacion.
- * @returns Pantalla completa para gestionar fuentes de ingreso
- */
 export default function IncomesScreen() {
   const router = useRouter()
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const incomesState = useIncomes(ratesState.rates, baseCurrency)
-
-  // Busqueda
-  const [searchText, setSearchText] = useState('')
-  const [query, setQuery] = useState('')
-
-  // Paginacion
-  const [currentPage, setPage] = useState(1)
-
-  function openCreateIncome(): void {
-    router.push('/new-income')
-  }
-
-  // Filtrado por query de busqueda
-  const filteredIncomes = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    if (!term) return incomesState.incomes
-
-    return incomesState.incomes.filter((income) => income.name.toLowerCase().includes(term))
-  }, [incomesState.incomes, query])
-
-  // Transformacion a filas enriquecidas
-  const rows: VisibleIncomeRow[] = useMemo(() => {
-    const rates = ratesState.rates
-    const receiptIds = new Set(incomesState.receipts.map((r) => r.incomeId))
-
-    return filteredIncomes.map((income) => {
-      const baseAmount = rates ? convert(income.amount, income.currency, baseCurrency, rates) : null
-      const formattedAmount = baseAmount !== null ? formatAmount(baseAmount, baseCurrency) : '$ --'
-      const formattedOriginal = formatAmount(income.amount, income.currency)
-
-      return {
-        id: income.id,
-        name: income.name,
-        paydayDay: income.paydayDay,
-        formattedAmount,
-        formattedOriginalAmount: formattedOriginal,
-        isConfirmed: receiptIds.has(income.id),
-        rawIncome: income
-      }
-    })
-  }, [filteredIncomes, ratesState.rates, baseCurrency, incomesState.receipts])
-
-  // Paginacion
-  const totalPages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE))
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return rows.slice(start, start + ITEMS_PER_PAGE)
-  }, [rows, currentPage])
-
-  function handleSearchChange(text: string): void {
-    setSearchText(text)
-    if (!text.trim()) {
-      setQuery('')
-      setPage(1)
-    }
-  }
-
-  function handleSearch(): void {
-    setQuery(searchText)
-    setPage(1)
-  }
-
-  const visiblePendingConfirmations = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    return incomesState.pendingConfirmations.filter(
-      (c) => !term || c.name.toLowerCase().includes(term)
-    )
-  }, [incomesState.pendingConfirmations, query])
+  const {
+    searchText,
+    handleSearchChange,
+    handleSearch,
+    currentPage,
+    totalPages,
+    setPage,
+    paginatedRows,
+    totalRowsCount,
+    visiblePendingConfirmations,
+    handleConfirmReceipt,
+    refreshing,
+    onRefresh,
+    openCreateIncome,
+    openIncomeDetail
+  } = useIncomesScreen()
 
   return (
-    <Screen scrollable refreshing={ratesState.refreshing} onRefresh={ratesState.refresh}>
+    <Screen scrollable refreshing={refreshing} onRefresh={onRefresh}>
       <View className="gap-6 pt-6 pb-12">
         {/* Cabecera con boton volver y titulo */}
         <View className="flex-row items-center gap-3">
@@ -162,7 +83,7 @@ export default function IncomesScreen() {
                   <Button
                     label="Recibido"
                     variant="primary"
-                    onPress={() => incomesState.confirmReceipt(income)}
+                    onPress={() => void handleConfirmReceipt(income)}
                   />
                 </View>
               ))}
@@ -181,18 +102,18 @@ export default function IncomesScreen() {
         />
 
         {/* Lista paginada de ingresos */}
-        {rows.length === 0 ? (
+        {totalRowsCount === 0 ? (
           <Card>
             <EmptyState
               icon="savings"
-              title={query ? 'Sin resultados' : 'Sin ingresos todavia'}
+              title={searchText ? 'Sin resultados' : 'Sin ingresos todavia'}
               message={
-                query
+                searchText
                   ? 'No hay fuentes que coincidan con la busqueda.'
                   : 'Registra tus fuentes de ingreso habituales.'
               }
               action={
-                !query ? (
+                !searchText ? (
                   <Button label="Agregar ingreso" icon="add" fullWidth onPress={openCreateIncome} />
                 ) : undefined
               }
@@ -217,9 +138,7 @@ export default function IncomesScreen() {
                     formattedAmount={row.formattedAmount}
                     formattedOriginalAmount={row.formattedOriginalAmount}
                     isConfirmed={row.isConfirmed}
-                    onPress={() =>
-                      router.push({ pathname: '/income/[id]', params: { id: row.id } })
-                    }
+                    onPress={() => openIncomeDetail(row.id)}
                   />
                 ))}
               </View>

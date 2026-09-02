@@ -2,10 +2,10 @@
  * Subpantalla de Ajustes: Tus datos y Cuenta.
  * Centraliza la identidad de Google, foto de perfil, estado PRO,
  * datos locales y fuentes de ingreso.
+ * La logica de enlace, perfil e ingresos reside en useAccountSettings.
  */
 
 import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
 import { Image, Pressable, View } from 'react-native'
 
 import { Button } from '@src/components/atoms/Button'
@@ -13,60 +13,30 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
-import { AlertDialog, type AlertDialogTone } from '@src/components/molecules/AlertDialog'
-import { PRO_PAYMENT_MESSAGE } from '@src/constants/supabase'
+import { AlertDialog } from '@src/components/molecules/AlertDialog'
 import { COLORS } from '@src/constants/theme'
-import { getProfile } from '@src/db/profile'
-import { useAuth } from '@src/hooks/useAuth'
-import { useIncomes } from '@src/hooks/useIncomes'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { useSubscription } from '@src/hooks/useSubscription'
-import { subscribe } from '@src/lib/events'
+import { useAccountSettings } from '@src/hooks/useAccountSettings'
 import { formatAmount } from '@src/lib/format'
 import { RECURRENCE_LABELS } from '@src/types/domain'
 
 export default function AccountSettings() {
   const router = useRouter()
-  const { user, isAuthenticated, signIn, signOut, loading: authLoading } = useAuth()
-  const { isPro, refresh: refreshSub } = useSubscription()
-  const { settings } = useSettings()
-  const ratesState = useRates()
-  const incomesState = useIncomes(ratesState.rates, settings?.baseCurrency ?? 'USD')
-
-  const [profileName, setProfileName] = useState<string | null>(null)
-  const [profileEmail, setProfileEmail] = useState<string | null>(null)
-  const [notice, setNotice] = useState<{ tone: AlertDialogTone; message: string } | null>(null)
-  const [proModalVisible, setProModalVisible] = useState(false)
-
-  useEffect(() => {
-    let active = true
-
-    async function load(): Promise<void> {
-      const p = await getProfile().catch(() => null)
-      if (active && p) {
-        setProfileName(`${p.firstName} ${p.lastName}`.trim())
-        setProfileEmail(p.email)
-      }
-    }
-
-    void load()
-    const unsubscribe = subscribe('profile-changed', () => void load())
-    return () => {
-      active = false
-      unsubscribe()
-    }
-  }, [])
-
-  async function handleLinkGoogle(): Promise<void> {
-    const res = await signIn()
-    if (res.success) {
-      await refreshSub()
-      setNotice({ tone: 'success', message: 'Cuenta de Google vinculada exitosamente.' })
-    } else if (res.error && !res.canceled) {
-      setNotice({ tone: 'danger', message: res.error })
-    }
-  }
+  const {
+    user,
+    isAuthenticated,
+    authLoading,
+    isPro,
+    subscriptionText,
+    profileName,
+    profileEmail,
+    incomes,
+    notice,
+    setNotice,
+    handleLinkGoogle,
+    handleSignOut,
+    openProPayment,
+    openEditProfile
+  } = useAccountSettings()
 
   return (
     <Screen scrollable>
@@ -115,6 +85,7 @@ export default function AccountSettings() {
                     <Icon name="user" size={24} color={COLORS.accent} />
                   </View>
                 )}
+
                 <View className="flex-1">
                   <Typography variant="body" className="font-semibold text-ink">
                     {user.firstName} {user.lastName}
@@ -125,11 +96,7 @@ export default function AccountSettings() {
                 </View>
               </View>
 
-              <Typography variant="caption">
-                {isPro
-                  ? 'Tienes acceso activo a la detección de pagos móviles y funciones exclusivas.'
-                  : 'Actualiza a Cashy PRO para disfrutar de la detección automática de comprobantes bancarios.'}
-              </Typography>
+              <Typography variant="caption">{subscriptionText}</Typography>
 
               {!isPro ? (
                 <Button
@@ -137,7 +104,7 @@ export default function AccountSettings() {
                   variant="primary"
                   icon="savings"
                   fullWidth
-                  onPress={() => setProModalVisible(true)}
+                  onPress={openProPayment}
                 />
               ) : null}
 
@@ -145,7 +112,7 @@ export default function AccountSettings() {
                 label="Cerrar sesión de Google"
                 variant="ghost"
                 fullWidth
-                onPress={() => void signOut()}
+                onPress={() => void handleSignOut()}
               />
             </View>
           ) : (
@@ -187,20 +154,20 @@ export default function AccountSettings() {
             variant="secondary"
             icon="edit"
             fullWidth
-            onPress={() => router.push('/edit-profile')}
+            onPress={openEditProfile}
           />
         </Card>
 
         {/* Tarjeta de Fuentes de Ingreso */}
         <Card className="gap-3">
           <Typography variant="label">Fuentes de ingreso registradas</Typography>
-          {incomesState.incomes.length === 0 ? (
+          {incomes.length === 0 ? (
             <Typography variant="caption" className="text-faint">
               No tienes fuentes de ingreso registradas.
             </Typography>
           ) : (
             <View className="gap-2 divide-y divide-line">
-              {incomesState.incomes.map((inc) => (
+              {incomes.map((inc) => (
                 <View key={inc.id} className="flex-row items-center justify-between pt-2">
                   <View className="flex-1 pr-2">
                     <Typography variant="body" className="font-medium text-ink">
@@ -219,13 +186,6 @@ export default function AccountSettings() {
           )}
         </Card>
       </View>
-
-      <AlertDialog
-        visible={proModalVisible}
-        title="Adquirir Cashy PRO"
-        message={PRO_PAYMENT_MESSAGE}
-        onClose={() => setProModalVisible(false)}
-      />
 
       <AlertDialog
         visible={notice !== null}

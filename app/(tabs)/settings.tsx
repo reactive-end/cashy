@@ -1,11 +1,9 @@
 /**
- * Pantalla principal de Ajustes.
- * Centro de navegacion modular con acceso a 7 subpantallas especializadas,
- * visualizacion de perfil de Google con avatar y estado de Cashy PRO.
+ * Pantalla principal de Ajustes: preferencias, gestion de cuenta,
+ * personalizacion de avisos y accesos a la informacion del sistema.
+ * La logica de identidad y configuracion reside en useSettingsScreen.
  */
 
-import { useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
 import { Image, Pressable, View } from 'react-native'
 
 import { Card } from '@src/components/atoms/Card'
@@ -14,15 +12,8 @@ import type { IconName } from '@src/components/atoms/Icon/Icon.d'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { COLORS } from '@src/constants/theme'
-import { getProfile } from '@src/db/profile'
-import { useAuth } from '@src/hooks/useAuth'
-import { useSettings } from '@src/hooks/useSettings'
-import { useSubscription } from '@src/hooks/useSubscription'
-import { subscribe } from '@src/lib/events'
-import { formatTime12 } from '@src/lib/format'
-import { installedVersion } from '@src/services/appUpdate'
+import { useSettingsScreen } from '@src/hooks/useSettingsScreen'
 
-/** Elemento de navegacion de la lista de ajustes */
 interface SettingsNavItemProps {
   icon: IconName
   title: string
@@ -88,31 +79,18 @@ function SettingsNavItem({
 }
 
 export default function Settings() {
-  const router = useRouter()
-  const { settings } = useSettings()
-  const { user, isAuthenticated } = useAuth()
-  const { isPro } = useSubscription()
-  const [profileName, setProfileName] = useState<string | null>(null)
-
-  useEffect(() => {
-    let active = true
-
-    async function load(): Promise<void> {
-      const p = await getProfile().catch(() => null)
-      if (active && p) {
-        setProfileName(`${p.firstName} ${p.lastName}`.trim())
-      }
-    }
-
-    void load()
-    const unsubscribe = subscribe('profile-changed', () => void load())
-    return () => {
-      active = false
-      unsubscribe()
-    }
-  }, [])
-
-  const reminderTime = formatTime12(settings?.reminderHour ?? 9, settings?.reminderMinute ?? 0)
+  const {
+    displayName,
+    emailOrMode,
+    planLabel,
+    avatarUrl,
+    isPro,
+    baseCurrency,
+    reminderTime,
+    biometricsEnabled,
+    versionLabel,
+    navigateTo
+  } = useSettingsScreen()
 
   return (
     <Screen scrollable>
@@ -123,14 +101,14 @@ export default function Settings() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Abrir gestion de cuenta y datos"
-          onPress={() => router.push('/settings/account')}
+          onPress={() => navigateTo('/settings/account')}
           className="active:opacity-80"
         >
           <Card className="flex-row items-center justify-between p-4">
             <View className="flex-1 flex-row items-center gap-3 pr-2">
-              {isAuthenticated && user?.avatarUrl ? (
+              {avatarUrl ? (
                 <Image
-                  source={{ uri: user.avatarUrl }}
+                  source={{ uri: avatarUrl }}
                   style={{ width: 48, height: 48, borderRadius: 24 }}
                   accessibilityLabel="Foto de perfil de Google"
                 />
@@ -145,14 +123,10 @@ export default function Settings() {
 
               <View className="flex-1">
                 <Typography variant="body" className="font-semibold text-ink">
-                  {isAuthenticated && user
-                    ? `${user.firstName} ${user.lastName}`
-                    : profileName || 'Usuario de Cashy'}
+                  {displayName}
                 </Typography>
                 <Typography variant="caption" className="text-faint" numberOfLines={1}>
-                  {isAuthenticated && user?.email
-                    ? user.email
-                    : 'Modo local · Toca para vincular Google'}
+                  {emailOrMode}
                 </Typography>
               </View>
             </View>
@@ -165,7 +139,7 @@ export default function Settings() {
                   variant="caption"
                   className={isPro ? 'font-semibold text-accent' : 'text-faint'}
                 >
-                  {isPro ? 'Cashy PRO' : isAuthenticated ? 'Plan Gratuito' : 'Modo local'}
+                  {planLabel}
                 </Typography>
               </View>
               <Icon name="chevronRight" size={18} color="#757570" />
@@ -183,7 +157,7 @@ export default function Settings() {
               icon="user"
               title="Tus datos y Cuenta"
               subtitle="Perfil, fuentes de ingreso y Google Auth"
-              onPress={() => router.push('/settings/account')}
+              onPress={() => navigateTo('/settings/account')}
               accessibilityLabel="Ir a tus datos y cuenta"
             />
           </Card>
@@ -199,9 +173,9 @@ export default function Settings() {
               icon="dollar"
               title="Moneda base"
               subtitle="Divisa de consolidación y reportes"
-              valueBadge={settings?.baseCurrency ?? 'USD'}
+              valueBadge={baseCurrency}
               badgeTone="accent"
-              onPress={() => router.push('/settings/currency')}
+              onPress={() => navigateTo('/settings/currency')}
               accessibilityLabel="Ir a selector de moneda base"
             />
 
@@ -209,7 +183,7 @@ export default function Settings() {
               icon="bell"
               title="Notificaciones y Recordatorios"
               subtitle={`Avisos (${reminderTime}) y tasa BCV diaria`}
-              onPress={() => router.push('/settings/notifications')}
+              onPress={() => navigateTo('/settings/notifications')}
               accessibilityLabel="Ir a notificaciones y recordatorios"
             />
 
@@ -217,32 +191,12 @@ export default function Settings() {
               icon="shield"
               title="Seguridad y Privacidad"
               subtitle={
-                settings?.biometricsEnabled
-                  ? 'Bloqueo biométrico activo'
-                  : 'Bloqueo biométrico inactivo'
+                biometricsEnabled ? 'Bloqueo biométrico activo' : 'Bloqueo biométrico inactivo'
               }
-              valueBadge={settings?.biometricsEnabled ? 'Activo' : undefined}
+              valueBadge={biometricsEnabled ? 'Activo' : undefined}
               badgeTone="accent"
-              onPress={() => router.push('/settings/security')}
+              onPress={() => navigateTo('/settings/security')}
               accessibilityLabel="Ir a seguridad y privacidad"
-            />
-          </Card>
-        </View>
-
-        {/* Categoria: Funciones Avanzadas */}
-        <View className="gap-2">
-          <Typography variant="label" className="px-1 text-muted">
-            Funciones avanzadas
-          </Typography>
-          <Card className="py-1">
-            <SettingsNavItem
-              icon="savings"
-              title="Pagos móviles"
-              subtitle="Detección de transferencias recibidas"
-              valueBadge={isPro ? 'PRO' : 'PRO (Bloqueado)'}
-              badgeTone={isPro ? 'accent' : 'warn'}
-              onPress={() => router.push('/settings/bank-payments')}
-              accessibilityLabel="Ir a detección de pagos móviles"
             />
           </Card>
         </View>
@@ -257,8 +211,8 @@ export default function Settings() {
               icon="refresh"
               title="Actualizaciones"
               subtitle="Búsqueda y descarga de versiones"
-              valueBadge={`v${installedVersion() || '1.2.0'}`}
-              onPress={() => router.push('/settings/updates')}
+              valueBadge={versionLabel}
+              onPress={() => navigateTo('/settings/updates')}
               accessibilityLabel="Ir a actualizaciones"
             />
 
@@ -266,7 +220,7 @@ export default function Settings() {
               icon="info"
               title="Acerca de Cashy"
               subtitle="Desarrollado por Rafael Pisani"
-              onPress={() => router.push('/settings/about')}
+              onPress={() => navigateTo('/settings/about')}
               accessibilityLabel="Ir a acerca de Cashy"
             />
           </Card>

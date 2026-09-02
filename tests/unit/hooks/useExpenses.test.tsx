@@ -13,7 +13,7 @@ import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import * as notificaciones from '@src/lib/notifications'
 import { fromISODate, toISODate } from '@src/lib/recurrences'
 
-import { buildFixedExpense, buildRates, buildUniqueExpense } from '../../helpers/factories'
+import { NOW, buildFixedExpense, buildRates, buildUniqueExpense } from '../../helpers/factories'
 
 const getExpensesMock = expensesRepo.getExpenses as jest.Mock
 const insertExpenseMock = expensesRepo.insertExpense as jest.Mock
@@ -83,6 +83,7 @@ async function montarConSemilla() {
 describe('useExpenses', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.useFakeTimers({ now: NOW })
     permisoMock.mockResolvedValue(true)
     insertExpenseMock.mockImplementation(async (input, id) => ({
       ...buildFixedExpense(),
@@ -97,6 +98,10 @@ describe('useExpenses', () => {
     }))
     deleteExpenseMock.mockResolvedValue(undefined)
     getExpensesMock.mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   describe('derivados', () => {
@@ -325,6 +330,12 @@ describe('useExpenses', () => {
         expect(inicial.result.current.loading).toBe(false)
         expect(inicial.result.current.error).toBe(EXPENSES_LOAD_ERROR_MESSAGE)
       })
+    })
+
+    it('identifica pagos pendientes de cobro y estado de pago del mes', async () => {
+      const { result } = await montarConSemilla()
+      expect(result.current.isPaidThisMonth('fijo-1')).toBe(false)
+      expect(Array.isArray(result.current.pendingDueExpenses)).toBe(true)
     })
   })
 })

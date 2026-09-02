@@ -1,13 +1,12 @@
 /**
  * Pantalla dedicada de Gastos: gestion completa de gastos fijos y unicos,
  * busqueda por texto, filtros por categoria y moneda, paginacion y acceso a detalle.
+ * La logica de filtrado, ordenamiento y paginacion reside en useExpensesScreen.
  */
 
 import { useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
 
-import type { BadgeTone } from '@src/components/atoms/Badge/Badge.d'
 import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
@@ -16,209 +15,41 @@ import { Typography } from '@src/components/atoms/Typography'
 import { EmptyState } from '@src/components/molecules/EmptyState'
 import { ExpenseItem } from '@src/components/molecules/ExpenseItem'
 import { FilterSheet } from '@src/components/molecules/FilterSheet'
-import type { ExpenseFilters, ExpenseSortOrder } from '@src/components/molecules/FilterSheet'
 import { Pagination } from '@src/components/molecules/Pagination'
 import { SearchBar } from '@src/components/molecules/SearchBar'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
-import { useExpenses } from '@src/hooks/useExpenses'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { convert } from '@src/lib/conversions'
-import { formatAmount } from '@src/lib/format'
-import { daysUntil, fromISODate } from '@src/lib/recurrences'
-import {
-  RECURRENCE_LABELS,
-  type BaseCurrency,
-  type Currency,
-  type ExpenseType
-} from '@src/types/domain'
-
-/** Filas mostradas por pagina en la lista segmentada */
-const ITEMS_PER_PAGE = 8
-
-/** Fila derivada de un gasto para el listado */
-interface ExpenseRow {
-  id: string
-  name: string
-  convertedAmount: number
-  createdAt: string
-  icon: 'tag' | 'repeat'
-  detail: string | undefined
-  formattedAmount: string
-  formattedOriginalAmount?: string
-  badge?: { text: string; tone: BadgeTone }
-}
+import { useExpensesScreen } from '@src/hooks/useExpensesScreen'
 
 export default function ExpensesScreen() {
   const router = useRouter()
-  const [segment, setSegment] = useState<ExpenseType>('fixed')
-  const [page, setPage] = useState(1)
-  const [searchText, setSearchText] = useState('')
-  const [query, setQuery] = useState('')
-  const [filterSheetVisible, setFilterSheetVisible] = useState(false)
-  const [filters, setFilters] = useState<ExpenseFilters>({ categories: [], currencies: [] })
-  const [sortOrder, setSortOrder] = useState<ExpenseSortOrder>('recent')
-
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
-
-  const sourceList =
-    segment === 'fixed' ? expensesState.fixedExpenses : expensesState.uniqueExpenses
-
-  // Catalogos para el panel: categorias y monedas presentes en los datos.
-  const availableCategories = useMemo(() => {
-    const uniqueSet = new Set<string>()
-
-    for (const expense of expensesState.expenses) {
-      const key = (expense.category ?? '').trim()
-
-      if (key) uniqueSet.add(key)
-    }
-
-    return [...uniqueSet].sort((a, b) => a.localeCompare(b))
-  }, [expensesState.expenses])
-
-  const availableCurrencies = useMemo<Currency[]>(() => {
-    const uniqueSet = new Set<Currency>()
-
-    for (const expense of expensesState.expenses) {
-      uniqueSet.add(expense.currency)
-    }
-
-    return [...uniqueSet]
-  }, [expensesState.expenses])
-
-  const rows = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    const filterCategories = filters.categories
-    const filterCurrencies = filters.currencies
-    const categorySet = new Set(filterCategories)
-    const currencySet = new Set(filterCurrencies)
-    const mappedRows: ExpenseRow[] = []
-
-    for (const expense of sourceList) {
-      const expenseCategory = (expense.category ?? '').trim()
-
-      if (categorySet.size > 0 && !categorySet.has(expenseCategory)) {
-        continue
-      }
-
-      if (currencySet.size > 0 && !currencySet.has(expense.currency)) {
-        continue
-      }
-
-      const matchesSearch =
-        !term ||
-        expense.name.toLowerCase().includes(term) ||
-        expenseCategory.toLowerCase().includes(term)
-
-      if (!matchesSearch) {
-        continue
-      }
-
-      const converted = ratesState.rates
-        ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-        : null
-
-      const formattedAmount = converted
-        ? formatAmount(converted, baseCurrency)
-        : formatAmount(expense.amount, expense.currency)
-
-      if (expense.type === 'unique') {
-        mappedRows.push({
-          id: expense.id,
-          name: expense.name,
-          convertedAmount: converted ?? expense.amount,
-          createdAt: expense.createdAt,
-          icon: 'tag',
-          detail: expense.category,
-          formattedAmount,
-          formattedOriginalAmount:
-            converted && expense.currency !== baseCurrency
-              ? formatAmount(expense.amount, expense.currency)
-              : undefined
-        })
-      } else if (expense.type === 'fixed' && expense.nextDueDate && expense.recurrence) {
-        const remaining = daysUntil(fromISODate(expense.nextDueDate))
-        let badge: { text: string; tone: BadgeTone } | undefined
-
-        if (remaining <= 0) {
-          badge = { text: 'vence hoy', tone: 'danger' }
-        } else if (remaining <= 3) {
-          badge = { text: remaining === 1 ? '1 dia' : `${remaining} dias`, tone: 'warning' }
-        }
-
-        const recurrenceLabel = RECURRENCE_LABELS[expense.recurrence]
-        const detail = expense.category
-          ? `${recurrenceLabel} · ${expense.category}`
-          : recurrenceLabel
-
-        mappedRows.push({
-          id: expense.id,
-          name: expense.name,
-          convertedAmount: converted ?? expense.amount,
-          createdAt: expense.createdAt,
-          icon: 'repeat',
-          detail,
-          formattedAmount,
-          formattedOriginalAmount:
-            converted && expense.currency !== baseCurrency
-              ? formatAmount(expense.amount, expense.currency)
-              : undefined,
-          badge
-        })
-      }
-    }
-
-    mappedRows.sort((a, b) => {
-      if (sortOrder === 'amountDesc') return b.convertedAmount - a.convertedAmount
-      if (sortOrder === 'amountAsc') return a.convertedAmount - b.convertedAmount
-      if (sortOrder === 'name') return a.name.localeCompare(b.name)
-      return b.createdAt.localeCompare(a.createdAt)
-    })
-
-    return mappedRows
-  }, [
-    sourceList,
-    query,
-    filters.categories,
-    filters.currencies,
-    ratesState.rates,
-    baseCurrency,
-    sortOrder
-  ])
-
-  const totalPages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE))
-  const currentPage = Math.min(page, totalPages)
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return rows.slice(start, start + ITEMS_PER_PAGE)
-  }, [rows, currentPage])
-
-  function handleSegmentChange(val: string): void {
-    setSegment(val as ExpenseType)
-    setPage(1)
-  }
-
-  function handleSearchChange(text: string): void {
-    setSearchText(text)
-    if (!text.trim()) {
-      setQuery('')
-      setPage(1)
-    }
-  }
-
-  function handleSearch(): void {
-    setQuery(searchText)
-    setPage(1)
-  }
-
-  const activeFiltersCount = filters.categories.length + filters.currencies.length
+  const {
+    segment,
+    handleSegmentChange,
+    searchText,
+    handleSearchChange,
+    handleSearch,
+    filterSheetVisible,
+    setFilterSheetVisible,
+    filters,
+    setFilters,
+    sortOrder,
+    setSortOrder,
+    activeFiltersCount,
+    availableCategories,
+    availableCurrencies,
+    currentPage,
+    totalPages,
+    setPage,
+    paginatedRows,
+    totalRowsCount,
+    refreshing,
+    onRefresh,
+    openExpenseDetail,
+    openCreateExpense
+  } = useExpensesScreen()
 
   return (
-    <Screen scrollable refreshing={ratesState.refreshing} onRefresh={ratesState.refresh}>
+    <Screen scrollable refreshing={refreshing} onRefresh={onRefresh}>
       <View className="gap-6 pt-6 pb-12">
         {/* Cabecera con boton volver, titulo y boton de filtros */}
         <View className="flex-row items-center justify-between">
@@ -266,35 +97,35 @@ export default function ExpensesScreen() {
           value={searchText}
           onChangeText={handleSearchChange}
           onSearch={handleSearch}
-          onAdd={() => router.push('/new-expense')}
+          onAdd={openCreateExpense}
         />
 
         {/* Lista paginada de gastos */}
-        {rows.length === 0 ? (
+        {totalRowsCount === 0 ? (
           <Card>
             <EmptyState
               icon={segment === 'fixed' ? 'repeat' : 'tag'}
               title={
-                query || activeFiltersCount > 0
+                searchText || activeFiltersCount > 0
                   ? 'Sin resultados'
                   : segment === 'fixed'
                     ? 'Sin gastos fijos'
                     : 'Sin gastos unicos'
               }
               message={
-                query || activeFiltersCount > 0
+                searchText || activeFiltersCount > 0
                   ? 'Prueba modificando los filtros o el termino de busqueda.'
                   : segment === 'fixed'
                     ? 'Agrega tus suscripciones o servicios recurrentes.'
                     : 'Registra compras puntuales del dia a dia.'
               }
               action={
-                !query && activeFiltersCount === 0 ? (
+                !searchText && activeFiltersCount === 0 ? (
                   <Button
                     label="Registrar gasto"
                     icon="add"
                     fullWidth
-                    onPress={() => router.push('/new-expense')}
+                    onPress={openCreateExpense}
                   />
                 ) : undefined
               }
@@ -319,7 +150,7 @@ export default function ExpensesScreen() {
                     formattedAmount={row.formattedAmount}
                     formattedOriginalAmount={row.formattedOriginalAmount}
                     badge={row.badge}
-                    onPress={() => router.push(`/expense/${row.id}`)}
+                    onPress={() => openExpenseDetail(row.id)}
                   />
                 ))}
               </View>

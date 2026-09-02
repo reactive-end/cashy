@@ -1,11 +1,10 @@
 /**
- * ExpenseDetail screen: read only view of an existing expense with
- * actions to edit or delete it. Editing happens in /edit-expense/[id]
- * so the detail screen never mutates data directly.
+ * ExpenseDetail screen: vista de solo lectura de un gasto concreto con
+ * acciones de edicion, borrado y pago mensual.
+ * La logica de datos, conversion y confirmacion reside en useExpenseDetail.
  */
 
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Pressable, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -14,95 +13,36 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
-import { getExpenseReceiptsByExpense } from '@src/db/expenseReceipts'
-import { getExpense } from '@src/db/expenses'
-import { useExpenses } from '@src/hooks/useExpenses'
-import { useRates } from '@src/hooks/useRates'
-import { useSettings } from '@src/hooks/useSettings'
-import { convert } from '@src/lib/conversions'
+import { useExpenseDetail } from '@src/hooks/useExpenseDetail'
 import { formatAmount, formatDate } from '@src/lib/format'
-import {
-  RECURRENCE_LABELS,
-  type BaseCurrency,
-  type Expense,
-  type ExpenseReceipt
-} from '@src/types/domain'
 
 /**
- * Pantalla de detalles de un gasto concreto con acciones de edicion
- * y borrado.
- * @returns Vista de solo lectura con botones Editar y Eliminar
+ * Pantalla de detalles de un gasto concreto con acciones de edicion y borrado.
+ * @returns Vista de presentacion con tarjetas de resumen y dialogos
  */
 export default function ExpenseDetail() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
 
-  const [expense, setExpense] = useState<Expense | null>(null)
-  const [expenseReceipts, setExpenseReceipts] = useState<ExpenseReceipt[]>([])
-  const [loading, setLoading] = useState(true)
-  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
-  const [receiptToRevert, setReceiptToRevert] = useState<ExpenseReceipt | null>(null)
-
-  const ratesState = useRates()
-  const { settings } = useSettings()
-  const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
-
-  // Recarga en cada foco: al volver de la edicion el detalle refleja los cambios.
-  useFocusEffect(
-    useCallback(() => {
-      let active = true
-
-      if (typeof id === 'string') {
-        Promise.all([getExpense(id), getExpenseReceiptsByExpense(id)]).then(
-          ([encontrado, receipts]) => {
-            if (!active) return
-            setExpense(encontrado)
-            setExpenseReceipts(receipts)
-            setLoading(false)
-          }
-        )
-      }
-
-      return () => {
-        active = false
-      }
-    }, [id])
-  )
-
-  const montoConvertido =
-    expense && ratesState.rates && expense.currency !== baseCurrency
-      ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-      : null
-
-  const detailRows: { label: string; value: string }[] = []
-
-  if (expense) {
-    detailRows.push({
-      label: 'Tipo',
-      value: expense.type === 'fixed' ? 'Gasto fijo' : 'Gasto unico'
-    })
-    detailRows.push({
-      label: 'Categoria',
-      value: expense.category?.trim() || 'Sin categoria'
-    })
-
-    if (expense.type === 'fixed' && expense.recurrence) {
-      detailRows.push({
-        label: 'Repeticion',
-        value: RECURRENCE_LABELS[expense.recurrence]
-      })
-    }
-
-    if (expense.nextDueDate) {
-      detailRows.push({ label: 'Proximo vencimiento', value: formatDate(expense.nextDueDate) })
-    }
-
-    if (expense.note?.trim()) {
-      detailRows.push({ label: 'Nota', value: expense.note.trim() })
-    }
-  }
+  const {
+    expense,
+    expenseReceipts,
+    loading,
+    montoConvertido,
+    baseCurrency,
+    detailRows,
+    isPaidThisMonth,
+    deleteConfirmationVisible,
+    setDeleteConfirmationVisible,
+    receiptToRevert,
+    setReceiptToRevert,
+    markingPaid,
+    openEdit,
+    handleConfirmDelete,
+    handleConfirmRevert,
+    handleMarkAsPaid
+  } = useExpenseDetail(id)
 
   return (
     <View className="flex-1 bg-paper" style={{ paddingTop: insets.top }}>
@@ -212,14 +152,17 @@ export default function ExpenseDetail() {
             ) : null}
 
             <View className="gap-3">
-              <Button
-                label="Editar"
-                icon="edit"
-                fullWidth
-                onPress={() =>
-                  router.push({ pathname: '/edit-expense/[id]', params: { id: expense.id } })
-                }
-              />
+              {expense.type === 'fixed' && !isPaidThisMonth ? (
+                <Button
+                  label="Marcar como pagado"
+                  icon="check"
+                  variant="primary"
+                  fullWidth
+                  loading={markingPaid}
+                  onPress={() => void handleMarkAsPaid()}
+                />
+              ) : null}
+              <Button label="Editar" icon="edit" fullWidth onPress={openEdit} />
               <Button
                 label="Eliminar"
                 icon="trash"
@@ -242,10 +185,7 @@ export default function ExpenseDetail() {
             message={`Se eliminara "${expense.name}" de forma permanente.`}
             confirmLabel="Eliminar"
             destructive
-            onConfirm={() => {
-              setDeleteConfirmationVisible(false)
-              void expensesState.removeExpense(expense.id).then(() => router.back())
-            }}
+            onConfirm={() => void handleConfirmDelete()}
             onCancel={() => setDeleteConfirmationVisible(false)}
           />
 
@@ -259,20 +199,7 @@ export default function ExpenseDetail() {
             }
             confirmLabel="Deshacer pago"
             destructive
-            onConfirm={() => {
-              if (receiptToRevert && expense) {
-                const target = receiptToRevert
-                setReceiptToRevert(null)
-                void expensesState.unmarkAsPaid(expense, target.yearMonth).then(async () => {
-                  const [updatedReceipts, updatedExpense] = await Promise.all([
-                    getExpenseReceiptsByExpense(expense.id),
-                    getExpense(expense.id)
-                  ])
-                  setExpenseReceipts(updatedReceipts)
-                  if (updatedExpense) setExpense(updatedExpense)
-                })
-              }
-            }}
+            onConfirm={() => void handleConfirmRevert()}
             onCancel={() => setReceiptToRevert(null)}
           />
         </>
