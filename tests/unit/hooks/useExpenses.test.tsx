@@ -8,10 +8,11 @@ import { act, renderHook, waitFor } from '@testing-library/react-native'
 import * as expenseReceiptsRepo from '@src/db/expenseReceipts'
 import * as expensesRepo from '@src/db/expenses'
 import * as receiptsRepo from '@src/db/incomeReceipts'
-import { useExpenses } from '@src/hooks/useExpenses'
+import { useExpenses, type UseExpensesResult } from '@src/hooks/useExpenses'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import * as notificaciones from '@src/lib/notifications'
 import { fromISODate, toISODate } from '@src/lib/recurrences'
+import type { ExchangeRates } from '@src/types/domain'
 
 import { NOW, buildFixedExpense, buildRates, buildUniqueExpense } from '../../helpers/factories'
 
@@ -336,6 +337,110 @@ describe('useExpenses', () => {
       const { result } = await montarConSemilla()
       expect(result.current.isPaidThisMonth('fijo-1')).toBe(false)
       expect(Array.isArray(result.current.pendingDueExpenses)).toBe(true)
+    })
+
+    it('mantiene inmutable el monto de gastos fijos pagados usando el snapshot aunque cambien las tasas', async () => {
+      getExpensesMock.mockResolvedValueOnce([
+        buildFixedExpense({
+          id: 'fijo-ves',
+          name: 'Internet',
+          amount: 500,
+          currency: 'VES',
+          recurrence: 'monthly',
+          createdAt: '2026-08-01T00:00:00.000Z'
+        })
+      ])
+      getExpenseReceiptsMock.mockResolvedValueOnce([
+        {
+          id: 'rec-1',
+          expenseId: 'fijo-ves',
+          yearMonth: '2026-08',
+          amount: 500,
+          currency: 'VES',
+          baseAmount: 13.88,
+          baseCurrency: 'USD',
+          paidAt: '2026-08-05T00:00:00.000Z',
+          createdAt: '2026-08-05T00:00:00.000Z',
+          updatedAt: '2026-08-05T00:00:00.000Z'
+        }
+      ])
+
+      // Tasa inicial: 36 Bs/$
+      const ratesIniciales = buildRates()
+      const { result, rerender } = await renderHook<
+        UseExpensesResult,
+        { rates: ExchangeRates | null }
+      >(({ rates }: { rates: ExchangeRates | null }) => useExpenses(rates, 'USD', 9), {
+        initialProps: { rates: ratesIniciales }
+      })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      expect(result.current.monthlySummary?.totalFixed).toBe(13.88)
+
+      // Simular devaluacion extrema: tasa sube a 1000 Bs/$
+      const ratesDevaluadas = {
+        ...ratesIniciales,
+        bcvUsd: 1000
+      }
+      rerender({ rates: ratesDevaluadas })
+
+      // El totalFixed pagado debe mantenerse estrictamente en 13.88 gracias al snapshot
+      expect(result.current.monthlySummary?.totalFixed).toBe(13.88)
+    })
+
+    it('omite gastos fijos o unicos creados en un mes futuro respecto al evaluado', async () => {
+      getExpensesMock.mockResolvedValueOnce([
+        buildFixedExpense({
+          id: 'fijo-futuro',
+          name: 'Gimnasio',
+          amount: 40,
+          currency: 'USD',
+          createdAt: '2026-09-01T00:00:00.000Z' // Creado en septiembre, evaluando agosto
+        }),
+        buildUniqueExpense({
+          id: 'unico-futuro',
+          amount: 100,
+          currency: 'USD',
+          createdAt: '2026-09-02T00:00:00.000Z'
+        })
+      ])
+
+      const { result } = await renderHook(() => useExpenses(buildRates(), 'USD', 9))
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      expect(result.current.monthlySummary?.totalFixed).toBe(0)
+      expect(result.current.monthlySummary?.totalUnique).toBe(0)
+    })
+
+    it('permite consultar un mes pasado mediante selectedYearMonth', async () => {
+      getExpensesMock.mockResolvedValueOnce([
+        buildFixedExpense({
+          id: 'fijo-julio',
+          amount: 50,
+          currency: 'USD',
+          createdAt: '2026-06-01T00:00:00.000Z'
+        })
+      ])
+      getExpenseReceiptsMock.mockResolvedValueOnce([
+        {
+          id: 'rec-julio',
+          expenseId: 'fijo-julio',
+          yearMonth: '2026-07',
+          amount: 50,
+          currency: 'USD',
+          baseAmount: 50,
+          baseCurrency: 'USD',
+          paidAt: '2026-07-10T00:00:00.000Z',
+          createdAt: '2026-07-10T00:00:00.000Z',
+          updatedAt: '2026-07-10T00:00:00.000Z'
+        }
+      ])
+
+      const { result } = await renderHook(() => useExpenses(buildRates(), 'USD', 9, 0, '2026-07'))
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      expect(result.current.monthlySummary?.totalFixed).toBe(50)
+      expect(result.current.isPaidThisMonth('fijo-julio')).toBe(true)
     })
   })
 })

@@ -139,3 +139,47 @@ export function ageLabel(fetchedAt: string): string {
   const dias = Math.floor(horas / 24)
   return dias === 1 ? 'hace 1 dia' : `hace ${dias} dias`
 }
+
+/** Nombres de los doce meses en espanol para visualizacion */
+const MONTH_NAMES_ES: readonly string[] = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre'
+]
+
+/**
+ * Formatea un identificador de mes 'yyyy-mm' a texto legible en espanol.
+ * Ejemplo: formatYearMonthLabel('2026-09') produce "Septiembre 2026".
+ * @param yearMonth Cadena en formato yyyy-mm
+ * @returns Cadena con mes y ano legible
+ */
+export function formatYearMonthLabel(yearMonth: string): string {
+  const [yearStr, monthStr] = yearMonth.split('-')
+  const monthIdx = Number(monthStr) - 1
+  const monthName = MONTH_NAMES_ES[monthIdx] ?? monthStr
+  return `${monthName} ${yearStr}`
+}
+
+/**
+ * Desplaza un yearMonth ('yyyy-mm') en N meses hacia el pasado o futuro.
+ * Ejemplo: shiftYearMonth('2026-09', -1) produce "2026-08".
+ * @param yearMonth Cadena en formato yyyy-mm
+ * @param offsetMonths Cantidad de meses a sumar o restar
+ * @returns Nuevo identificador en formato yyyy-mm
+ */
+export function shiftYearMonth(yearMonth: string, offsetMonths: number): string {
+  const [yearStr, monthStr] = yearMonth.split('-')
+  const date = new Date(Number(yearStr), Number(monthStr) - 1 + offsetMonths, 1)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}

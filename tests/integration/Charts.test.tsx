@@ -13,6 +13,7 @@ import { getExchangeRates } from '@src/services/rates'
 import Charts from '../../app/(tabs)/charts'
 import { wait } from '../helpers/wait'
 import {
+  NOW,
   buildFixedExpense,
   buildRates,
   buildSettings,
@@ -32,7 +33,7 @@ jest.mock('@src/db/expenseReceipts', () => ({
   deleteExpenseReceipt: jest.fn(async () => undefined)
 }))
 jest.mock('@src/db/incomeReceipts', () => ({
-  formatYearMonth: jest.fn(() => '2026-08'),
+  formatYearMonth: jest.fn(() => new Date().toISOString().slice(0, 7)),
   getIncomeReceipts: jest.fn(async () => [])
 }))
 

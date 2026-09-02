@@ -91,11 +91,19 @@ export function useIncomesScreen(): UseIncomesScreenResult {
   }, [incomesState.incomes, query])
 
   const rows: VisibleIncomeRow[] = useMemo(() => {
-    const rates = ratesState.rates
-    const receiptIds = new Set(incomesState.receipts.map((r) => r.incomeId))
+    const receiptsMap = new Map(incomesState.receipts.map((r) => [r.incomeId, r]))
 
     return filteredIncomes.map((income) => {
-      const baseAmount = rates ? convert(income.amount, income.currency, baseCurrency, rates) : null
+      const receipt = receiptsMap.get(income.id)
+      const rates = ratesState.rates
+      const baseAmount =
+        receipt && receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency
+          ? receipt.baseAmount
+          : income.baseAmount !== undefined && income.baseCurrency === baseCurrency
+            ? income.baseAmount
+            : rates
+              ? convert(income.amount, income.currency, baseCurrency, rates)
+              : null
       const formattedAmount = baseAmount !== null ? formatAmount(baseAmount, baseCurrency) : '$ --'
       const formattedOriginal = formatAmount(income.amount, income.currency)
 
@@ -105,7 +113,7 @@ export function useIncomesScreen(): UseIncomesScreenResult {
         paydayDay: income.paydayDay,
         formattedAmount,
         formattedOriginalAmount: formattedOriginal,
-        isConfirmed: receiptIds.has(income.id),
+        isConfirmed: receiptsMap.has(income.id),
         rawIncome: income
       }
     })

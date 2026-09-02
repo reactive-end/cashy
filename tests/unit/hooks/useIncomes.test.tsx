@@ -10,7 +10,8 @@ import * as incomeReceiptsRepo from '@src/db/incomeReceipts'
 import * as incomesRepo from '@src/db/incomes'
 import { EXPENSES_LOAD_ERROR_MESSAGE } from '@src/lib/errorMessages'
 import { subscribe } from '@src/lib/events'
-import { useIncomes } from '@src/hooks/useIncomes'
+import { useIncomes, type UseIncomesResult } from '@src/hooks/useIncomes'
+import type { ExchangeRates } from '@src/types/domain'
 
 import { buildIncome, buildRates } from '../../helpers/factories'
 
@@ -258,5 +259,72 @@ describe('useIncomes', () => {
     expect(result.current.pendingConfirmations[0].id).toBe('inc-31')
 
     jest.useRealTimers()
+  })
+
+  it('omite ingresos creados en un mes futuro respecto al evaluado', async () => {
+    getIncomesMock.mockResolvedValue([
+      buildIncome({
+        id: 'inc-futuro',
+        amount: 800,
+        currency: 'USD',
+        type: 'unique',
+        createdAt: '2026-09-01T00:00:00.000Z'
+      })
+    ])
+    getIncomeReceiptsMock.mockResolvedValue([])
+
+    // Evaluando agosto 2026
+    const { result } = await renderHook(() => useIncomes(buildRates(), 'USD', '2026-08'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.monthlyTotal).toBe(0)
+  })
+
+  it('mantiene inmutable el monto de ingresos confirmados usando el snapshot aunque cambien las tasas', async () => {
+    getIncomesMock.mockResolvedValue([
+      buildIncome({
+        id: 'inc-1',
+        amount: 1000,
+        currency: 'VES',
+        type: 'fixed'
+      })
+    ])
+    getIncomeReceiptsMock.mockResolvedValue([
+      {
+        id: 'rec-inc-1',
+        incomeId: 'inc-1',
+        yearMonth: '2026-08',
+        amount: 1000,
+        currency: 'VES',
+        baseAmount: 27.77,
+        baseCurrency: 'USD',
+        confirmedAt: '2026-08-05T00:00:00.000Z',
+        createdAt: '2026-08-05T00:00:00.000Z',
+        updatedAt: '2026-08-05T00:00:00.000Z'
+      }
+    ])
+
+    const ratesIniciales = buildRates()
+    const { result, rerender } = await renderHook<
+      UseIncomesResult,
+      { rates: ExchangeRates | null }
+    >(({ rates }: { rates: ExchangeRates | null }) => useIncomes(rates, 'USD', '2026-08'), {
+      initialProps: { rates: ratesIniciales }
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.confirmedTotal).toBe(27.77)
+    expect(result.current.monthlyTotal).toBe(27.77)
+
+    // Tasa se devalua drasticamente
+    const ratesDevaluadas = {
+      ...ratesIniciales,
+      bcvUsd: 1000
+    }
+    rerender({ rates: ratesDevaluadas })
+
+    // El total confirmado se mantiene inmutable en 27.77
+    expect(result.current.confirmedTotal).toBe(27.77)
+    expect(result.current.monthlyTotal).toBe(27.77)
   })
 })

@@ -121,7 +121,8 @@ export function useExpenses(
   rates: ExchangeRates | null,
   baseCurrency: BaseCurrency,
   reminderHour: number,
-  reminderMinute = 0
+  reminderMinute = 0,
+  selectedYearMonth?: string
 ): UseExpensesResult {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [receipts, setReceipts] = useState<IncomeReceipt[]>([])
@@ -130,7 +131,7 @@ export function useExpenses(
   const [error, setError] = useState<string | null>(null)
   const [reloading, setReloading] = useState(false)
 
-  const currentYearMonth = formatYearMonth()
+  const currentYearMonth = selectedYearMonth ?? formatYearMonth()
 
   const reload = useCallback(async () => {
     setReloading(true)
@@ -202,18 +203,40 @@ export function useExpenses(
   const monthlySummary = useMemo<MonthlySummary | null>(() => {
     if (!rates) return null
 
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
+    const expenseReceiptsMap = new Map(expenseReceipts.map((r) => [r.expenseId, r]))
+    const currentActualMonth = formatYearMonth()
+    const isPastMonth = currentYearMonth < currentActualMonth
 
     const totalFixed = fixedExpenses.reduce((sum, expense) => {
+      // Omite gastos fijos creados en meses posteriores al evaluado
+      const expenseMonth = expense.createdAt.slice(0, 7)
+      if (expenseMonth > currentYearMonth) {
+        return sum
+      }
+
+      // Si ya fue pagado en este mes, se respeta el snapshot congelado del comprobante
+      const receipt = expenseReceiptsMap.get(expense.id)
+      if (receipt) {
+        const receiptAmount =
+          receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency
+            ? receipt.baseAmount
+            : toBase(receipt.amount, receipt.currency, rates, baseCurrency)
+        return sum + receiptAmount
+      }
+
+      // En meses pasados, si no tiene recibo pagado, no fue ejecutado en ese mes
+      if (isPastMonth) {
+        return sum
+      }
+
       const factor = MONTHLY_FACTOR[expense.recurrence ?? 'monthly'] ?? 1
-      return sum + toBase(expense.amount, expense.currency, rates, baseCurrency) * factor
+      const projected = toBase(expense.amount, expense.currency, rates, baseCurrency) * factor
+      return sum + projected
     }, 0)
 
     const uniqueThisMonth = uniqueExpenses.filter((expense) => {
-      const createdDate = new Date(expense.createdAt)
-      return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
+      const expenseMonth = expense.createdAt.slice(0, 7)
+      return expenseMonth === currentYearMonth
     })
 
     const totalUnique = uniqueThisMonth.reduce((sum, expense) => {
@@ -224,10 +247,13 @@ export function useExpenses(
       return sum + converted
     }, 0)
 
-    const confirmedIncome = receipts.reduce(
-      (sum, receipt) => sum + toBase(receipt.amount, receipt.currency, rates, baseCurrency),
-      0
-    )
+    const confirmedIncome = receipts.reduce((sum, receipt) => {
+      const converted =
+        receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency
+          ? receipt.baseAmount
+          : toBase(receipt.amount, receipt.currency, rates, baseCurrency)
+      return sum + converted
+    }, 0)
 
     const netBalance = confirmedIncome - (totalFixed + totalUnique)
 
@@ -238,7 +264,15 @@ export function useExpenses(
       confirmedIncome,
       netBalance
     }
-  }, [fixedExpenses, uniqueExpenses, receipts, rates, baseCurrency])
+  }, [
+    fixedExpenses,
+    uniqueExpenses,
+    receipts,
+    expenseReceipts,
+    rates,
+    baseCurrency,
+    currentYearMonth
+  ])
 
   const paidExpenseIds = useMemo(() => {
     return new Set(expenseReceipts.map((r) => r.expenseId))
@@ -256,9 +290,15 @@ export function useExpenses(
     const currentDay = now.getDate()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
+    const actualYearMonth = formatYearMonth(now)
+
+    // Solo se evaluan recordatorios pendientes para el mes en curso
+    if (currentYearMonth !== actualYearMonth) return []
 
     return fixedExpenses.filter((expense) => {
       if (!expense.active || paidExpenseIds.has(expense.id)) return false
+      if (expense.createdAt.slice(0, 7) > currentYearMonth) return false
+      if (expense.nextDueDate && expense.nextDueDate.slice(0, 7) > currentYearMonth) return false
 
       const anchor =
         expense.dueDay ?? (expense.nextDueDate ? fromISODate(expense.nextDueDate).getDate() : 1)
@@ -267,7 +307,7 @@ export function useExpenses(
 
       return currentDay >= effectiveDay
     })
-  }, [fixedExpenses, paidExpenseIds])
+  }, [fixedExpenses, paidExpenseIds, currentYearMonth])
 
   const upcomingPayments = useMemo<UpcomingPayment[]>(() => {
     const upcoming: UpcomingPayment[] = []

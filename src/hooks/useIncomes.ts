@@ -75,14 +75,15 @@ const MONTHLY_FACTOR: Readonly<Record<string, number>> = {
  */
 export function useIncomes(
   rates: ExchangeRates | null,
-  baseCurrency: BaseCurrency
+  baseCurrency: BaseCurrency,
+  selectedYearMonth?: string
 ): UseIncomesResult {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [receipts, setReceipts] = useState<IncomeReceipt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const currentYearMonth = formatYearMonth()
+  const currentYearMonth = selectedYearMonth ?? formatYearMonth()
 
   const reload = useCallback(async () => {
     try {
@@ -144,27 +145,59 @@ export function useIncomes(
   const pendingConfirmations = useMemo(() => {
     const now = new Date()
     const currentDay = now.getDate()
+    const isCurrentMonth = currentYearMonth === formatYearMonth(now)
+    if (!isCurrentMonth) return []
+
     const daysInCurrentMonth = daysInMonth(now.getFullYear(), now.getMonth())
 
     return incomes.filter((income) => {
       if (income.type === 'unique') return false
+      if (income.createdAt.slice(0, 7) > currentYearMonth) return false
       const effectivePayday = Math.min(income.paydayDay, daysInCurrentMonth)
       return effectivePayday <= currentDay && !confirmedIncomeIds.has(income.id)
     })
-  }, [incomes, confirmedIncomeIds])
+  }, [incomes, confirmedIncomeIds, currentYearMonth])
 
   const monthlyTotal = useMemo<number | null>(() => {
     if (!rates || incomes.length === 0) return null
 
+    const currentActualMonth = formatYearMonth()
+    const isPastMonth = currentYearMonth < currentActualMonth
+
     return incomes.reduce((sum, income) => {
-      const base = convert(income.amount, income.currency, baseCurrency, rates)
+      const incomeMonth = income.createdAt.slice(0, 7)
+      if (incomeMonth > currentYearMonth) return sum
+
       if (income.type === 'unique') {
+        if (incomeMonth !== currentYearMonth) return sum
+        const base =
+          income.baseAmount !== undefined && income.baseCurrency === baseCurrency
+            ? income.baseAmount
+            : convert(income.amount, income.currency, baseCurrency, rates)
         return sum + base
       }
+
+      // Ingreso fijo: si ya esta confirmado en este mes, usar el recibo
+      const receipt = receipts.find((r) => r.incomeId === income.id)
+      if (receipt) {
+        const base =
+          receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency
+            ? receipt.baseAmount
+            : convert(receipt.amount, receipt.currency, baseCurrency, rates)
+        return sum + base
+      }
+
+      // Si es un mes pasado y no tiene recibo, no fue cobrado en ese mes
+      if (isPastMonth) return sum
+
+      const base =
+        income.baseAmount !== undefined && income.baseCurrency === baseCurrency
+          ? income.baseAmount
+          : convert(income.amount, income.currency, baseCurrency, rates)
       const factor = MONTHLY_FACTOR[income.recurrence ?? 'monthly'] ?? 1
       return sum + base * factor
     }, 0)
-  }, [incomes, rates, baseCurrency])
+  }, [incomes, receipts, rates, baseCurrency, currentYearMonth])
 
   const confirmedTotal = useMemo<number | null>(() => {
     if (!rates) return null

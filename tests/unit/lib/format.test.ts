@@ -12,7 +12,9 @@ import {
   formatHour12,
   formatNumber,
   formatTime12,
-  nextNoticeLabel
+  formatYearMonthLabel,
+  nextNoticeLabel,
+  shiftYearMonth
 } from '@src/lib/format'
 
 import { NOW } from '../../helpers/factories'
@@ -135,5 +137,22 @@ describe('nextNoticeLabel', () => {
     disparo.setDate(disparo.getDate() - 1)
 
     expect(nextNoticeLabel(disparo, NOW)).toContain('hoy a las')
+  })
+})
+
+describe('formatYearMonthLabel', () => {
+  it('formatea correctamente diferentes meses del ano', () => {
+    expect(formatYearMonthLabel('2026-01')).toBe('Enero 2026')
+    expect(formatYearMonthLabel('2026-09')).toBe('Septiembre 2026')
+    expect(formatYearMonthLabel('2026-12')).toBe('Diciembre 2026')
+  })
+})
+
+describe('shiftYearMonth', () => {
+  it('desplaza meses hacia atras y hacia adelante', () => {
+    expect(shiftYearMonth('2026-09', -1)).toBe('2026-08')
+    expect(shiftYearMonth('2026-09', 1)).toBe('2026-10')
+    expect(shiftYearMonth('2026-01', -1)).toBe('2025-12')
+    expect(shiftYearMonth('2025-12', 1)).toBe('2026-01')
   })
 })

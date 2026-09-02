@@ -136,9 +136,12 @@ export function useExpensesScreen(): UseExpensesScreenResult {
         continue
       }
 
-      const converted = ratesState.rates
-        ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-        : null
+      const converted =
+        expense.baseAmount !== undefined && expense.baseCurrency === baseCurrency
+          ? expense.baseAmount
+          : ratesState.rates
+            ? convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+            : null
 
       const formattedAmount = converted
         ? formatAmount(converted, baseCurrency)
