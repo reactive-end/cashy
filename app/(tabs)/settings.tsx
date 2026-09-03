@@ -152,7 +152,7 @@ export default function Settings() {
           <Typography variant="label" className="px-1 text-muted">
             Cuenta y perfil
           </Typography>
-          <Card className="py-1">
+          <Card className="py-1 divide-y divide-line">
             <SettingsNavItem
               icon="user"
               title="Tus datos y Cuenta"
@@ -160,6 +160,17 @@ export default function Settings() {
               onPress={() => navigateTo('/settings/account')}
               accessibilityLabel="Ir a tus datos y cuenta"
             />
+            {typeof __DEV__ !== 'undefined' && __DEV__ ? (
+              <SettingsNavItem
+                icon="savings"
+                title="Suscripción Cashy PRO"
+                subtitle="Opciones de suscripción y Pago Móvil BNC"
+                valueBadge="Dev Activo"
+                badgeTone="accent"
+                onPress={() => navigateTo('/settings/pro-payment')}
+                accessibilityLabel="Ir a opciones de suscripcion PRO"
+              />
+            ) : null}
           </Card>
         </View>
 

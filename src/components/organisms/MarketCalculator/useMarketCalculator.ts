@@ -35,9 +35,11 @@ export function useMarketCalculator(
   const [items, setItems] = useState<MarketItem[]>([])
   const [itemName, setItemName] = useState('')
   const [amountCents, setAmountCents] = useState(0)
+  const [quantity, setQuantity] = useState(1)
   const [inputKey, setInputKey] = useState(0)
   const [copiedCurrency, setCopiedCurrency] = useState<Currency | null>(null)
   const [showConfirmClear, setShowConfirmClear] = useState(false)
+  const [itemToRemove, setItemToRemove] = useState<MarketItem | null>(null)
   const [showExtraCostModal, setShowExtraCostModal] = useState(false)
   const [extraCostCurrency, setExtraCostCurrencyState] = useState<Currency>(initialCurrency)
   const [extraCostCents, setExtraCostCents] = useState(0)
@@ -88,16 +90,35 @@ export function useMarketCalculator(
     setAmountCents(cents)
   }, [])
 
+  const incrementQuantity = useCallback(() => {
+    setQuantity((q) => q + 1)
+  }, [])
+
+  const decrementQuantity = useCallback(() => {
+    setQuantity((q) => Math.max(1, q - 1))
+  }, [])
+
+  const setCustomQuantity = useCallback((val: number) => {
+    setQuantity(Math.max(1, Math.floor(val) || 1))
+  }, [])
+
   const handleCurrencyChange = useCallback(
     (newCurrency: Currency) => {
       if (newCurrency === currency) return
 
       if (items.length > 0 && rates) {
         setItems((prev) =>
-          prev.map((item) => ({
-            ...item,
-            amount: convert(item.amount, currency, newCurrency, rates)
-          }))
+          prev.map((item) => {
+            const convertedAmount = convert(item.amount, currency, newCurrency, rates)
+            const convertedUnit = item.unitPrice
+              ? convert(item.unitPrice, currency, newCurrency, rates)
+              : undefined
+            return {
+              ...item,
+              amount: convertedAmount,
+              unitPrice: convertedUnit
+            }
+          })
         )
       }
       setCurrency(newCurrency)
@@ -110,21 +131,89 @@ export function useMarketCalculator(
     if (currentAmount <= 0) return
 
     const resolvedName = itemName.trim() || `Articulo #${items.length + 1}`
+    const unitPrice = currentAmount
+    const totalItemAmount = Math.round(unitPrice * quantity * 100) / 100
+
     const newItem: MarketItem = {
       id: generateId(),
       name: resolvedName,
-      amount: currentAmount
+      amount: totalItemAmount,
+      quantity,
+      unitPrice
     }
 
     setItems((prev) => [...prev, newItem])
     setItemName('')
     setAmountCents(0)
+    setQuantity(1)
     setInputKey((k) => k + 1)
-  }, [currentAmount, itemName, items.length])
+  }, [currentAmount, itemName, items.length, quantity])
 
-  const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+  const incrementItemQuantity = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const newQty = (item.quantity ?? 1) + 1
+        const baseUnit = item.unitPrice ?? item.amount / (item.quantity ?? 1)
+        return {
+          ...item,
+          quantity: newQty,
+          unitPrice: baseUnit,
+          amount: Math.round(baseUnit * newQty * 100) / 100
+        }
+      })
+    )
   }, [])
+
+  const requestRemoveItem = useCallback((item: MarketItem) => {
+    setItemToRemove(item)
+  }, [])
+
+  const confirmRemoveItem = useCallback(() => {
+    if (itemToRemove) {
+      setItems((prev) => prev.filter((item) => item.id !== itemToRemove.id))
+      setItemToRemove(null)
+    }
+  }, [itemToRemove])
+
+  const cancelRemoveItem = useCallback(() => {
+    setItemToRemove(null)
+  }, [])
+
+  const decrementItemQuantity = useCallback((id: string) => {
+    setItems((prev) => {
+      const target = prev.find((item) => item.id === id)
+      if (!target) return prev
+
+      const currentQty = target.quantity ?? 1
+      if (currentQty <= 1) {
+        setItemToRemove(target)
+        return prev
+      }
+
+      const newQty = currentQty - 1
+      const baseUnit = target.unitPrice ?? target.amount / currentQty
+      return prev.map((item) => {
+        if (item.id !== id) return item
+        return {
+          ...item,
+          quantity: newQty,
+          unitPrice: baseUnit,
+          amount: Math.round(baseUnit * newQty * 100) / 100
+        }
+      })
+    })
+  }, [])
+
+  const removeItem = useCallback(
+    (id: string) => {
+      const target = items.find((item) => item.id === id)
+      if (target) {
+        setItemToRemove(target)
+      }
+    },
+    [items]
+  )
 
   const clearItems = useCallback(() => {
     setItems([])
@@ -210,9 +299,12 @@ export function useMarketCalculator(
 
     setSavingExpense(true)
     try {
-      const summaryNote = `${items.length} articulos: ${items
-        .map((item) => `${item.name} (${formatAmount(item.amount, currency)})`)
-        .join(', ')}`
+      const summaryNote = `${items.length} articulos de mercado:\n${items
+        .map((item) => {
+          const qty = item.quantity && item.quantity > 1 ? `${item.quantity}x ` : ''
+          return `• ${qty}${item.name} (${formatAmount(item.amount, currency)})`
+        })
+        .join('\n')}`
 
       await onRegisterExpense({
         name: expenseName.trim() || 'Mercado',
@@ -240,12 +332,14 @@ export function useMarketCalculator(
     items,
     itemName,
     amountCents,
+    quantity,
     inputKey,
     currentAmount,
     totalAmount,
     equivalences,
     copiedCurrency,
     showConfirmClear,
+    itemToRemove,
     showExtraCostModal,
     extraCostCurrency,
     extraCostCents,
@@ -258,6 +352,7 @@ export function useMarketCalculator(
     savingExpense,
     showSuccessDialog,
     ratesState,
+    rates,
     setItemName,
     setShowConfirmClear,
     setExtraCostCurrency,
@@ -268,6 +363,14 @@ export function useMarketCalculator(
     handleCentsChange,
     handleCurrencyChange,
     addItem,
+    incrementQuantity,
+    decrementQuantity,
+    setCustomQuantity,
+    incrementItemQuantity,
+    decrementItemQuantity,
+    requestRemoveItem,
+    confirmRemoveItem,
+    cancelRemoveItem,
     removeItem,
     clearItems,
     handleCopy,

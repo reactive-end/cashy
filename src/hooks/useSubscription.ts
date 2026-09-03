@@ -26,6 +26,18 @@ export interface UseSubscriptionResult {
 let cachedSub: UserSubscription | null = null
 let initializedSub = false
 
+/** Suscripcion simulada para entornos de desarrollo y testing local */
+const DEV_SUBSCRIPTION: UserSubscription = {
+  id: 'dev-subscription',
+  userId: 'dev-tester-user',
+  email: 'developer@cashy.local',
+  plan: 'pro',
+  status: 'active',
+  expiresAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z'
+}
+
 /** Reinicia el cache de modulo para pruebas */
 export function __resetSubscriptionCacheForTests(): void {
   cachedSub = null
@@ -75,11 +87,16 @@ export function useSubscription(): UseSubscriptionResult {
     }
   }, [reload])
 
-  const isPro = isSubscriptionActive(subscription)
-  const plan: SubscriptionPlan = subscription?.plan ?? 'free'
+  const isDevMode =
+    user?.id === 'dev-tester-user' ||
+    (typeof __DEV__ !== 'undefined' && __DEV__ && process.env.NODE_ENV !== 'test')
+
+  const isPro = isDevMode || isSubscriptionActive(subscription)
+  const plan: SubscriptionPlan = isDevMode ? 'pro' : (subscription?.plan ?? 'free')
+  const activeSubscription = subscription ?? (isDevMode ? DEV_SUBSCRIPTION : null)
 
   return {
-    subscription,
+    subscription: activeSubscription,
     isPro,
     plan,
     loading,

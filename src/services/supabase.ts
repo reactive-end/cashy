@@ -55,8 +55,8 @@ export function getGoogleSigninModule(): GoogleSigninModule | null {
   if (!googleSigninInstance) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      googleSigninInstance =
-        require('@react-native-google-signin/google-signin') as GoogleSigninModule
+      const pkg = require('@react-native-google-signin/google-signin') as GoogleSigninModule
+      googleSigninInstance = pkg
     } catch {
       return null
     }

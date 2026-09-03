@@ -106,7 +106,7 @@ export default function LoginScreen() {
               onPress={() => void handleDevLogin()}
               className="mt-3 w-full flex-row items-center justify-center rounded-xl border border-dashed border-accent/60 bg-accent-soft/30 py-2.5 px-4 active:opacity-70"
             >
-              <Typography variant="caption" className="font-sans-semibold text-accent">
+              <Typography variant="caption" className="text-center font-sans-semibold text-accent">
                 Entrar como desarrollador (Testing local)
               </Typography>
             </Pressable>

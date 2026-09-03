@@ -64,7 +64,7 @@ describe('pantalla de Bienvenida (Welcome)', () => {
     const screen = await render(<Welcome />)
     const user = userEvent.setup()
 
-    await user.press(screen.getAllByText('Saltar')[0])
+    await user.press(screen.getByText('Saltar'))
 
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })

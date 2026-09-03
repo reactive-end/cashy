@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 
-import { daysInMonth, fromISODate, toISODate } from '@src/lib/recurrences'
+import { daysInMonth, toISODate } from '@src/lib/recurrences'
 
 /** Celda de la grilla del calendario */
 export interface CalendarDay {
@@ -37,8 +37,14 @@ export interface UseCalendarResult {
   goToPreviousMonth: () => void
   /** Avanza un mes en la vista */
   goToNextMonth: () => void
+  /** Retrocede un anio en la vista */
+  goToPreviousYear: () => void
+  /** Avanza un anio en la vista */
+  goToNextYear: () => void
   /** Marca una fecha ISO como seleccionada */
   selectDay: (isoDate: string) => void
+  /** Cambia el mes visible dentro del anio actual (0-11) */
+  selectMonth: (monthIndex: number) => void
 }
 
 /** Etiquetas cortas de los dias de la semana desde lunes */
@@ -60,12 +66,26 @@ function mondayOffset(date: Date): number {
 }
 
 /**
+ * Interpreta de forma segura una cadena ISO de fecha completa o anio-mes.
+ * @param initialISO Cadena yyyy-mm-dd o yyyy-mm
+ * @returns Instancia de Date valida a medianoche local
+ */
+function parseInitialDate(initialISO?: string): Date {
+  if (!initialISO) return new Date()
+  const parts = initialISO.split('-').map(Number)
+  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return new Date(parts[0], parts[1] - 1, parts[2] ?? 1)
+  }
+  return new Date()
+}
+
+/**
  * Administra el calendario mensual seleccionable.
  * @param initialISO Fecha inicialmente marcada; por defecto hoy
  * @returns Estado de vista, grilla calculada y acciones de navegacion
  */
 export function useCalendar(initialISO?: string): UseCalendarResult {
-  const initialDate = initialISO ? fromISODate(initialISO) : new Date()
+  const initialDate = parseInitialDate(initialISO)
   // Contador total de meses desde el anio cero: anio*12 + indiceMes.
   const [viewedMonthsTotal, setViewedMonthsTotal] = useState(
     initialDate.getFullYear() * 12 + initialDate.getMonth()
@@ -106,10 +126,13 @@ export function useCalendar(initialISO?: string): UseCalendarResult {
   }, [viewYear, viewMonth])
 
   const goToPreviousMonth = () => setViewedMonthsTotal((total) => total - 1)
-
   const goToNextMonth = () => setViewedMonthsTotal((total) => total + 1)
-
+  const goToPreviousYear = () => setViewedMonthsTotal((total) => total - 12)
+  const goToNextYear = () => setViewedMonthsTotal((total) => total + 12)
   const selectDay = (isoDate: string) => setSelectedISO(isoDate)
+  const selectMonth = (monthIndex: number) => {
+    setViewedMonthsTotal(viewYear * 12 + monthIndex)
+  }
 
   return {
     viewYear,
@@ -120,6 +143,9 @@ export function useCalendar(initialISO?: string): UseCalendarResult {
     selectedISO,
     goToPreviousMonth,
     goToNextMonth,
-    selectDay
+    goToPreviousYear,
+    goToNextYear,
+    selectDay,
+    selectMonth
   }
 }

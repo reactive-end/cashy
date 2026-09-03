@@ -98,9 +98,67 @@ describe('organismo MarketCalculator', () => {
     fireEvent.press(btnRemovePan)
     await wait(60)
 
+    expect(componente.getByText('Eliminar artículo')).toBeTruthy()
+    const eliminarButtons = componente.getAllByText('Eliminar')
+    fireEvent.press(eliminarButtons[eliminarButtons.length - 1])
+    await wait(60)
+
     expect(componente.queryByText('Pan')).toBeNull()
     expect(componente.getByText('Leche')).toBeTruthy()
     expect(componente.getByTestId('total-mercado').props.children).toBe('$ 4,00')
+  })
+
+  it('permite ingresar multiples unidades con el selector de cantidad y ajustar unidades en la lista', async () => {
+    const componente = await render(<MarketCalculator initialCurrency="USD" rates={rates} />)
+    await wait(60)
+
+    fireEvent.changeText(componente.getByTestId('input-item-name'), 'Arroz')
+    await wait(60)
+    fireEvent.changeText(componente.getByTestId('input-item-amount'), '200') // $ 2.00
+    await wait(60)
+
+    // Aumentar cantidad con el boton +
+    fireEvent.press(componente.getByTestId('btn-qty-plus'))
+    await wait(60)
+    expect(componente.getByTestId('input-item-qty').props.value).toBe('2')
+    expect(componente.getByText(/2 x \$ 2,00 = \$ 4,00/)).toBeTruthy()
+
+    // Sumar producto
+    fireEvent.press(componente.getByTestId('btn-add-item'))
+    await wait(60)
+
+    expect(componente.getByText('Arroz')).toBeTruthy()
+    expect(componente.getByText('2 x $ 2,00')).toBeTruthy()
+    expect(componente.getByTestId('total-mercado').props.children).toBe('$ 4,00')
+    expect(componente.getByTestId('item-ves-equiv-0').props.children).toMatch(/≈\s+Bs\./)
+
+    // Incrementar en la lista
+    const plusButtons = componente.getAllByLabelText(/Aumentar cantidad de Arroz/)
+    fireEvent.press(plusButtons[0])
+    await wait(60)
+    expect(componente.getByText('3 x $ 2,00')).toBeTruthy()
+    expect(componente.getByTestId('total-mercado').props.children).toBe('$ 6,00')
+
+    // Decrementar en la lista
+    const minusButtons = componente.getAllByLabelText(/Disminuir cantidad de Arroz/)
+    fireEvent.press(minusButtons[0])
+    await wait(60)
+    expect(componente.getByText('2 x $ 2,00')).toBeTruthy()
+    expect(componente.getByTestId('total-mercado').props.children).toBe('$ 4,00')
+
+    // Decrementar hasta solicitar eliminacion
+    fireEvent.press(minusButtons[0]) // pasa a 1
+    await wait(60)
+    fireEvent.press(minusButtons[0]) // pasa a 0 -> abre ConfirmDialog
+    await wait(60)
+
+    expect(componente.getByText('Eliminar artículo')).toBeTruthy()
+    const eliminarButtons = componente.getAllByText('Eliminar')
+    fireEvent.press(eliminarButtons[eliminarButtons.length - 1])
+    await wait(60)
+
+    expect(componente.queryByText('Arroz')).toBeNull()
+    expect(componente.getByTestId('total-mercado').props.children).toBe('$ 0,00')
   })
 
   it('permite vaciar toda la lista mediante el dialogo de confirmacion', async () => {
@@ -270,7 +328,7 @@ describe('organismo MarketCalculator', () => {
     await wait(60)
 
     // Debe mostrar la equivalencia aproximada calculada con la tasa BCV (60 / 36.5 ≈ 1.64 en rates mock)
-    expect(componente.getByText(/≈/)).toBeTruthy()
+    expect(componente.getAllByText(/≈/).length).toBeGreaterThanOrEqual(1)
 
     // Continuar al paso 2
     fireEvent.press(componente.getByTestId('btn-apply-extra-cost'))

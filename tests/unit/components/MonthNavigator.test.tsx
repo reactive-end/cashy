@@ -18,7 +18,21 @@ describe('MonthNavigator', () => {
     )
 
     expect(screen.getByText('Agosto 2026')).toBeTruthy()
+    expect(screen.getByText('Mes actual')).toBeTruthy()
     expect(screen.queryByTestId('month-navigator-current-btn')).toBeNull()
+  })
+
+  it('abre el selector de meses al pulsar sobre el mes y permite elegir uno nuevo', async () => {
+    const onMonthChange = jest.fn()
+    const screen = await render(
+      <MonthNavigator currentYearMonth="2026-08" onMonthChange={onMonthChange} />
+    )
+
+    fireEvent.press(screen.getByTestId('month-navigator-select-month'))
+    expect(await screen.findByText('2026')).toBeTruthy()
+
+    fireEvent.press(await screen.findByText('Enero'))
+    expect(onMonthChange).toHaveBeenCalledWith('2026-01')
   })
 
   it('permite retroceder al mes anterior', async () => {

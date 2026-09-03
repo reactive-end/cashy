@@ -7,7 +7,7 @@
 import { useRouter } from 'expo-router'
 import { Image, Pressable, View } from 'react-native'
 
-import enterpriseBanner from '@assets/enterprise-img.jpg'
+import enterpriseBanner from '@assets/enterprise-img.png'
 import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'

@@ -32,6 +32,7 @@ export default function ExpenseDetail() {
     montoConvertido,
     baseCurrency,
     detailRows,
+    marketDetails,
     isPaidThisMonth,
     deleteConfirmationVisible,
     setDeleteConfirmationVisible,
@@ -104,6 +105,52 @@ export default function ExpenseDetail() {
                 </View>
               ))}
             </Card>
+
+            {marketDetails ? (
+              <Card className="gap-3">
+                <View className="border-b border-line pb-3">
+                  <View className="flex-row items-center gap-2">
+                    <Icon name="shoppingBag" size={18} color="#2F6B4F" />
+                    <Typography variant="title" className="text-[16px]">
+                      Artículos de la compra
+                    </Typography>
+                  </View>
+                  <View className="mt-2 self-start rounded-full bg-accent-soft px-2.5 py-0.5">
+                    <Typography variant="caption" className="text-[11px] font-medium text-accent">
+                      {`${marketDetails.items.length} ${
+                        marketDetails.items.length === 1 ? 'artículo' : 'artículos'
+                      }`}
+                    </Typography>
+                  </View>
+                </View>
+
+                <View className="divide-y divide-line/40">
+                  {marketDetails.items.map((item, idx) => (
+                    <View
+                      key={`${item.name}-${idx}`}
+                      className="flex-row items-center justify-between py-2.5"
+                      testID={`market-item-row-${idx}`}
+                    >
+                      <View className="flex-1 pr-2">
+                        <Typography variant="body" className="font-medium text-ink">
+                          {item.name}
+                        </Typography>
+                        {item.quantity && item.quantity > 1 ? (
+                          <Typography variant="caption" className="text-muted text-[12px]">
+                            {`Cantidad: ${item.quantity}`}
+                          </Typography>
+                        ) : null}
+                      </View>
+                      {item.amountText ? (
+                        <Typography variant="figure" className="font-sans-semibold text-accent">
+                          {item.amountText}
+                        </Typography>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            ) : null}
 
             {expense.type === 'fixed' ? (
               <Card className="gap-3">

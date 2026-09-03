@@ -13,7 +13,12 @@ import type { Expense } from '@src/types/domain'
 
 import ExpenseDetail from '../../app/expense/[id]'
 import { wait } from '../helpers/wait'
-import { buildFixedExpense, buildRates, buildSettings } from '../helpers/factories'
+import {
+  buildFixedExpense,
+  buildRates,
+  buildSettings,
+  buildUniqueExpense
+} from '../helpers/factories'
 
 const mockBack = jest.fn()
 const mockPush = jest.fn()
@@ -127,5 +132,37 @@ describe('pantalla de detalle del gasto', () => {
     await wait(200)
 
     expect(await pantalla.findByText('Marcar como pagado')).toBeTruthy()
+  })
+
+  it('muestra la lista organizada de articulos cuando el gasto es de mercado', async () => {
+    const gastoMercado = buildUniqueExpense({
+      id: 'fijo-1',
+      name: 'Mercado semanal',
+      amount: 15,
+      currency: 'USD',
+      type: 'unique',
+      category: 'Compras',
+      note: `3 articulos de mercado:
+• 2x Harina PAN ($3,00)
+• 1x Arroz ($2,00)
+• Queso ($10,00)`
+    })
+    sembrar(gastoMercado)
+
+    const pantalla = await render(<ExpenseDetail />)
+    await wait(200)
+
+    expect(await pantalla.findByText('Artículos de la compra')).toBeTruthy()
+    expect(pantalla.getByText('3 artículos')).toBeTruthy()
+    expect(pantalla.getByText('Harina PAN')).toBeTruthy()
+    expect(pantalla.getByText('Cantidad: 2')).toBeTruthy()
+    expect(pantalla.getByText('$3,00')).toBeTruthy()
+    expect(pantalla.getByText('Arroz')).toBeTruthy()
+    expect(pantalla.getByText('$2,00')).toBeTruthy()
+    expect(pantalla.getByText('Queso')).toBeTruthy()
+    expect(pantalla.getByText('$10,00')).toBeTruthy()
+
+    // No debe aparecer como texto corrido bajo 'Nota'
+    expect(pantalla.queryByText('Nota')).toBeNull()
   })
 })

@@ -12,6 +12,10 @@ export interface MarketItem {
   name: string
   /** Monto en unidades monetarias decimales */
   amount: number
+  /** Cantidad de unidades del producto */
+  quantity?: number
+  /** Precio por unidad en la moneda de compra */
+  unitPrice?: number
 }
 
 /** Equivalencia convertida a una divisa objetivo */

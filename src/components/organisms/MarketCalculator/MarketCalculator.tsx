@@ -5,7 +5,7 @@
  * the total as a unique expense.
  */
 
-import { Pressable, View } from 'react-native'
+import { Pressable, TextInput, View } from 'react-native'
 
 import { Button } from '@src/components/atoms/Button'
 import { Card } from '@src/components/atoms/Card'
@@ -18,6 +18,7 @@ import { ModalBackdrop } from '@src/components/molecules/ModalBackdrop'
 import { MoneyInput } from '@src/components/molecules/MoneyInput'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
 import { COLORS } from '@src/constants/theme'
+import { convert } from '@src/lib/conversions'
 import { currencySymbol, formatAmount, formatNumber } from '@src/lib/format'
 import type { Currency } from '@src/types/domain'
 
@@ -80,7 +81,12 @@ export function MarketCalculator({
           <View className="flex-row items-baseline justify-between">
             <Typography variant="label">Precio</Typography>
             <Typography variant="figure" className="text-[13px] text-accent">
-              {formatAmount(calc.currentAmount, calc.currency)}
+              {calc.quantity > 1
+                ? `${calc.quantity} x ${formatAmount(calc.currentAmount, calc.currency)} = ${formatAmount(
+                    calc.currentAmount * calc.quantity,
+                    calc.currency
+                  )}`
+                : formatAmount(calc.currentAmount, calc.currency)}
             </Typography>
           </View>
           <MoneyInput
@@ -91,15 +97,62 @@ export function MarketCalculator({
           />
         </View>
 
-        <Button
-          label="Sumar producto"
-          icon="add"
-          size="medium"
-          fullWidth
-          disabled={calc.currentAmount <= 0}
-          onPress={calc.addItem}
-          testID="btn-add-item"
-        />
+        <View className="flex-row items-stretch gap-2.5">
+          {/* Selector de cantidad personalizada */}
+          <View className="flex-row items-center rounded-xl border border-line bg-card px-1">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Disminuir cantidad"
+              testID="btn-qty-minus"
+              onPress={calc.decrementQuantity}
+              disabled={calc.quantity <= 1}
+              className={`size-8 items-center justify-center rounded-lg ${
+                calc.quantity <= 1 ? 'opacity-30' : 'active:opacity-60'
+              }`}
+            >
+              <Icon name="minus" size={15} color={COLORS.ink} />
+            </Pressable>
+
+            <TextInput
+              value={String(calc.quantity)}
+              onChangeText={(text) => {
+                const cleaned = text.replace(/[^0-9]/g, '')
+                calc.setCustomQuantity(cleaned ? parseInt(cleaned, 10) : 1)
+              }}
+              keyboardType="number-pad"
+              maxLength={3}
+              textAlign="center"
+              textAlignVertical="center"
+              style={{ paddingVertical: 0, includeFontPadding: false }}
+              className="min-w-9 px-1 text-center font-sans-semibold text-[15px] text-ink"
+              accessibilityLabel="Cantidad de unidades"
+              testID="input-item-qty"
+            />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Aumentar cantidad"
+              testID="btn-qty-plus"
+              onPress={calc.incrementQuantity}
+              className="size-8 items-center justify-center rounded-lg active:opacity-60"
+            >
+              <Icon name="add" size={15} color={COLORS.ink} />
+            </Pressable>
+          </View>
+
+          {/* Boton Sumar producto */}
+          <View className="flex-1">
+            <Button
+              label="Sumar producto"
+              icon="add"
+              size="medium"
+              fullWidth
+              disabled={calc.currentAmount <= 0}
+              onPress={calc.addItem}
+              testID="btn-add-item"
+            />
+          </View>
+        </View>
       </Card>
 
       {/* 3) Card del total acumulado y equivalencias */}
@@ -199,34 +252,96 @@ export function MarketCalculator({
           </View>
         ) : (
           <View className="divide-y divide-line/40">
-            {calc.items.map((item, index) => (
-              <View
-                key={item.id}
-                className="flex-row items-center justify-between py-3"
-                testID={`item-row-${index}`}
-              >
-                <View className="flex-1 pr-3">
-                  <Typography variant="body" numberOfLines={1}>
-                    {item.name}
-                  </Typography>
+            {calc.items.map((item, index) => {
+              const itemQuantity = item.quantity ?? 1
+              const unitPrice = item.unitPrice ?? item.amount / itemQuantity
+              const currentRates = calc.rates
+              const vesEquivalentText =
+                calc.currency !== 'VES' && currentRates
+                  ? `≈ ${formatAmount(convert(item.amount, calc.currency, 'VES', currentRates), 'VES')}`
+                  : null
+
+              return (
+                <View
+                  key={item.id}
+                  className="flex-row items-center justify-between py-3 gap-2"
+                  testID={`item-row-${index}`}
+                >
+                  <View className="flex-1 pr-1">
+                    <Typography variant="body" numberOfLines={1}>
+                      {item.name}
+                    </Typography>
+                    {itemQuantity > 1 ? (
+                      <Typography variant="caption" className="text-faint text-[12px]">
+                        {`${itemQuantity} x ${formatAmount(unitPrice, calc.currency)}`}
+                      </Typography>
+                    ) : null}
+                  </View>
+
+                  <View className="items-end gap-0.5">
+                    <View className="flex-row items-center gap-2">
+                      {/* Botones para ajustar cantidad del item */}
+                      <View className="flex-row items-center rounded-lg border border-line bg-card p-0.5">
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Disminuir cantidad de ${item.name}`}
+                          testID={`btn-item-minus-${item.id}`}
+                          onPress={() => calc.decrementItemQuantity(item.id)}
+                          className="size-7 items-center justify-center rounded active:opacity-60"
+                        >
+                          <Icon name="minus" size={13} color={COLORS.ink} />
+                        </Pressable>
+
+                        <View className="min-w-6 items-center justify-center px-1">
+                          <Typography
+                            variant="caption"
+                            className="font-sans-semibold text-[13px] text-ink"
+                            testID={`text-item-qty-${item.id}`}
+                          >
+                            {itemQuantity}
+                          </Typography>
+                        </View>
+
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Aumentar cantidad de ${item.name}`}
+                          testID={`btn-item-plus-${item.id}`}
+                          onPress={() => calc.incrementItemQuantity(item.id)}
+                          className="size-7 items-center justify-center rounded active:opacity-60"
+                        >
+                          <Icon name="add" size={13} color={COLORS.ink} />
+                        </Pressable>
+                      </View>
+
+                      <Typography variant="figure">
+                        {formatAmount(item.amount, calc.currency)}
+                      </Typography>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Eliminar ${item.name}`}
+                        testID={`btn-remove-${item.id}`}
+                        onPress={() => calc.requestRemoveItem(item)}
+                        hitSlop={8}
+                        className="p-1 active:opacity-60"
+                      >
+                        <Icon name="close" size={16} color={COLORS.muted} />
+                      </Pressable>
+                    </View>
+
+                    {vesEquivalentText ? (
+                      <Typography
+                        variant="caption"
+                        className="text-faint text-[11px] pr-7"
+                        testID={`item-ves-equiv-${index}`}
+                      >
+                        {vesEquivalentText}
+                      </Typography>
+                    ) : null}
+                  </View>
                 </View>
-                <View className="flex-row items-center gap-3">
-                  <Typography variant="figure">
-                    {formatAmount(item.amount, calc.currency)}
-                  </Typography>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Eliminar ${item.name}`}
-                    testID={`btn-remove-${item.id}`}
-                    onPress={() => calc.removeItem(item.id)}
-                    hitSlop={8}
-                    className="p-1 active:opacity-60"
-                  >
-                    <Icon name="close" size={16} color={COLORS.muted} />
-                  </Pressable>
-                </View>
-              </View>
-            ))}
+              )
+            })}
           </View>
         )}
       </Card>
@@ -243,6 +358,21 @@ export function MarketCalculator({
           testID="btn-open-register-expense"
         />
       ) : null}
+
+      {/* Confirmacion para eliminar un articulo */}
+      <ConfirmDialog
+        visible={calc.itemToRemove !== null}
+        title="Eliminar artículo"
+        message={
+          calc.itemToRemove
+            ? `¿Deseas quitar "${calc.itemToRemove.name}" de la lista de compras?`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={calc.confirmRemoveItem}
+        onCancel={calc.cancelRemoveItem}
+      />
 
       {/* Confirmacion para vaciar lista */}
       <ConfirmDialog

@@ -13,6 +13,7 @@ import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
 import { formatDate } from '@src/lib/format'
+import { parseMarketNote, type ParsedMarketNote } from '@src/lib/marketNote'
 import {
   RECURRENCE_LABELS,
   type BaseCurrency,
@@ -32,6 +33,7 @@ export interface UseExpenseDetailResult {
   montoConvertido: number | null
   baseCurrency: BaseCurrency
   detailRows: DetailRow[]
+  marketDetails: ParsedMarketNote | null
   isPaidThisMonth: boolean
   deleteConfirmationVisible: boolean
   setDeleteConfirmationVisible: (visible: boolean) => void
@@ -94,6 +96,11 @@ export function useExpenseDetail(id: string | undefined): UseExpenseDetailResult
     return convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
   }, [expense, ratesState.rates, baseCurrency])
 
+  const marketDetails = useMemo(() => {
+    if (!expense?.note) return null
+    return parseMarketNote(expense.note)
+  }, [expense])
+
   const detailRows = useMemo<DetailRow[]>(() => {
     if (!expense) return []
 
@@ -129,7 +136,7 @@ export function useExpenseDetail(id: string | undefined): UseExpenseDetailResult
       })
     }
 
-    if (expense.note?.trim()) {
+    if (expense.note?.trim() && !marketDetails) {
       rows.push({
         label: 'Nota',
         value: expense.note.trim()
@@ -137,7 +144,7 @@ export function useExpenseDetail(id: string | undefined): UseExpenseDetailResult
     }
 
     return rows
-  }, [expense])
+  }, [expense, marketDetails])
 
   const openEdit = useCallback(() => {
     if (!expense) return
@@ -187,6 +194,7 @@ export function useExpenseDetail(id: string | undefined): UseExpenseDetailResult
     montoConvertido,
     baseCurrency,
     detailRows,
+    marketDetails,
     isPaidThisMonth,
     deleteConfirmationVisible,
     setDeleteConfirmationVisible,

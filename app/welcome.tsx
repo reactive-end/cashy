@@ -101,12 +101,9 @@ export default function Welcome() {
             />
             <Typography variant="display">Cashy</Typography>
           </View>
-          <View className="flex-row items-center gap-2">
-            <Typography variant="caption" className="text-faint">
-              Paso {currentStep + 1} de {STEPS.length}
-            </Typography>
-            <Button label="Saltar" variant="ghost" onPress={() => void markSeenAndNavigate()} />
-          </View>
+          <Typography variant="caption" className="text-faint">
+            Paso {currentStep + 1} de {STEPS.length}
+          </Typography>
         </View>
 
         {/* Contenido de la diapositiva: camuflado con el fondo, sin recuadro ni sombra */}

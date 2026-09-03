@@ -106,6 +106,14 @@ export default function AccountSettings() {
                   fullWidth
                   onPress={openProPayment}
                 />
+              ) : typeof __DEV__ !== 'undefined' && __DEV__ ? (
+                <Button
+                  label="Ver pantalla de Pago PRO (Dev)"
+                  variant="secondary"
+                  icon="savings"
+                  fullWidth
+                  onPress={openProPayment}
+                />
               ) : null}
 
               <Button
