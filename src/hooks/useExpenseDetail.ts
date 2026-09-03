@@ -26,9 +26,16 @@ export interface DetailRow {
   value: string
 }
 
+/** Cantidad de comprobantes por pagina en el historial de pagos */
+export const RECEIPTS_PER_PAGE = 5
+
 export interface UseExpenseDetailResult {
   expense: Expense | null
   expenseReceipts: ExpenseReceipt[]
+  paginatedReceipts: ExpenseReceipt[]
+  receiptsPage: number
+  totalReceiptsPages: number
+  setReceiptsPage: (page: number) => void
   loading: boolean
   montoConvertido: number | null
   baseCurrency: BaseCurrency
@@ -187,9 +194,23 @@ export function useExpenseDetail(id: string | undefined): UseExpenseDetailResult
     }
   }, [expense, expensesState])
 
+  const [receiptsPage, setReceiptsPage] = useState(1)
+
+  const totalReceiptsPages = Math.max(1, Math.ceil(expenseReceipts.length / RECEIPTS_PER_PAGE))
+  const currentReceiptsPage = Math.min(receiptsPage, totalReceiptsPages)
+
+  const paginatedReceipts = useMemo(() => {
+    const start = (currentReceiptsPage - 1) * RECEIPTS_PER_PAGE
+    return expenseReceipts.slice(start, start + RECEIPTS_PER_PAGE)
+  }, [expenseReceipts, currentReceiptsPage])
+
   return {
     expense,
     expenseReceipts,
+    paginatedReceipts,
+    receiptsPage: currentReceiptsPage,
+    totalReceiptsPages,
+    setReceiptsPage,
     loading,
     montoConvertido,
     baseCurrency,

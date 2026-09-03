@@ -97,9 +97,9 @@ export default function ExpensesScreen() {
           onChange={handleSegmentChange}
         />
 
-        {/* Navegador de mes y alternador de periodo para gastos unicos */}
+        {/* Navegador de mes y alternador de periodo SOLO para gastos unicos */}
         {segment === 'unique' ? (
-          <View className="gap-2">
+          <View className="gap-2.5">
             {!showAllMonths ? (
               <MonthNavigator
                 currentYearMonth={selectedYearMonth}
@@ -107,19 +107,13 @@ export default function ExpensesScreen() {
               />
             ) : null}
 
-            <View className="flex-row items-center justify-end">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showAllMonths ? 'Filtrar por mes' : 'Ver historial completo'}
-                onPress={toggleShowAllMonths}
-                className="flex-row items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 active:opacity-60"
-              >
-                <Icon name={showAllMonths ? 'calendar' : 'repeat'} size={14} color="#6B6B66" />
-                <Typography variant="caption" className="text-[12px] font-sans-medium text-muted">
-                  {showAllMonths ? 'Filtrar por mes' : 'Ver historial completo'}
-                </Typography>
-              </Pressable>
-            </View>
+            <Button
+              fullWidth
+              variant="primary"
+              label={showAllMonths ? 'Filtrar por mes' : 'Ver historial completo'}
+              icon={showAllMonths ? 'calendar' : 'repeat'}
+              onPress={toggleShowAllMonths}
+            />
           </View>
         ) : null}
 

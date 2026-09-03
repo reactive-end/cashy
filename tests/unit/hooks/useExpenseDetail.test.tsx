@@ -107,4 +107,31 @@ describe('useExpenseDetail', () => {
 
     expect(mockBack).toHaveBeenCalled()
   })
+
+  it('pagina los comprobantes cuando exceden el limite por pagina', async () => {
+    const mockReceipts = Array.from({ length: 8 }, (_, idx) => ({
+      id: `rcpt-${idx}`,
+      expenseId: 'fijo-1',
+      amount: 300,
+      currency: 'USD' as const,
+      paidAt: '2026-08-01T10:00:00.000Z',
+      yearMonth: `2026-0${idx + 1}`
+    }))
+    getExpenseReceiptsByExpenseMock.mockResolvedValue(mockReceipts)
+
+    const { result } = await renderHook(() => useExpenseDetail('fijo-1'))
+    await waitFor(() => expect(result.current?.loading).toBe(false))
+
+    expect(result.current.expenseReceipts.length).toBe(8)
+    expect(result.current.totalReceiptsPages).toBe(2)
+    expect(result.current.receiptsPage).toBe(1)
+    expect(result.current.paginatedReceipts.length).toBe(5)
+
+    await act(async () => {
+      result.current.setReceiptsPage(2)
+    })
+
+    expect(result.current.receiptsPage).toBe(2)
+    expect(result.current.paginatedReceipts.length).toBe(3)
+  })
 })

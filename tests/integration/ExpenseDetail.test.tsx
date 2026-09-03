@@ -127,6 +127,27 @@ describe('pantalla de detalle del gasto', () => {
     expect(pantalla.getByText('Aun no hay pagos registrados para este gasto.')).toBeTruthy()
   })
 
+  it('muestra controles de paginacion encima de la lista de comprobantes en el historial', async () => {
+    const { getExpenseReceiptsByExpense } = jest.requireMock('@src/db/expenseReceipts')
+    const mockReceipts = Array.from({ length: 7 }, (_, idx) => ({
+      id: `rcpt-${idx}`,
+      expenseId: 'fijo-1',
+      amount: 300,
+      currency: 'USD' as const,
+      paidAt: '2026-08-01T10:00:00.000Z',
+      yearMonth: `2026-0${idx + 1}`
+    }))
+    getExpenseReceiptsByExpense.mockResolvedValue(mockReceipts)
+
+    const pantalla = await render(<ExpenseDetail />)
+    await wait(200)
+
+    expect(await pantalla.findByText('Historial de pagos')).toBeTruthy()
+    expect(pantalla.getByText('Página 1 de 2')).toBeTruthy()
+    expect(pantalla.getByText('Anterior')).toBeTruthy()
+    expect(pantalla.getByText('Siguiente')).toBeTruthy()
+  })
+
   it('muestra el boton Marcar como pagado cuando el gasto fijo no esta pagado este mes', async () => {
     const pantalla = await render(<ExpenseDetail />)
     await wait(200)

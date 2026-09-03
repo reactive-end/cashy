@@ -13,6 +13,7 @@ import { Card } from '@src/components/atoms/Card'
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
+import { Pagination } from '@src/components/molecules/Pagination'
 import { useExpenseDetail } from '@src/hooks/useExpenseDetail'
 import { formatAmount, formatDate } from '@src/lib/format'
 
@@ -28,6 +29,10 @@ export default function ExpenseDetail() {
   const {
     expense,
     expenseReceipts,
+    paginatedReceipts,
+    receiptsPage,
+    totalReceiptsPages,
+    setReceiptsPage,
     loading,
     montoConvertido,
     baseCurrency,
@@ -152,52 +157,6 @@ export default function ExpenseDetail() {
               </Card>
             ) : null}
 
-            {expense.type === 'fixed' ? (
-              <Card className="gap-3">
-                <Typography variant="title" className="text-[16px]">
-                  Historial de pagos
-                </Typography>
-                {expenseReceipts.length === 0 ? (
-                  <Typography variant="caption" className="text-faint">
-                    Aun no hay pagos registrados para este gasto.
-                  </Typography>
-                ) : (
-                  <View className="gap-2.5">
-                    {expenseReceipts.map((receipt) => (
-                      <View
-                        key={receipt.id}
-                        className="flex-row items-center justify-between border-b border-line pb-2.5 last:border-b-0 last:pb-0"
-                      >
-                        <View className="gap-0.5">
-                          <Typography variant="body" className="font-semibold">
-                            {receipt.yearMonth}
-                          </Typography>
-                          <Typography variant="caption" className="text-faint">
-                            {`Pagado el ${formatDate(receipt.paidAt.split('T')[0])}`}
-                          </Typography>
-                        </View>
-
-                        <View className="flex-row items-center gap-3">
-                          <Typography variant="body" className="font-medium text-accent">
-                            {formatAmount(receipt.amount, receipt.currency)}
-                          </Typography>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`Deshacer pago de ${receipt.yearMonth}`}
-                            onPress={() => setReceiptToRevert(receipt)}
-                            hitSlop={8}
-                            className="rounded-full p-1 active:opacity-60"
-                          >
-                            <Icon name="close" size={16} color="#6B6B66" />
-                          </Pressable>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </Card>
-            ) : null}
-
             <View className="gap-3">
               {expense.type === 'fixed' && !isPaidThisMonth ? (
                 <Button
@@ -218,6 +177,60 @@ export default function ExpenseDetail() {
                 onPress={() => setDeleteConfirmationVisible(true)}
               />
             </View>
+
+            {expense.type === 'fixed' ? (
+              <Card className="gap-3">
+                <Typography variant="title" className="text-[16px]">
+                  Historial de pagos
+                </Typography>
+                {expenseReceipts.length === 0 ? (
+                  <Typography variant="caption" className="text-faint">
+                    Aun no hay pagos registrados para este gasto.
+                  </Typography>
+                ) : (
+                  <>
+                    <Pagination
+                      page={receiptsPage}
+                      totalPages={totalReceiptsPages}
+                      onPageChange={setReceiptsPage}
+                    />
+
+                    <View className="gap-2.5 pt-1">
+                      {paginatedReceipts.map((receipt) => (
+                        <View
+                          key={receipt.id}
+                          className="flex-row items-center justify-between border-b border-line pb-2.5 last:border-b-0 last:pb-0"
+                        >
+                          <View className="gap-0.5">
+                            <Typography variant="body" className="font-semibold">
+                              {receipt.yearMonth}
+                            </Typography>
+                            <Typography variant="caption" className="text-faint">
+                              {`Pagado el ${formatDate(receipt.paidAt.split('T')[0])}`}
+                            </Typography>
+                          </View>
+
+                          <View className="flex-row items-center gap-3">
+                            <Typography variant="body" className="font-medium text-accent">
+                              {formatAmount(receipt.amount, receipt.currency)}
+                            </Typography>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Deshacer pago de ${receipt.yearMonth}`}
+                              onPress={() => setReceiptToRevert(receipt)}
+                              hitSlop={8}
+                              className="rounded-full p-1 active:opacity-60"
+                            >
+                              <Icon name="close" size={16} color="#6B6B66" />
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </Card>
+            ) : null}
           </>
         )}
         {/* Espaciador con altura del area segura: evita style dinamico en el ScrollView */}
