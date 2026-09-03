@@ -46,7 +46,7 @@ import type {
 const UPCOMING_HORIZON_DAYS = 7
 
 /** Factores de conversion de cada recurrencia a su equivalente mensual */
-const MONTHLY_FACTOR: Readonly<Record<string, number>> = {
+export const MONTHLY_FACTOR: Readonly<Record<string, number>> = {
   weekly: 52 / 12,
   biweekly: 2,
   monthly: 1,

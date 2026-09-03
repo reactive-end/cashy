@@ -97,4 +97,30 @@ describe('useExpensesScreen', () => {
     result.current.openCreateExpense()
     expect(mockPush).toHaveBeenCalledWith('/new-expense')
   })
+
+  it('formatea la fecha en el detalle de gastos unicos y permite navegar meses', async () => {
+    const { result } = await renderHook(() => useExpensesScreen())
+    await waitFor(() => expect(result.current?.segment).toBe('fixed'))
+
+    await act(async () => {
+      result.current.handleSegmentChange('unique')
+    })
+
+    expect(result.current.paginatedRows.length).toBe(1)
+    expect(result.current.paginatedRows[0].detail).toContain('Comida')
+
+    await act(async () => {
+      result.current.handleMonthChange('2026-07')
+    })
+
+    expect(result.current.selectedYearMonth).toBe('2026-07')
+    expect(result.current.paginatedRows.length).toBe(0)
+
+    await act(async () => {
+      result.current.toggleShowAllMonths()
+    })
+
+    expect(result.current.showAllMonths).toBe(true)
+    expect(result.current.paginatedRows.length).toBe(1)
+  })
 })

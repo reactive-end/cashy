@@ -61,6 +61,39 @@ export function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
+/** Nombres abreviados de los doce meses en espanol para visualizacion */
+const MONTH_SHORT_NAMES_ES: readonly string[] = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic'
+]
+
+/**
+ * Formatea una fecha ISO al formato corto regional 'd mmm' (ej: '3 sep').
+ * @param isoDate Fecha ISO (yyyy-mm-dd o marca temporal ISO completa)
+ * @returns Fecha corta legible en espanol
+ */
+export function formatDateShort(isoDate: string): string {
+  if (!isoDate) return ''
+  const datePart = isoDate.slice(0, 10)
+  const parts = datePart.split('-')
+  if (parts.length < 3) return ''
+  const day = parseInt(parts[2], 10)
+  const monthIdx = parseInt(parts[1], 10) - 1
+  const monthName = MONTH_SHORT_NAMES_ES[monthIdx]
+  if (isNaN(day) || !monthName) return ''
+  return `${day} ${monthName}`
+}
+
 /**
  * Formatea una hora del dia (0-23) en formato 12 horas con
  * sufijo a.m./p.m., estandar regional para la interfaz.

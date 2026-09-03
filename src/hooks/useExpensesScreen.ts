@@ -9,11 +9,12 @@ import { useCallback, useMemo, useState } from 'react'
 
 import type { BadgeTone } from '@src/components/atoms/Badge/Badge.d'
 import type { ExpenseFilters, ExpenseSortOrder } from '@src/components/molecules/FilterSheet'
+import { formatYearMonth } from '@src/db/incomeReceipts'
 import { useExpenses } from '@src/hooks/useExpenses'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
-import { formatAmount } from '@src/lib/format'
+import { formatAmount, formatDateShort } from '@src/lib/format'
 import { daysUntil, fromISODate } from '@src/lib/recurrences'
 import {
   RECURRENCE_LABELS,
@@ -62,6 +63,10 @@ export interface UseExpensesScreenResult {
   onRefresh: () => Promise<void>
   openExpenseDetail: (id: string) => void
   openCreateExpense: () => void
+  selectedYearMonth: string
+  handleMonthChange: (nextYearMonth: string) => void
+  showAllMonths: boolean
+  toggleShowAllMonths: () => void
 }
 
 /**
@@ -78,14 +83,30 @@ export function useExpensesScreen(): UseExpensesScreenResult {
   const [filters, setFilters] = useState<ExpenseFilters>({ categories: [], currencies: [] })
   const [sortOrder, setSortOrder] = useState<ExpenseSortOrder>('recent')
 
+  const actualYearMonth = formatYearMonth()
+  const [selectedYearMonth, setSelectedYearMonth] = useState(actualYearMonth)
+  const [showAllMonths, setShowAllMonths] = useState(false)
+
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+  const expensesState = useExpenses(
+    ratesState.rates,
+    baseCurrency,
+    settings?.reminderHour ?? 9,
+    0,
+    selectedYearMonth
+  )
   const { isPaidThisMonth } = expensesState
 
-  const sourceList =
-    segment === 'fixed' ? expensesState.fixedExpenses : expensesState.uniqueExpenses
+  const rawList = segment === 'fixed' ? expensesState.fixedExpenses : expensesState.uniqueExpenses
+
+  const sourceList = useMemo(() => {
+    if (segment === 'fixed' || showAllMonths) {
+      return rawList
+    }
+    return rawList.filter((expense) => expense.createdAt.slice(0, 7) === selectedYearMonth)
+  }, [rawList, segment, showAllMonths, selectedYearMonth])
 
   const availableCategories = useMemo(() => {
     const uniqueSet = new Set<string>()
@@ -148,13 +169,17 @@ export function useExpensesScreen(): UseExpensesScreenResult {
         : formatAmount(expense.amount, expense.currency)
 
       if (expense.type === 'unique') {
+        const dateText = formatDateShort(expense.createdAt)
+        const categoryText = (expense.category ?? '').trim()
+        const detail = categoryText ? `${dateText} · ${categoryText}` : dateText
+
         mappedRows.push({
           id: expense.id,
           name: expense.name,
           convertedAmount: converted ?? expense.amount,
           createdAt: expense.createdAt,
           icon: 'tag',
-          detail: expense.category,
+          detail,
           formattedAmount,
           formattedOriginalAmount:
             converted && expense.currency !== baseCurrency
@@ -251,6 +276,17 @@ export function useExpensesScreen(): UseExpensesScreenResult {
     router.push('/new-expense')
   }, [router])
 
+  const handleMonthChange = useCallback((nextYearMonth: string) => {
+    setSelectedYearMonth(nextYearMonth)
+    setShowAllMonths(false)
+    setPage(1)
+  }, [])
+
+  const toggleShowAllMonths = useCallback(() => {
+    setShowAllMonths((prev) => !prev)
+    setPage(1)
+  }, [])
+
   const activeFiltersCount = filters.categories.length + filters.currencies.length
 
   return {
@@ -276,6 +312,10 @@ export function useExpensesScreen(): UseExpensesScreenResult {
     refreshing: ratesState.refreshing,
     onRefresh: ratesState.refresh,
     openExpenseDetail,
-    openCreateExpense
+    openCreateExpense,
+    selectedYearMonth,
+    handleMonthChange,
+    showAllMonths,
+    toggleShowAllMonths
   }
 }

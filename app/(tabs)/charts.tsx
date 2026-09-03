@@ -4,56 +4,91 @@
  * expressed in the base currency using the day rates.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 
 import { Card } from '@src/components/atoms/Card'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { EmptyState } from '@src/components/molecules/EmptyState'
+import { MonthNavigator } from '@src/components/molecules/MonthNavigator'
 import { CategoryBreakdown } from '@src/components/organisms/CategoryBreakdown'
 import type { ChartCategory } from '@src/components/organisms/CategoryBreakdown'
 import { MonthlySummary } from '@src/components/organisms/MonthlySummary'
-import { useExpenses } from '@src/hooks/useExpenses'
+import { formatYearMonth } from '@src/db/incomeReceipts'
+import { MONTHLY_FACTOR, useExpenses } from '@src/hooks/useExpenses'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
 import { convert } from '@src/lib/conversions'
 import { formatAmount } from '@src/lib/format'
+import { daysInMonth } from '@src/lib/recurrences'
 import type { BaseCurrency } from '@src/types/domain'
 
 /**
  * Pestaña de resumen con indicadores del mes, desglose por categoria
- * y mayores gastos unicos para apoyar la contabilidad personal.
+ * y mayores gastos del mes para apoyar la contabilidad personal.
  * @returns Resumen del mes, barras por categoria y top de gastos
  */
 export default function Charts() {
   const ratesState = useRates()
   const { settings } = useSettings()
   const baseCurrency: BaseCurrency = settings?.baseCurrency ?? 'USD'
-  const expensesState = useExpenses(ratesState.rates, baseCurrency, settings?.reminderHour ?? 9)
+
+  const actualYearMonth = formatYearMonth()
+  const [selectedYearMonth, setSelectedYearMonth] = useState(actualYearMonth)
+  const isCurrentMonth = selectedYearMonth === actualYearMonth
+
+  const expensesState = useExpenses(
+    ratesState.rates,
+    baseCurrency,
+    settings?.reminderHour ?? 9,
+    0,
+    selectedYearMonth
+  )
 
   const breakdownLoading = !ratesState.rates || expensesState.loading
 
   const categories = useMemo<ChartCategory[]>(() => {
     if (!ratesState.rates) return []
 
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-
+    const expenseReceiptsMap = new Map(expensesState.expenseReceipts.map((r) => [r.expenseId, r]))
+    const isPastMonth = selectedYearMonth < actualYearMonth
     const amountsByCategory = new Map<string, number>()
 
     for (const expense of expensesState.fixedExpenses) {
-      const key = (expense.category ?? '').trim() || 'Sin categoria'
-      const amount = convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-      amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + amount)
+      const expenseMonth = expense.createdAt.slice(0, 7)
+      if (expenseMonth > selectedYearMonth) {
+        continue
+      }
+
+      const receipt = expenseReceiptsMap.get(expense.id)
+      let fixedAmount = 0
+
+      if (receipt) {
+        fixedAmount =
+          receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency
+            ? receipt.baseAmount
+            : convert(receipt.amount, receipt.currency, baseCurrency, ratesState.rates)
+      } else if (!isPastMonth) {
+        const factor = MONTHLY_FACTOR[expense.recurrence ?? 'monthly'] ?? 1
+        fixedAmount =
+          convert(expense.amount, expense.currency, baseCurrency, ratesState.rates) * factor
+      }
+
+      if (fixedAmount > 0) {
+        const key = (expense.category ?? '').trim() || 'Sin categoria'
+        amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + fixedAmount)
+      }
     }
 
     for (const expense of expensesState.uniqueExpenses) {
-      const created = new Date(expense.createdAt)
-      if (created.getMonth() === currentMonth && created.getFullYear() === currentYear) {
+      const expenseMonth = expense.createdAt.slice(0, 7)
+      if (expenseMonth === selectedYearMonth) {
         const key = (expense.category ?? '').trim() || 'Sin categoria'
-        const amount = convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
+        const amount =
+          expense.baseAmount !== undefined && expense.baseCurrency === baseCurrency
+            ? expense.baseAmount
+            : convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
         amountsByCategory.set(key, (amountsByCategory.get(key) ?? 0) + amount)
       }
     }
@@ -69,53 +104,66 @@ export default function Charts() {
         pct: Math.round((total / grandTotal) * 100)
       }))
       .sort((a, b) => b.pct - a.pct)
-  }, [expensesState.fixedExpenses, expensesState.uniqueExpenses, ratesState.rates, baseCurrency])
+  }, [
+    expensesState.fixedExpenses,
+    expensesState.uniqueExpenses,
+    expensesState.expenseReceipts,
+    ratesState.rates,
+    baseCurrency,
+    selectedYearMonth,
+    actualYearMonth
+  ])
 
-  // Indicadores contables: total general, promedio diario y mayores gastos.
+  // Indicadores contables: total unico, promedio diario y gastos fijos activos.
   const indicators = useMemo(() => {
-    if (!ratesState.rates) return null
+    if (!ratesState.rates || !expensesState.monthlySummary) return null
 
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
+    const uniqueTotal = expensesState.monthlySummary.totalUnique
 
-    let uniqueTotal = 0
+    const [yearStr, monthStr] = selectedYearMonth.split('-')
+    const year = Number(yearStr)
+    const month = Number(monthStr) - 1
 
-    for (const expense of expensesState.uniqueExpenses) {
-      const created = new Date(expense.createdAt)
-      if (created.getMonth() === currentMonth && created.getFullYear() === currentYear) {
-        uniqueTotal += convert(expense.amount, expense.currency, baseCurrency, ratesState.rates)
-      }
+    let daysCount: number
+    if (isCurrentMonth) {
+      const now = new Date()
+      daysCount = Math.max(1, now.getDate())
+    } else {
+      daysCount = Math.max(1, daysInMonth(year, month))
     }
 
-    const dayOfMonth = now.getDate()
-    const dailyAverage = dayOfMonth > 0 ? uniqueTotal / dayOfMonth : uniqueTotal
+    const dailyAverage = uniqueTotal / daysCount
 
     return {
       uniqueTotal,
       dailyAverage,
-      activeFixedCount: expensesState.fixedExpenses.length
+      activeFixedCount: expensesState.fixedExpenses.filter((expense) => {
+        const expenseMonth = expense.createdAt.slice(0, 7)
+        return expenseMonth <= selectedYearMonth
+      }).length
     }
-  }, [expensesState.uniqueExpenses, expensesState.fixedExpenses, ratesState.rates, baseCurrency])
+  }, [
+    ratesState.rates,
+    expensesState.monthlySummary,
+    expensesState.fixedExpenses,
+    selectedYearMonth,
+    isCurrentMonth
+  ])
 
   const topExpenses = useMemo(() => {
     const currentRates = ratesState.rates
 
     if (!currentRates) return []
 
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-
     return expensesState.uniqueExpenses
-      .filter((expense) => {
-        const created = new Date(expense.createdAt)
-        return created.getMonth() === currentMonth && created.getFullYear() === currentYear
-      })
+      .filter((expense) => expense.createdAt.slice(0, 7) === selectedYearMonth)
       .map((expense) => ({
         id: expense.id,
         name: expense.name,
-        amount: convert(expense.amount, expense.currency, baseCurrency, currentRates)
+        amount:
+          expense.baseAmount !== undefined && expense.baseCurrency === baseCurrency
+            ? expense.baseAmount
+            : convert(expense.amount, expense.currency, baseCurrency, currentRates)
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3)
@@ -124,7 +172,7 @@ export default function Charts() {
         name: expense.name,
         formattedAmount: formatAmount(expense.amount, baseCurrency)
       }))
-  }, [expensesState.uniqueExpenses, ratesState.rates, baseCurrency])
+  }, [expensesState.uniqueExpenses, ratesState.rates, baseCurrency, selectedYearMonth])
 
   const refreshAll = async () => {
     await Promise.all([ratesState.refresh(), expensesState.reload()])
@@ -138,6 +186,9 @@ export default function Charts() {
     >
       <View className="gap-6 pt-6">
         <Typography variant="display">Resumen</Typography>
+
+        {/* Navegador de meses para consulta historica */}
+        <MonthNavigator currentYearMonth={selectedYearMonth} onMonthChange={setSelectedYearMonth} />
 
         <MonthlySummary
           summary={expensesState.monthlySummary}
@@ -207,10 +258,10 @@ export default function Charts() {
             </Card>
 
             <Card className="gap-3">
-              <Typography variant="title">Mayores gastos unicos</Typography>
+              <Typography variant="title">Mayores gastos del mes</Typography>
 
               {topExpenses.length === 0 ? (
-                <Typography variant="caption">Sin gastos unicos registrados</Typography>
+                <Typography variant="caption">Sin gastos unicos registrados en este mes</Typography>
               ) : (
                 <View className="gap-2">
                   {topExpenses.map((expense) => (

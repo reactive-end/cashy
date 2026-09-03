@@ -15,6 +15,7 @@ import { Typography } from '@src/components/atoms/Typography'
 import { EmptyState } from '@src/components/molecules/EmptyState'
 import { ExpenseItem } from '@src/components/molecules/ExpenseItem'
 import { FilterSheet } from '@src/components/molecules/FilterSheet'
+import { MonthNavigator } from '@src/components/molecules/MonthNavigator'
 import { Pagination } from '@src/components/molecules/Pagination'
 import { SearchBar } from '@src/components/molecules/SearchBar'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
@@ -45,7 +46,11 @@ export default function ExpensesScreen() {
     refreshing,
     onRefresh,
     openExpenseDetail,
-    openCreateExpense
+    openCreateExpense,
+    selectedYearMonth,
+    handleMonthChange,
+    showAllMonths,
+    toggleShowAllMonths
   } = useExpensesScreen()
 
   return (
@@ -91,6 +96,32 @@ export default function ExpensesScreen() {
           value={segment}
           onChange={handleSegmentChange}
         />
+
+        {/* Navegador de mes y alternador de periodo para gastos unicos */}
+        {segment === 'unique' ? (
+          <View className="gap-2">
+            {!showAllMonths ? (
+              <MonthNavigator
+                currentYearMonth={selectedYearMonth}
+                onMonthChange={handleMonthChange}
+              />
+            ) : null}
+
+            <View className="flex-row items-center justify-end">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showAllMonths ? 'Filtrar por mes' : 'Ver historial completo'}
+                onPress={toggleShowAllMonths}
+                className="flex-row items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 active:opacity-60"
+              >
+                <Icon name={showAllMonths ? 'calendar' : 'repeat'} size={14} color="#6B6B66" />
+                <Typography variant="caption" className="text-[12px] font-sans-medium text-muted">
+                  {showAllMonths ? 'Filtrar por mes' : 'Ver historial completo'}
+                </Typography>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {/* Busqueda con boton de agregar gasto nuevo */}
         <SearchBar

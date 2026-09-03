@@ -9,6 +9,7 @@ import {
   dueLabel,
   formatAmount,
   formatDate,
+  formatDateShort,
   formatHour12,
   formatNumber,
   formatTime12,
@@ -48,6 +49,20 @@ describe('formatDate', () => {
   it('reordena ISO yyyy-mm-dd a dd/mm/yyyy', () => {
     expect(formatDate('2026-09-01')).toBe('01/09/2026')
     expect(formatDate('2026-12-31')).toBe('31/12/2026')
+  })
+})
+
+describe('formatDateShort', () => {
+  it('formatea fechas ISO a formato d mmm en espanol', () => {
+    expect(formatDateShort('2026-09-03')).toBe('3 sep')
+    expect(formatDateShort('2026-08-25T14:30:00.000Z')).toBe('25 ago')
+    expect(formatDateShort('2026-01-01')).toBe('1 ene')
+    expect(formatDateShort('2026-12-31')).toBe('31 dic')
+  })
+
+  it('maneja entradas vacias o invalidas', () => {
+    expect(formatDateShort('')).toBe('')
+    expect(formatDateShort('invalid')).toBe('')
   })
 })
 

@@ -103,7 +103,7 @@ describe('pantalla de graficas', () => {
 
     expect(await pantalla.findByText('Indicadores del mes')).toBeTruthy()
     expect(pantalla.getByText('Promedio diario (unicos)')).toBeTruthy()
-    expect(pantalla.getByText('Mayores gastos unicos')).toBeTruthy()
+    expect(pantalla.getByText('Mayores gastos del mes')).toBeTruthy()
   })
 
   it('muestra el resumen del mes junto al desglose', async () => {
