@@ -102,7 +102,10 @@ export function useExpensesScreen(): UseExpensesScreenResult {
   const rawList = segment === 'fixed' ? expensesState.fixedExpenses : expensesState.uniqueExpenses
 
   const sourceList = useMemo(() => {
-    if (segment === 'fixed' || showAllMonths) {
+    if (segment === 'fixed') {
+      return rawList.filter((expense) => expense.createdAt.slice(0, 7) <= selectedYearMonth)
+    }
+    if (showAllMonths) {
       return rawList
     }
     return rawList.filter((expense) => expense.createdAt.slice(0, 7) === selectedYearMonth)

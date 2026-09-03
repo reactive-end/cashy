@@ -97,16 +97,16 @@ export default function ExpensesScreen() {
           onChange={handleSegmentChange}
         />
 
-        {/* Navegador de mes y alternador de periodo SOLO para gastos unicos */}
-        {segment === 'unique' ? (
-          <View className="gap-2.5">
-            {!showAllMonths ? (
-              <MonthNavigator
-                currentYearMonth={selectedYearMonth}
-                onMonthChange={handleMonthChange}
-              />
-            ) : null}
+        {/* Navegador de mes para consulta temporal en Fijos y Unicos */}
+        <View className="gap-2.5">
+          {segment === 'fixed' || !showAllMonths ? (
+            <MonthNavigator
+              currentYearMonth={selectedYearMonth}
+              onMonthChange={handleMonthChange}
+            />
+          ) : null}
 
+          {segment === 'unique' ? (
             <Button
               fullWidth
               variant="primary"
@@ -114,8 +114,8 @@ export default function ExpensesScreen() {
               icon={showAllMonths ? 'calendar' : 'repeat'}
               onPress={toggleShowAllMonths}
             />
-          </View>
-        ) : null}
+          ) : null}
+        </View>
 
         {/* Busqueda con boton de agregar gasto nuevo */}
         <SearchBar
