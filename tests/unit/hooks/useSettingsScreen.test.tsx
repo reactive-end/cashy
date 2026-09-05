@@ -24,7 +24,7 @@ jest.mock('@src/db/profile', () => ({
 }))
 
 jest.mock('@src/services/appUpdate', () => ({
-  installedVersion: jest.fn(() => '1.2.0')
+  installedVersion: jest.fn(() => '1.3.0')
 }))
 
 const loadSettingsMock = loadSettings as jest.Mock
@@ -42,7 +42,7 @@ describe('useSettingsScreen', () => {
     await waitFor(() => expect(result.current?.displayName).toBe('Maria Gomez'))
 
     expect(result.current.baseCurrency).toBe('VES')
-    expect(result.current.versionLabel).toBe('v1.2.0')
+    expect(result.current.versionLabel).toBe('v1.3.0')
   })
 
   it('navega a subpantallas con navigateTo', async () => {

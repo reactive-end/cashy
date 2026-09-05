@@ -19,6 +19,12 @@ export type BaseCurrency = Exclude<Currency, 'EUR'>
 /** Lista de monedas base seleccionables en Ajustes (sin EUR) */
 export const BASE_CURRENCIES: readonly BaseCurrency[] = ['VES', 'USD', 'USDT'] as const
 
+/** Preferencia de tema visual de la aplicacion */
+export type ThemePreference = 'system' | 'light' | 'dark'
+
+/** Opciones de preferencia de tema */
+export const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark'] as const
+
 /** Expense kind: fixed repeats and triggers reminders, unique is one-off */
 export type ExpenseType = 'fixed' | 'unique'
 
@@ -120,6 +126,8 @@ export interface AppSettings {
   bcvEnabled: boolean
   /** Bloqueo biometrico al abrir la aplicacion o tras inactividad */
   biometricsEnabled?: boolean
+  /** Preferencia de tema: seguir al sistema o forzar modo claro u oscuro */
+  themePreference?: ThemePreference
 }
 
 /** Aggregated summary of the current month, expressed in base currency */

@@ -5,6 +5,8 @@
 
 import type { ColorValue } from 'react-native'
 
+import type { ThemeColors } from '@src/constants/theme'
+
 /** Catalogo de iconos outlined disponibles (lucide-react-native) */
 export type IconName =
   | 'home'
@@ -45,6 +47,12 @@ export type IconName =
   | 'shoppingBag'
   | 'building'
   | 'info'
+  | 'moon'
+  | 'sun'
+  | 'laptop'
+
+/** Nombres de tokens semanticos de color disponibles para el icono */
+export type IconSemanticColor = keyof ThemeColors
 
 /** Propiedades del atomo Icon */
 export interface IconProps {
@@ -52,8 +60,8 @@ export interface IconProps {
   name: IconName
   /** Lado del icono en pixeles (por defecto 20) */
   size?: number
-  /** Color del trazo; hereda el color del texto si se omite */
-  color?: ColorValue
+  /** Color del trazo: token semantico ('ink', 'muted', 'accent'...) o ColorValue nativo */
+  color?: IconSemanticColor | ColorValue
   /** Grosor del trazo outlined (por defecto 1.75, estilo fino) */
   strokeWidth?: number
 }

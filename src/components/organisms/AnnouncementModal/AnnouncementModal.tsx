@@ -204,7 +204,7 @@ export const AnnouncementModal = memo(function AnnouncementModal({
     }
 
     if (action === 'route' && payload) {
-      router.push(payload as never)
+      router.navigate(payload as never)
       onDismiss()
     }
   }

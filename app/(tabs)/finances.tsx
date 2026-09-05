@@ -12,7 +12,6 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
 import { MonthNavigator } from '@src/components/molecules/MonthNavigator'
-import { COLORS } from '@src/constants/theme'
 import { useFinancesScreen } from '@src/hooks/useFinancesScreen'
 
 export default function Finances() {
@@ -57,7 +56,7 @@ export default function Finances() {
           >
             <Card className="flex-row items-center gap-4 p-4">
               <View className="size-12 items-center justify-center rounded-full border border-line bg-paper">
-                <Icon name="repeat" size={22} color="#1C1C1A" />
+                <Icon name="repeat" size={22} color="ink" />
               </View>
 
               <View className="flex-1 min-w-0 gap-0.5">
@@ -69,7 +68,7 @@ export default function Finances() {
                 </Typography>
               </View>
 
-              <Icon name="chevronRight" size={20} color={COLORS.muted} />
+              <Icon name="chevronRight" size={20} color="muted" />
             </Card>
           </Pressable>
 
@@ -82,7 +81,7 @@ export default function Finances() {
           >
             <Card className="flex-row items-center gap-4 p-4">
               <View className="size-12 items-center justify-center rounded-full border border-accent/30 bg-accent-soft">
-                <Icon name="savings" size={22} color={COLORS.accent} />
+                <Icon name="savings" size={22} color="accent" />
               </View>
 
               <View className="flex-1 min-w-0 gap-0.5">
@@ -94,7 +93,7 @@ export default function Finances() {
                 </Typography>
               </View>
 
-              <Icon name="chevronRight" size={20} color={COLORS.muted} />
+              <Icon name="chevronRight" size={20} color="muted" />
             </Card>
           </Pressable>
         </View>

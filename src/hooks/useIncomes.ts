@@ -91,6 +91,16 @@ export function useIncomes(
         getIncomes(),
         getIncomeReceipts(currentYearMonth)
       ])
+      if (rates) {
+        for (const inc of fetchedIncomes) {
+          if (inc.baseAmount === undefined || inc.baseCurrency === undefined) {
+            const calculatedBase = convert(inc.amount, inc.currency, baseCurrency, rates)
+            inc.baseAmount = calculatedBase
+            inc.baseCurrency = baseCurrency
+            void updateIncome(inc.id, { baseAmount: calculatedBase, baseCurrency })
+          }
+        }
+      }
       setIncomes(fetchedIncomes)
       setReceipts(fetchedReceipts)
       setError(null)
@@ -98,7 +108,7 @@ export function useIncomes(
       // Mensaje amigable fijo: nunca se filtran textos tecnicos.
       setError(EXPENSES_LOAD_ERROR_MESSAGE)
     }
-  }, [currentYearMonth])
+  }, [currentYearMonth, rates, baseCurrency])
 
   useEffect(() => {
     let active = true
@@ -106,6 +116,16 @@ export function useIncomes(
     Promise.all([getIncomes(), getIncomeReceipts(currentYearMonth)])
       .then(([fetchedIncomes, fetchedReceipts]) => {
         if (active) {
+          if (rates) {
+            for (const inc of fetchedIncomes) {
+              if (inc.baseAmount === undefined || inc.baseCurrency === undefined) {
+                const calculatedBase = convert(inc.amount, inc.currency, baseCurrency, rates)
+                inc.baseAmount = calculatedBase
+                inc.baseCurrency = baseCurrency
+                void updateIncome(inc.id, { baseAmount: calculatedBase, baseCurrency })
+              }
+            }
+          }
           setIncomes(fetchedIncomes)
           setReceipts(fetchedReceipts)
         }
@@ -129,7 +149,7 @@ export function useIncomes(
       unsubscribeIncomes()
       unsubscribeReceipts()
     }
-  }, [reload, currentYearMonth])
+  }, [reload, currentYearMonth, rates, baseCurrency])
 
   const confirmedIncomeIds = useMemo(() => {
     return new Set(receipts.map((receipt) => receipt.incomeId))
@@ -210,19 +230,54 @@ export function useIncomes(
     }, 0)
   }, [receipts, rates, baseCurrency])
 
-  const create = useCallback(async (input: IncomeInput): Promise<Income> => {
-    const created = await insertIncome(input, generateId())
-    emit('incomes-changed')
+  const create = useCallback(
+    async (input: IncomeInput): Promise<Income> => {
+      let baseAmount = input.baseAmount
+      let resolvedBaseCurrency = input.baseCurrency
+      if (rates && baseAmount === undefined) {
+        baseAmount = convert(input.amount, input.currency, baseCurrency, rates)
+        resolvedBaseCurrency = baseCurrency
+      }
 
-    return created
-  }, [])
+      const created = await insertIncome(
+        {
+          ...input,
+          baseAmount,
+          baseCurrency: resolvedBaseCurrency
+        },
+        generateId()
+      )
+      emit('incomes-changed')
 
-  const edit = useCallback(async (id: string, changes: Partial<IncomeInput>): Promise<Income> => {
-    const edited = await updateIncome(id, changes)
-    emit('incomes-changed')
+      return created
+    },
+    [rates, baseCurrency]
+  )
 
-    return edited
-  }, [])
+  const edit = useCallback(
+    async (id: string, changes: Partial<IncomeInput>): Promise<Income> => {
+      let baseAmount = changes.baseAmount
+      let resolvedBaseCurrency = changes.baseCurrency
+      if (changes.amount !== undefined || changes.currency !== undefined) {
+        const targetAmount = changes.amount ?? incomes.find((i) => i.id === id)?.amount ?? 0
+        const targetCurrency =
+          changes.currency ?? incomes.find((i) => i.id === id)?.currency ?? 'USD'
+        if (rates && baseAmount === undefined) {
+          baseAmount = convert(targetAmount, targetCurrency, baseCurrency, rates)
+          resolvedBaseCurrency = baseCurrency
+        }
+      }
+
+      const edited = await updateIncome(id, {
+        ...changes,
+        ...(baseAmount !== undefined ? { baseAmount, baseCurrency: resolvedBaseCurrency } : {})
+      })
+      emit('incomes-changed')
+
+      return edited
+    },
+    [incomes, rates, baseCurrency]
+  )
 
   const remove = useCallback(async (id: string): Promise<void> => {
     await deleteIncome(id)
@@ -231,9 +286,12 @@ export function useIncomes(
 
   const confirmReceipt = useCallback(
     async (income: Income): Promise<IncomeReceipt> => {
-      const baseAmount = rates
-        ? convert(income.amount, income.currency, baseCurrency, rates)
-        : undefined
+      const baseAmount =
+        income.baseAmount !== undefined && income.baseCurrency === baseCurrency
+          ? income.baseAmount
+          : rates
+            ? convert(income.amount, income.currency, baseCurrency, rates)
+            : undefined
       const receipt = await confirmIncomeReceipt(
         income,
         currentYearMonth,

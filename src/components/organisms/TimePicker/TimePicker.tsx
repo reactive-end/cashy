@@ -13,7 +13,7 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ModalBackdrop } from '@src/components/molecules/ModalBackdrop'
 import { SegmentedControl } from '@src/components/molecules/SegmentedControl'
-import { COLORS } from '@src/constants/theme'
+import { useTheme } from '@src/hooks/useTheme'
 import { formatTime12 } from '@src/lib/format'
 
 import type { TimePickerProps } from './TimePicker.d'
@@ -38,6 +38,7 @@ export function TimePicker({
   disabled = false,
   accessibilityLabel
 }: TimePickerProps) {
+  const { colors } = useTheme()
   const {
     open,
     openPicker,
@@ -70,7 +71,7 @@ export function TimePicker({
         accessibilityValue={{ text: formatTime12(hour, minute) }}
       >
         <Typography variant="body">{formatTime12(hour, minute)}</Typography>
-        <Icon name="clock" size={20} color={COLORS.muted} />
+        <Icon name="clock" size={20} color={colors.muted} />
       </Pressable>
 
       <ModalBackdrop visible={open} onRequestClose={close}>
@@ -127,7 +128,7 @@ export function TimePicker({
                 <Typography
                   variant="figure"
                   className={mark.selected ? 'text-paper' : 'text-ink'}
-                  style={{ color: mark.selected ? COLORS.paper : COLORS.ink }}
+                  style={{ color: mark.selected ? colors.paper : colors.ink }}
                 >
                   {mark.label}
                 </Typography>

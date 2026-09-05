@@ -208,7 +208,14 @@ describe('useIncomes', () => {
     desuscribir()
 
     expect(insertIncomeMock).toHaveBeenCalledWith(
-      { name: 'Freelance', amount: 300, currency: 'EUR', paydayDay: 20 },
+      expect.objectContaining({
+        name: 'Freelance',
+        amount: 300,
+        currency: 'EUR',
+        paydayDay: 20,
+        baseAmount: expect.any(Number),
+        baseCurrency: 'USD'
+      }),
       expect.any(String)
     )
     expect(recibidos).toEqual(['emitido'])

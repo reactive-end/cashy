@@ -7,7 +7,7 @@ import { Tabs } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Icon } from '@src/components/atoms/Icon'
-import { COLORS } from '@src/constants/theme'
+import { useTheme } from '@src/hooks/useTheme'
 
 /**
  * Navegador de pestañas raiz de la aplicacion.
@@ -15,20 +15,22 @@ import { COLORS } from '@src/constants/theme'
  */
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
+  const { colors } = useTheme()
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.accent,
-        tabBarInactiveTintColor: COLORS.faint,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.faint,
         tabBarStyle: {
-          backgroundColor: COLORS.card,
-          borderTopColor: COLORS.line,
+          backgroundColor: colors.card,
+          borderTopColor: colors.line,
           borderTopWidth: 1,
           paddingBottom: Math.max(insets.bottom, 8),
           height: 56 + Math.max(insets.bottom, 8)
         },
+
         tabBarLabelStyle: {
           fontFamily: 'Manrope_600SemiBold',
           fontSize: 11

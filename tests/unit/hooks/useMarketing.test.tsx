@@ -31,7 +31,7 @@ const mockAd: PartnerAd = {
 
 const mockAnn: AppAnnouncement = {
   id: 'ann-20',
-  title: 'Nueva versión 1.2.0',
+  title: 'Nueva versión 1.3.0',
   message: 'Disfruta de las nuevas funciones',
   category: 'news',
   tone: 'accent',

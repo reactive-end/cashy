@@ -180,30 +180,34 @@ export function useMarketCalculator(
     setItemToRemove(null)
   }, [])
 
-  const decrementItemQuantity = useCallback((id: string) => {
-    setItems((prev) => {
-      const target = prev.find((item) => item.id === id)
-      if (!target) return prev
+  const decrementItemQuantity = useCallback(
+    (id: string) => {
+      const target = items.find((item) => item.id === id)
+      if (!target) return
 
       const currentQty = target.quantity ?? 1
       if (currentQty <= 1) {
         setItemToRemove(target)
-        return prev
+        return
       }
 
       const newQty = currentQty - 1
       const baseUnit = target.unitPrice ?? target.amount / currentQty
-      return prev.map((item) => {
-        if (item.id !== id) return item
-        return {
-          ...item,
-          quantity: newQty,
-          unitPrice: baseUnit,
-          amount: Math.round(baseUnit * newQty * 100) / 100
-        }
-      })
-    })
-  }, [])
+
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item
+          return {
+            ...item,
+            quantity: newQty,
+            unitPrice: baseUnit,
+            amount: Math.round(baseUnit * newQty * 100) / 100
+          }
+        })
+      )
+    },
+    [items]
+  )
 
   const removeItem = useCallback(
     (id: string) => {

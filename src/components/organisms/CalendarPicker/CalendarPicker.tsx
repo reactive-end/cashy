@@ -9,7 +9,6 @@ import { Pressable, View } from 'react-native'
 
 import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
-import { COLORS } from '@src/constants/theme'
 import { fromISODate, toISODate } from '@src/lib/recurrences'
 
 import type { CalendarPickerProps } from './CalendarPicker.d'
@@ -92,7 +91,7 @@ export function CalendarPicker({
             accessibilityRole="button"
             accessibilityLabel="Año anterior"
           >
-            <Icon name="chevronLeft" size={20} color={COLORS.muted} />
+            <Icon name="chevronLeft" size={20} color="ink" />
           </Pressable>
 
           <Typography variant="figure" className="font-sans-semibold text-lg text-ink">
@@ -105,7 +104,7 @@ export function CalendarPicker({
             accessibilityRole="button"
             accessibilityLabel="Año siguiente"
           >
-            <Icon name="chevronRight" size={20} color={COLORS.muted} />
+            <Icon name="chevronRight" size={20} color="ink" />
           </Pressable>
         </View>
 
@@ -162,7 +161,7 @@ export function CalendarPicker({
           accessibilityRole="button"
           accessibilityLabel="Mes anterior"
         >
-          <Icon name="chevronLeft" size={20} color={COLORS.muted} />
+          <Icon name="chevronLeft" size={20} color="ink" />
         </Pressable>
 
         <Pressable
@@ -172,7 +171,7 @@ export function CalendarPicker({
           className="flex-row items-center gap-1 active:opacity-60"
         >
           <Typography variant="figure">{monthLabel}</Typography>
-          <Icon name="chevronDown" size={16} color={COLORS.muted} />
+          <Icon name="chevronDown" size={16} color="muted" />
         </Pressable>
 
         <Pressable
@@ -181,7 +180,7 @@ export function CalendarPicker({
           accessibilityRole="button"
           accessibilityLabel="Mes siguiente"
         >
-          <Icon name="chevronRight" size={20} color={COLORS.muted} />
+          <Icon name="chevronRight" size={20} color="ink" />
         </Pressable>
       </View>
 

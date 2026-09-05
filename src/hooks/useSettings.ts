@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { loadSettings, saveSettings } from '@src/db/settings'
 import { cancelAllReminders, syncBcvNotice, syncReminders } from '@src/lib/notifications'
 import { getExchangeRates } from '@src/services/rates'
-import type { AppSettings, BaseCurrency } from '@src/types/domain'
+import type { AppSettings, BaseCurrency, ThemePreference } from '@src/types/domain'
 
 /** Cache compartido: una sola fuente de verdad en toda la app */
 let sharedCache: AppSettings | null = null
@@ -88,6 +88,8 @@ export interface UseSettingsResult {
   setBcvEnabled: (enabled: boolean) => Promise<void>
   /** Activa o desactiva la proteccion por bloqueo biometrico */
   setBiometricsEnabled: (enabled: boolean) => Promise<void>
+  /** Cambia la preferencia de tema (sistema, claro u oscuro) */
+  changeThemePreference: (theme: ThemePreference) => Promise<void>
 }
 
 /**
@@ -174,6 +176,12 @@ export function useSettings(): UseSettingsResult {
     persist(updated)
   }, [])
 
+  const changeThemePreference = useCallback(async (theme: ThemePreference) => {
+    const current = await ensureLoaded()
+    const updated: AppSettings = { ...current, themePreference: theme }
+    persist(updated)
+  }, [])
+
   return {
     settings,
     changeBaseCurrency,
@@ -181,7 +189,8 @@ export function useSettings(): UseSettingsResult {
     changeBcvTime,
     setRemindersEnabled,
     setBcvEnabled,
-    setBiometricsEnabled
+    setBiometricsEnabled,
+    changeThemePreference
   }
 }
 

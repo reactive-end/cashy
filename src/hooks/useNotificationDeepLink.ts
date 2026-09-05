@@ -24,7 +24,7 @@ function navigateToExpense(response: NotificationResponse): void {
 
   if (typeof expenseId !== 'string') return
 
-  router.push({ pathname: '/expense/[id]', params: { id: expenseId } })
+  router.navigate({ pathname: '/expense/[id]', params: { id: expenseId } })
 }
 
 /**

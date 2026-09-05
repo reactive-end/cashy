@@ -95,4 +95,21 @@ describe('useIncomeDetail', () => {
 
     expect(mockBack).toHaveBeenCalled()
   })
+
+  it('usa el snapshot baseAmount congelado cuando la moneda no coincide con baseCurrency', async () => {
+    const incomeWithSnapshot = buildIncome({
+      id: 'ing-ves',
+      name: 'Honorarios',
+      amount: 20000,
+      currency: 'VES',
+      baseAmount: 20,
+      baseCurrency: 'USD'
+    })
+    getIncomeMock.mockResolvedValue(incomeWithSnapshot)
+
+    const { result } = await renderHook(() => useIncomeDetail('ing-ves'))
+    await waitFor(() => expect(result.current?.loading).toBe(false))
+
+    expect(result.current.montoConvertido).toBe(20)
+  })
 })

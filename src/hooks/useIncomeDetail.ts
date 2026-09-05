@@ -71,12 +71,30 @@ export function useIncomeDetail(id: string | undefined): UseIncomeDetailResult {
     return incomesState.receipts.some((r) => r.incomeId === income.id)
   }, [income, incomesState.receipts])
 
+  const receipt = useMemo(() => {
+    if (!income) return undefined
+    return incomesState.receipts.find((r) => r.incomeId === income.id)
+  }, [income, incomesState.receipts])
+
   const montoConvertido = useMemo(() => {
-    if (!income || !ratesState.rates || income.currency === baseCurrency) {
+    if (!income || income.currency === baseCurrency) {
       return null
     }
-    return convert(income.amount, income.currency, baseCurrency, ratesState.rates)
-  }, [income, ratesState.rates, baseCurrency])
+
+    if (receipt && receipt.baseAmount !== undefined && receipt.baseCurrency === baseCurrency) {
+      return receipt.baseAmount
+    }
+
+    if (income.baseAmount !== undefined && income.baseCurrency === baseCurrency) {
+      return income.baseAmount
+    }
+
+    if (ratesState.rates) {
+      return convert(income.amount, income.currency, baseCurrency, ratesState.rates)
+    }
+
+    return null
+  }, [income, receipt, ratesState.rates, baseCurrency])
 
   const detailRows = useMemo<IncomeDetailRow[]>(() => {
     if (!income) return []

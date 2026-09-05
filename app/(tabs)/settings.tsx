@@ -11,8 +11,8 @@ import { Icon } from '@src/components/atoms/Icon'
 import type { IconName } from '@src/components/atoms/Icon/Icon.d'
 import { Screen } from '@src/components/atoms/Screen'
 import { Typography } from '@src/components/atoms/Typography'
-import { COLORS } from '@src/constants/theme'
 import { useSettingsScreen } from '@src/hooks/useSettingsScreen'
+import { useTheme } from '@src/hooks/useTheme'
 
 interface SettingsNavItemProps {
   icon: IconName
@@ -33,6 +33,7 @@ function SettingsNavItem({
   onPress,
   accessibilityLabel
 }: SettingsNavItemProps) {
+  const { colors } = useTheme()
   const badgeClasses =
     badgeTone === 'accent'
       ? 'bg-accent-soft text-accent'
@@ -50,10 +51,11 @@ function SettingsNavItem({
       <View className="flex-1 flex-row items-center gap-3 pr-2">
         <View
           className="h-10 w-10 items-center justify-center rounded-xl border border-line"
-          style={{ backgroundColor: COLORS.paper }}
+          style={{ backgroundColor: colors.paper }}
         >
-          <Icon name={icon} size={20} color={COLORS.ink} />
+          <Icon name={icon} size={20} color={colors.ink} />
         </View>
+
         <View className="flex-1">
           <Typography variant="body" className="font-semibold text-ink">
             {title}
@@ -79,6 +81,7 @@ function SettingsNavItem({
 }
 
 export default function Settings() {
+  const { colors } = useTheme()
   const {
     displayName,
     emailOrMode,
@@ -88,6 +91,7 @@ export default function Settings() {
     baseCurrency,
     reminderTime,
     biometricsEnabled,
+    themeLabel,
     versionLabel,
     navigateTo
   } = useSettingsScreen()
@@ -115,9 +119,9 @@ export default function Settings() {
               ) : (
                 <View
                   className="h-12 w-12 items-center justify-center rounded-full border border-line"
-                  style={{ backgroundColor: COLORS.accentSoft }}
+                  style={{ backgroundColor: colors.accentSoft }}
                 >
-                  <Icon name="user" size={24} color={COLORS.accent} />
+                  <Icon name="user" size={24} color={colors.accent} />
                 </View>
               )}
 
@@ -180,6 +184,16 @@ export default function Settings() {
             Preferencias
           </Typography>
           <Card className="py-1 divide-y divide-line">
+            <SettingsNavItem
+              icon="eye"
+              title="Tema y Apariencia"
+              subtitle="Modo oscuro, claro o detección de sistema"
+              valueBadge={themeLabel}
+              badgeTone="accent"
+              onPress={() => navigateTo('/settings/theme')}
+              accessibilityLabel="Ir a selector de tema y apariencia"
+            />
+
             <SettingsNavItem
               icon="dollar"
               title="Moneda base"

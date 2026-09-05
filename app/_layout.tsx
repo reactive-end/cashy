@@ -13,19 +13,21 @@ import {
   useFonts as useManropeFonts
 } from '@expo-google-fonts/manrope'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { NavigationBar } from 'expo-navigation-bar'
 import { router, Stack, usePathname } from 'expo-router'
 import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { enableFreeze } from 'react-native-screens'
 
 import '@src/styles/global.css'
 import { Typography } from '@src/components/atoms/Typography'
 import { ConfirmDialog } from '@src/components/molecules/ConfirmDialog'
 import { AppLockGate } from '@src/components/organisms/AppLockGate'
 import { WELCOME_SEEN_KEY } from '@src/constants/supabase'
-import { COLORS } from '@src/constants/theme'
+import { ThemeProvider, useTheme } from '@src/contexts/ThemeContext'
 import { isProfileComplete } from '@src/db/profile'
 import { loadSettings } from '@src/db/settings'
 import { useAppUpdate } from '@src/hooks/useAppUpdate'
@@ -35,6 +37,9 @@ import { registerBackgroundTask } from '@src/lib/backgroundTask'
 import { subscribe } from '@src/lib/events'
 import { setupNotifications, syncBcvNotice, syncReminders } from '@src/lib/notifications'
 import { getExchangeRates } from '@src/services/rates'
+
+/** Habilita congelamiento en React Fiber de pantallas y tabs inactivas en el stack */
+enableFreeze(true)
 
 /** Mantiene el splash visible mientras se cargan recursos criticos */
 void preventAutoHideAsync()
@@ -51,8 +56,9 @@ void preventAutoHideAsync()
  * dentro de Stack porque expo-router no los tolera.
  * @returns Arbol de navegacion raiz o null mientras cargan las fuentes
  */
-export default function RootLayout() {
+function RootNavigator() {
   const pathname = usePathname()
+  const { isDark, colors } = useTheme()
 
   const [frauncesLoaded] = useFonts({
     Fraunces_500Medium,
@@ -226,7 +232,8 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationBar style={isDark ? 'dark' : 'light'} />
       <AppLockGate>
         <Stack
           initialRouteName={
@@ -238,7 +245,7 @@ export default function RootLayout() {
                   : 'welcome'
               : '(tabs)'
           }
-          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.paper } }}
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
         >
           <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
           <Stack.Screen name="login" options={{ gestureEnabled: false }} />
@@ -262,6 +269,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings/pro-payment" />
           <Stack.Screen name="settings/updates" />
           <Stack.Screen name="settings/about" />
+          <Stack.Screen name="settings/theme" />
         </Stack>
 
         <ConfirmDialog
@@ -297,5 +305,17 @@ export default function RootLayout() {
         </ConfirmDialog>
       </AppLockGate>
     </SafeAreaProvider>
+  )
+}
+
+/**
+ * Layout raiz de la aplicacion envuelto en ThemeProvider.
+ * @returns Arbol de aplicacion con contexto de tema
+ */
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootNavigator />
+    </ThemeProvider>
   )
 }

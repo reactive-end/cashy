@@ -6,6 +6,7 @@
 import { TextInput, View } from 'react-native'
 
 import { Typography } from '@src/components/atoms/Typography'
+import { useTheme } from '@src/hooks/useTheme'
 
 import type { InputProps } from './Input.d'
 import { useInput } from './useInput'
@@ -30,6 +31,7 @@ export function Input({
   autoCorrect,
   disabled = false
 }: InputProps) {
+  const { colors } = useTheme()
   const { containerClasses, prefixClasses, onFocus, onBlur } = useInput(
     Boolean(errorMessage),
     disabled
@@ -54,7 +56,8 @@ export function Input({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#70706A"
+          placeholderTextColor={colors.faint}
+
           onFocus={onFocus}
           onBlur={onBlur}
           editable={!disabled}

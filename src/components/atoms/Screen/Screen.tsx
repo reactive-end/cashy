@@ -7,7 +7,7 @@
 import { RefreshControl, ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { COLORS } from '@src/constants/theme'
+import { useTheme } from '@src/hooks/useTheme'
 
 import type { ScreenProps } from './Screen.d'
 
@@ -26,6 +26,7 @@ export function Screen({
   overlay
 }: ScreenProps) {
   const insets = useSafeAreaInsets()
+  const { colors } = useTheme()
   const contentClasses = `${noPadding ? '' : 'px-5'} ${className ?? ''}`
   const bottomInsetStyle = {
     paddingTop: insets.top,
@@ -36,9 +37,9 @@ export function Screen({
     <RefreshControl
       refreshing={refreshing}
       onRefresh={onRefresh}
-      tintColor={COLORS.accent}
-      colors={[COLORS.accent]}
-      progressBackgroundColor={COLORS.card}
+      tintColor={colors.accent}
+      colors={[colors.accent]}
+      progressBackgroundColor={colors.card}
     />
   ) : undefined
 

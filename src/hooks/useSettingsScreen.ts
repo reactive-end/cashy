@@ -13,6 +13,7 @@ import { useSubscription } from '@src/hooks/useSubscription'
 import { subscribe } from '@src/lib/events'
 import { formatTime12 } from '@src/lib/format'
 import { installedVersion } from '@src/services/appUpdate'
+import type { ThemePreference } from '@src/types/domain'
 
 export interface UseSettingsScreenResult {
   displayName: string
@@ -24,6 +25,8 @@ export interface UseSettingsScreenResult {
   reminderTime: string
   remindersEnabled: boolean
   biometricsEnabled: boolean
+  themePreference: ThemePreference
+  themeLabel: string
   versionLabel: string
   navigateTo: (route: string) => void
 }
@@ -78,6 +81,10 @@ export function useSettingsScreen(): UseSettingsScreenResult {
     [router]
   )
 
+  const themePreference: ThemePreference = settings?.themePreference ?? 'system'
+  const themeLabel =
+    themePreference === 'dark' ? 'Oscuro' : themePreference === 'light' ? 'Claro' : 'Sistema'
+
   return {
     displayName,
     emailOrMode,
@@ -88,7 +95,9 @@ export function useSettingsScreen(): UseSettingsScreenResult {
     reminderTime,
     remindersEnabled: settings?.remindersEnabled ?? false,
     biometricsEnabled: settings?.biometricsEnabled ?? false,
-    versionLabel: `v${installedVersion() || '1.2.0'}`,
+    themePreference,
+    themeLabel,
+    versionLabel: `v${installedVersion() || '1.3.0'}`,
     navigateTo
   }
 }

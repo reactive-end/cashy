@@ -1,22 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: ['./app/**/*.{js,jsx,ts,tsx}', './src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {
-        paper: '#FAFAF7',
-        card: '#FFFFFF',
-        line: '#ECECE7',
-        ink: '#1C1C1A',
-        muted: '#6B6B66',
-        faint: '#A8A8A2',
-        accent: '#2F6B4F',
-        'accent-soft': '#EDF3EF',
-        danger: '#A63D3D',
-        'danger-soft': '#F6ECEC',
-        warn: '#8A6D2F',
-        'warn-soft': '#F5EFE2'
+        paper: 'var(--color-paper)',
+        card: 'var(--color-card)',
+        line: 'var(--color-line)',
+        ink: 'var(--color-ink)',
+        muted: 'var(--color-muted)',
+        faint: 'var(--color-faint)',
+        accent: 'var(--color-accent)',
+        'accent-soft': 'var(--color-accent-soft)',
+        danger: 'var(--color-danger)',
+        'danger-soft': 'var(--color-danger-soft)',
+        warn: 'var(--color-warn)',
+        'warn-soft': 'var(--color-warn-soft)'
       },
       fontFamily: {
         display: ['Fraunces_600SemiBold'],

@@ -180,4 +180,18 @@ describe('useSettings', () => {
       expect.objectContaining({ biometricsEnabled: true })
     )
   })
+
+  it('permite cambiar y persistir la preferencia de tema', async () => {
+    const { result } = await renderHook(() => useSettings())
+    await waitFor(() => expect(result.current.settings).not.toBeNull())
+
+    await act(async () => {
+      await result.current.changeThemePreference('dark')
+    })
+
+    expect(result.current.settings?.themePreference).toBe('dark')
+    expect(saveSettingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ themePreference: 'dark' })
+    )
+  })
 })

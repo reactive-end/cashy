@@ -7,7 +7,7 @@
 import { useCallback } from 'react'
 import type { GestureResponderEvent } from 'react-native'
 
-import { COLORS } from '@src/constants/theme'
+import { useTheme } from '@src/hooks/useTheme'
 
 import type { ButtonProps, ButtonSize, ButtonVariant } from './Button.d'
 
@@ -20,14 +20,6 @@ const CLASSES_BY_VARIANT: Readonly<Record<ButtonVariant, string>> = {
   secondary: 'bg-card border-line',
   ghost: 'bg-transparent border-transparent',
   danger: 'bg-danger-soft border-danger-soft'
-}
-
-/** Color hex del icono por variante (lucide no hereda clases) */
-const ICON_HEX_COLOR: Readonly<Record<ButtonVariant, string>> = {
-  primary: COLORS.paper,
-  secondary: COLORS.ink,
-  ghost: COLORS.muted,
-  danger: COLORS.danger
 }
 
 /** Color de texto por variante */
@@ -68,7 +60,17 @@ export function useButton({
   iconColor: string
   handlePress: (event: GestureResponderEvent) => void
 } {
+  const { colors } = useTheme()
   const inactive = disabled || loading
+
+  const iconColor =
+    variant === 'primary'
+      ? colors.paper
+      : variant === 'secondary'
+        ? colors.ink
+        : variant === 'ghost'
+          ? colors.muted
+          : colors.danger
 
   const containerClasses = [
     BASE_CLASSES,
@@ -90,5 +92,5 @@ export function useButton({
     [inactive, onPress]
   )
 
-  return { containerClasses, textClasses, iconColor: ICON_HEX_COLOR[variant], handlePress }
+  return { containerClasses, textClasses, iconColor, handlePress }
 }

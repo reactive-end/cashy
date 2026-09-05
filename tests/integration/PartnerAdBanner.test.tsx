@@ -9,9 +9,9 @@ import { Linking } from 'react-native'
 import { PartnerAdBanner } from '@src/components/molecules/PartnerAdBanner'
 import type { PartnerAd } from '@src/types/marketing'
 
-const mockPush = jest.fn()
+const mockNavigate = jest.fn()
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush })
+  useRouter: () => ({ push: mockNavigate, navigate: mockNavigate })
 }))
 
 const sampleAd: PartnerAd = {
@@ -90,6 +90,6 @@ describe('PartnerAdBanner', () => {
 
     await user.press(screen.getByText('Ir al mercado'))
 
-    expect(mockPush).toHaveBeenCalledWith('/market')
+    expect(mockNavigate).toHaveBeenCalledWith('/market')
   })
 })

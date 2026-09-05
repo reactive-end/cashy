@@ -10,7 +10,7 @@ import type { AppAnnouncement } from '@src/types/marketing'
 
 const mockPush = jest.fn()
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush })
+  useRouter: () => ({ push: mockPush, navigate: mockPush })
 }))
 
 const sampleAnnouncements: AppAnnouncement[] = [

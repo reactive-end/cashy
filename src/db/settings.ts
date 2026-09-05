@@ -3,7 +3,7 @@
  * Persists key/value pairs with sensible defaults.
  */
 
-import type { AppSettings, BaseCurrency } from '@src/types/domain'
+import type { AppSettings, BaseCurrency, ThemePreference } from '@src/types/domain'
 
 import { openDatabase } from './base'
 
@@ -19,7 +19,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bcvMinute: 0,
   remindersEnabled: true,
   bcvEnabled: true,
-  biometricsEnabled: false
+  biometricsEnabled: false,
+  themePreference: 'system'
 }
 
 /** Forma cruda de una fila de la tabla settings */
@@ -29,6 +30,9 @@ interface SettingsRow {
 
 /** Campos validos de moneda base usados al validar el JSON persistido */
 const VALID_BASE_CURRENCIES: readonly BaseCurrency[] = ['VES', 'USD', 'USDT']
+
+/** Opciones validas de tema para validar el JSON persistido */
+const VALID_THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark']
 
 /**
  * Comprueba que un objeto responde a la forma base de los ajustes.
@@ -68,7 +72,12 @@ function parseAppSettings(value: object): AppSettings | null {
     biometricsEnabled:
       typeof parsed.biometricsEnabled === 'boolean'
         ? parsed.biometricsEnabled
-        : DEFAULT_SETTINGS.biometricsEnabled
+        : DEFAULT_SETTINGS.biometricsEnabled,
+    themePreference:
+      typeof parsed.themePreference === 'string' &&
+      VALID_THEME_PREFERENCES.includes(parsed.themePreference as ThemePreference)
+        ? (parsed.themePreference as ThemePreference)
+        : DEFAULT_SETTINGS.themePreference
   }
 }
 

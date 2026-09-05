@@ -61,6 +61,12 @@ jest.mock('expo-notifications', () => ({
   AndroidImportance: { DEFAULT: 3, HIGH: 4, MAX: 5 }
 }))
 
+jest.mock('expo-navigation-bar', () => ({
+  NavigationBar: () => null,
+  setStyle: jest.fn(),
+  setHidden: jest.fn()
+}))
+
 jest.mock('expo-task-manager', () => ({
   defineTask: jest.fn(),
   isTaskRegisteredAsync: jest.fn(async () => false)

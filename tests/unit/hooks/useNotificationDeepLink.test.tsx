@@ -12,10 +12,13 @@ import * as notificationsLib from '@src/lib/notifications'
 
 import type { NotificationResponse } from 'expo-notifications'
 
-const mockPush = jest.fn()
+const mockNavigate = jest.fn()
 
 jest.mock('expo-router', () => ({
-  router: { push: (url: unknown) => mockPush(url) }
+  router: {
+    push: (...args: [string]) => mockNavigate(...args),
+    navigate: (...args: [string]) => mockNavigate(...args)
+  }
 }))
 
 jest.mock('@src/lib/notifications', () => ({
@@ -51,7 +54,10 @@ describe('useNotificationDeepLink', () => {
 
     await renderHook(() => useNotificationDeepLink())
 
-    expect(mockPush).toHaveBeenCalledWith({ pathname: '/expense/[id]', params: { id: 'gasto-9' } })
+    expect(mockNavigate).toHaveBeenCalledWith({
+      pathname: '/expense/[id]',
+      params: { id: 'gasto-9' }
+    })
   })
 
   it('navega al tocar una notificacion con la app abierta', async () => {
@@ -60,7 +66,10 @@ describe('useNotificationDeepLink', () => {
     const oyente = addListenerMock.mock.calls[0][0] as (respuesta: NotificationResponse) => void
     oyente(respuestaConData({ expenseId: 'gasto-2' }))
 
-    expect(mockPush).toHaveBeenCalledWith({ pathname: '/expense/[id]', params: { id: 'gasto-2' } })
+    expect(mockNavigate).toHaveBeenCalledWith({
+      pathname: '/expense/[id]',
+      params: { id: 'gasto-2' }
+    })
   })
 
   it('ignora respuestas sin identificador de gasto', async () => {
@@ -68,7 +77,7 @@ describe('useNotificationDeepLink', () => {
 
     await renderHook(() => useNotificationDeepLink())
 
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it('queda inactivo dentro de Expo Go', async () => {
@@ -77,6 +86,6 @@ describe('useNotificationDeepLink', () => {
     await renderHook(() => useNotificationDeepLink())
 
     expect(addListenerMock).not.toHaveBeenCalled()
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

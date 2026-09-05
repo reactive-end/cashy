@@ -107,6 +107,7 @@ export function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings
     remindersEnabled: true,
     bcvEnabled: true,
     biometricsEnabled: false,
+    themePreference: 'system',
     ...overrides
   }
 }

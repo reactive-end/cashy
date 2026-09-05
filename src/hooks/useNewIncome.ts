@@ -11,6 +11,7 @@ import { useIncomes } from '@src/hooks/useIncomes'
 import { emptyRow } from '@src/hooks/useOnboarding'
 import { useRates } from '@src/hooks/useRates'
 import { useSettings } from '@src/hooks/useSettings'
+import { convert } from '@src/lib/conversions'
 import { isValidIncomeRow, parseDayFromText } from '@src/lib/validation'
 import type { BaseCurrency, IncomeInput } from '@src/types/domain'
 
@@ -49,10 +50,17 @@ export function useNewIncome(): UseNewIncomeResult {
     setSaving(true)
     try {
       const isUnique = values.type === 'unique'
+      const amount = values.amountCents / 100
+      const baseAmount = ratesState.rates
+        ? convert(amount, values.currency, baseCurrency, ratesState.rates)
+        : undefined
+
       const input: IncomeInput = {
         name: values.name.trim(),
-        amount: values.amountCents / 100,
+        amount,
         currency: values.currency,
+        baseAmount,
+        baseCurrency: ratesState.rates ? baseCurrency : undefined,
         type: values.type ?? 'fixed',
         recurrence: isUnique ? undefined : (values.recurrence ?? 'monthly'),
         paydayDay: isUnique
@@ -65,7 +73,7 @@ export function useNewIncome(): UseNewIncomeResult {
     } catch {
       setSaving(false)
     }
-  }, [values, saving, incomesState, router])
+  }, [values, saving, ratesState.rates, baseCurrency, incomesState, router])
 
   return {
     values,

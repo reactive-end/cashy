@@ -11,7 +11,6 @@ import { Icon } from '@src/components/atoms/Icon'
 import { Typography } from '@src/components/atoms/Typography'
 import { ModalBackdrop } from '@src/components/molecules/ModalBackdrop'
 import { CalendarPicker } from '@src/components/organisms/CalendarPicker'
-import { COLORS } from '@src/constants/theme'
 import { formatYearMonth } from '@src/db/incomeReceipts'
 import { formatYearMonthLabel, shiftYearMonth } from '@src/lib/format'
 
@@ -45,7 +44,7 @@ export function MonthNavigator({
     <>
       <View
         testID={testID}
-        className="flex-row items-center justify-between rounded-2xl border border-line bg-paper px-3 py-2.5 shadow-sm"
+        className="flex-row items-center justify-between rounded-2xl border border-line bg-card px-3 py-2.5 shadow-sm"
       >
         {/* Boton mes anterior */}
         <Pressable
@@ -53,9 +52,9 @@ export function MonthNavigator({
           accessibilityLabel="Mes anterior"
           testID={`${testID}-prev`}
           onPress={handlePrevious}
-          className="size-9 items-center justify-center rounded-xl bg-card border border-line active:opacity-60"
+          className="size-9 items-center justify-center rounded-xl bg-paper border border-line active:opacity-60"
         >
-          <Icon name="chevronLeft" size={18} color={COLORS.ink} />
+          <Icon name="chevronLeft" size={18} color="ink" />
         </Pressable>
 
         {/* Mes visible y chip para volver al mes actual */}
@@ -70,7 +69,7 @@ export function MonthNavigator({
             <Typography variant="figure" className="text-[15px] font-sans-semibold text-ink">
               {formatYearMonthLabel(currentYearMonth)}
             </Typography>
-            <Icon name="chevronDown" size={14} color={COLORS.muted} />
+            <Icon name="chevronDown" size={14} color="muted" />
           </Pressable>
 
           {isActualMonth ? (
@@ -85,7 +84,7 @@ export function MonthNavigator({
               accessibilityLabel="Volver al mes actual"
               testID={`${testID}-current-btn`}
               onPress={handleResetToCurrent}
-              className="rounded-full bg-card border border-line px-2 py-0.5 active:opacity-60"
+              className="rounded-full bg-paper border border-line px-2 py-0.5 active:opacity-60"
             >
               <Typography variant="caption" className="text-[11px] font-medium text-muted">
                 Volver al actual
@@ -101,11 +100,11 @@ export function MonthNavigator({
           testID={`${testID}-next`}
           onPress={handleNext}
           disabled={!canGoNext}
-          className={`size-9 items-center justify-center rounded-xl bg-card border border-line active:opacity-60 ${
+          className={`size-9 items-center justify-center rounded-xl bg-paper border border-line active:opacity-60 ${
             !canGoNext ? 'opacity-30' : ''
           }`}
         >
-          <Icon name="chevronRight" size={18} color={COLORS.ink} />
+          <Icon name="chevronRight" size={18} color="ink" />
         </Pressable>
       </View>
 

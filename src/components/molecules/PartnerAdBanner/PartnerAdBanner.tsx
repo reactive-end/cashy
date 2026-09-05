@@ -42,7 +42,7 @@ export const PartnerAdBanner = memo(function PartnerAdBanner({
     }
 
     if (ad.cta_action === 'route') {
-      router.push(ad.cta_payload as never)
+      router.navigate(ad.cta_payload as never)
       return
     }
 

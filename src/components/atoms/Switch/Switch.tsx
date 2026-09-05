@@ -6,7 +6,7 @@
 
 import { Switch as ReactSwitch } from 'react-native'
 
-import { COLORS } from '@src/constants/theme'
+import { useTheme } from '@src/hooks/useTheme'
 
 import type { SwitchProps } from './Switch.d'
 
@@ -24,13 +24,15 @@ export function Switch({
   disabled = false,
   accessibilityLabel
 }: SwitchProps) {
+  const { colors } = useTheme()
+
   return (
     <ReactSwitch
       value={value}
       onValueChange={onValueChange}
       disabled={disabled}
-      trackColor={{ false: COLORS.line, true: COLORS.accent }}
-      thumbColor={COLORS.card}
+      trackColor={{ false: colors.line, true: colors.accent }}
+      thumbColor={colors.card}
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
     />
