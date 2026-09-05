@@ -9,6 +9,29 @@ import type { PropsWithChildren } from 'react'
  * se ejecuten dentro del entorno act de testing-library. */
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
+if (typeof globalThis.WebSocket === 'undefined') {
+  class MockWebSocket {
+    static readonly CONNECTING = 0
+    static readonly OPEN = 1
+    static readonly CLOSING = 2
+    static readonly CLOSED = 3
+    readonly CONNECTING = 0
+    readonly OPEN = 1
+    readonly CLOSING = 2
+    readonly CLOSED = 3
+    readyState = 1
+    send = jest.fn()
+    close = jest.fn()
+    addEventListener = jest.fn()
+    removeEventListener = jest.fn()
+  }
+  Object.defineProperty(globalThis, 'WebSocket', {
+    value: MockWebSocket,
+    writable: true,
+    configurable: true
+  })
+}
+
 /** Mock global de expo-sqlite respaldado por la base falsa en memoria.
  * El require diferido evita dependencias ciclicas en tiempo de hoisting. */
 jest.mock('expo-sqlite', () => ({
